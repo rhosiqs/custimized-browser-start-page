@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Start Page</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="start-page" id="startPage">
+      <section class="clock-card local-clock" aria-label="Local time">
+        <p class="clock-label" id="localLabel">Local Time</p>
+        <h1 id="localTime">--:--</h1>
+        <p id="localDate">Loading...</p>
+      </section>
+
+      <section class="search-stack" aria-label="Search tools">
+        <form class="search-row" id="searchForm">
+          <label class="engine-select">
+            <span class="sr-only">Search engine</span>
+            <select id="searchEngine"></select>
+          </label>
+          <input
+            id="searchInput"
+            type="search"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="Search the web"
+            aria-label="Search the web"
+          />
+        </form>
+
+        <form class="search-row ai-row" id="aiForm">
+          <label class="engine-select">
+            <span class="sr-only">AI engine</span>
+            <select id="aiEngine"></select>
+          </label>
+          <input
+            id="aiInput"
+            type="search"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="Ask AI"
+            aria-label="Ask AI"
+          />
+        </form>
+      </section>
+
+      <section class="shortcut-panel" aria-label="Shortcuts">
+        <div class="shortcut-grid" id="shortcutGrid"></div>
+      </section>
+    </main>
+
+    <button class="icon-button settings-button" id="settingsButton" type="button" aria-label="Open settings" title="Settings">
+      <svg aria-hidden="true" viewBox="0 0 24 24">
+        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.51a2 2 0 0 1 1-1.72l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+        <circle cx="12" cy="12" r="3" />
+      </svg>
+    </button>
+
+    <aside class="world-clock" aria-label="Global time">
+      <div id="worldClockList"></div>
+    </aside>
+
+    <div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
+    <aside class="settings-drawer" id="settingsDrawer" aria-labelledby="settingsTitle" aria-hidden="true">
+      <div class="drawer-header">
+        <div>
+          <p class="eyebrow">Customize</p>
+          <h2 id="settingsTitle">Start Page Settings</h2>
+        </div>
+        <button class="icon-button" id="closeSettings" type="button" aria-label="Close settings" title="Close">
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="settings-content">
+        <section class="settings-section">
+          <h3>Appearance</h3>
+          <div class="field-grid">
+            <label>
+              Theme
+              <select id="themeSetting">
+                <option value="dark">Dark</option>
+                <option value="light">Light</option>
+              </select>
+            </label>
+            <label>
+              Density
+              <select id="densitySetting">
+                <option value="comfortable">Comfortable</option>
+                <option value="compact">Compact</option>
+              </select>
+            </label>
+          </div>
+          <label>
+            Background
+            <select id="backgroundTypeSetting">
+              <option value="solid">Solid</option>
+              <option value="gradient">Gradient</option>
+              <option value="image">Image URL</option>
+            </select>
+          </label>
+          <label>
+            Background value
+            <input id="backgroundValueSetting" type="text" spellcheck="false" />
+          </label>
+          <label>
+            Accent color
+            <input id="accentSetting" type="color" />
+          </label>
+        </section>
+
+        <section class="settings-section">
+          <h3>Search</h3>
+          <div class="field-grid">
+            <label>
+              Web default
+              <select id="defaultSearchSetting"></select>
+            </label>
+            <label>
+              AI default
+              <select id="defaultAiSetting"></select>
+            </label>
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <h3>Shortcuts</h3>
+          <div class="field-grid">
+            <label>
+              Columns
+              <input id="shortcutColumnsSetting" type="number" min="2" max="8" step="1" />
+            </label>
+            <label>
+              Visible slots
+              <input id="shortcutSlotsSetting" type="number" min="4" max="48" step="1" />
+            </label>
+          </div>
+          <div class="shortcut-editor" id="shortcutEditor"></div>
+          <button class="text-button" id="addShortcut" type="button">Add Shortcut</button>
+        </section>
+
+        <section class="settings-section">
+          <h3>Global Time</h3>
+          <label>
+            Time zones
+            <input id="timeZonesSetting" type="text" spellcheck="false" />
+          </label>
+          <p class="hint">Use IANA names separated by commas, such as America/New_York, America/Los_Angeles.</p>
+        </section>
+
+        <section class="settings-section">
+          <h3>Data</h3>
+          <div class="button-row">
+            <button class="text-button" id="exportSettings" type="button">Export JSON</button>
+            <button class="text-button" id="importSettings" type="button">Import JSON</button>
+            <button class="text-button danger" id="resetSettings" type="button">Reset</button>
+          </div>
+          <textarea id="settingsJson" rows="6" spellcheck="false" placeholder="Import/export settings JSON"></textarea>
+        </section>
+      </div>
+    </aside>
+
+    <script src="app.js"></script>
+  </body>
+</html>
