@@ -133,10 +133,40 @@ body.theme-light select option {
 }
 
 .clock-card h1 {
+  position: relative;
+  display: inline-block;
   margin: 0;
+  padding: 0 0.34em;
   font-size: clamp(2.2rem, 6vw, 4.5rem);
   line-height: 0.92;
   font-weight: 900;
+}
+
+.clock-main {
+  display: block;
+}
+
+.day-period {
+  position: absolute;
+  left: 0;
+  font-size: 0.2em;
+  line-height: 1;
+}
+
+.day-period-am {
+  top: 0.02em;
+}
+
+.day-period-pm {
+  bottom: 0.02em;
+}
+
+.clock-seconds {
+  position: absolute;
+  right: 0;
+  bottom: 0.02em;
+  font-size: 0.24em;
+  line-height: 1;
 }
 
 .clock-card p:last-child {
@@ -456,6 +486,33 @@ body.theme-light select option {
 
 .settings-section input[type="color"] {
   padding: 4px;
+}
+
+.time-zone-selected {
+  display: grid;
+  gap: 7px;
+  margin-top: -2px;
+  margin-bottom: 12px;
+}
+
+.time-zone-selected-item {
+  display: grid;
+  grid-template-columns: 1fr 30px;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 4px 5px 4px 10px;
+  color: var(--text);
+  background: var(--bg-input);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.time-zone-selected-item .icon-button {
+  width: 28px;
+  height: 28px;
 }
 
 .color-entry {

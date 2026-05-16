@@ -30,6 +30,27 @@ const aiEngines = {
   }
 };
 
+const timeZoneOptions = [
+  "Pacific/Honolulu",
+  "America/Los_Angeles",
+  "America/Denver",
+  "America/Chicago",
+  "America/New_York",
+  "America/Sao_Paulo",
+  "Atlantic/Reykjavik",
+  "Europe/London",
+  "Europe/Paris",
+  "Europe/Berlin",
+  "Europe/Moscow",
+  "Asia/Dubai",
+  "Asia/Kolkata",
+  "Asia/Bangkok",
+  "Asia/Shanghai",
+  "Asia/Taipei",
+  "Asia/Tokyo",
+  "Australia/Sydney"
+];
+
 const defaultSettings = {
   theme: "dark",
   density: "comfortable",
@@ -41,6 +62,8 @@ const defaultSettings = {
   shortcutColumns: 4,
   shortcutSlots: 12,
   shortcutAlign: "stretch",
+  clockFormat: "24",
+  showSeconds: true,
   timeZones: ["America/New_York", "America/Los_Angeles"],
   shortcuts: [
     { title: "Bing", url: "https://www.bing.com", color: "#0ea5e9" },
@@ -89,8 +112,11 @@ const elements = {
   shortcutColumnsSetting: document.getElementById("shortcutColumnsSetting"),
   shortcutSlotsSetting: document.getElementById("shortcutSlotsSetting"),
   shortcutAlignSetting: document.getElementById("shortcutAlignSetting"),
+  clockFormatSetting: document.getElementById("clockFormatSetting"),
+  showSecondsSetting: document.getElementById("showSecondsSetting"),
   shortcutEditor: document.getElementById("shortcutEditor"),
   addShortcut: document.getElementById("addShortcut"),
+  timeZoneSelect: document.getElementById("timeZoneSelect"),
   timeZonesSetting: document.getElementById("timeZonesSetting"),
   exportSettings: document.getElementById("exportSettings"),
   importSettings: document.getElementById("importSettings"),
@@ -112,8 +138,11 @@ function normalizeSettings(value) {
     ...defaultSettings,
     ...value,
     shortcuts: Array.isArray(value.shortcuts) ? value.shortcuts : defaultSettings.shortcuts,
-    timeZones: Array.isArray(value.timeZones) ? value.timeZones : defaultSettings.timeZones
+    timeZones: Array.isArray(value.timeZones)
+      ? value.timeZones.filter((zone) => timeZoneOptions.includes(zone))
+      : defaultSettings.timeZones
   };
+  if (!merged.timeZones.length) merged.timeZones = defaultSettings.timeZones;
 
   merged.shortcutColumns = clampNumber(merged.shortcutColumns, 2, 8, defaultSettings.shortcutColumns);
   merged.shortcutSlots = clampNumber(merged.shortcutSlots, 4, 48, defaultSettings.shortcutSlots);
@@ -133,6 +162,8 @@ function normalizeSettings(value) {
   if (!["stretch", "start", "center", "end"].includes(merged.shortcutAlign)) {
     merged.shortcutAlign = defaultSettings.shortcutAlign;
   }
+  if (!["12", "24"].includes(merged.clockFormat)) merged.clockFormat = defaultSettings.clockFormat;
+  merged.showSeconds = merged.showSeconds !== false;
   if (!["solid", "gradient", "image"].includes(merged.backgroundType)) {
     merged.backgroundType = defaultSettings.backgroundType;
   }
@@ -220,10 +251,12 @@ function applySettings() {
   elements.shortcutColumnsSetting.value = settings.shortcutColumns;
   elements.shortcutSlotsSetting.value = settings.shortcutSlots;
   elements.shortcutAlignSetting.value = settings.shortcutAlign;
-  elements.timeZonesSetting.value = settings.timeZones.join(", ");
+  elements.clockFormatSetting.value = settings.clockFormat;
+  elements.showSecondsSetting.value = String(settings.showSeconds);
 
   renderShortcuts();
   renderShortcutEditor();
+  renderTimeZoneOptions();
   updateClocks();
 }
 
@@ -325,6 +358,44 @@ function renderShortcutEditor() {
   });
 }
 
+function renderTimeZoneOptions() {
+  const now = new Date();
+  elements.timeZoneSelect.innerHTML = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Add time zone";
+  elements.timeZoneSelect.appendChild(placeholder);
+
+  timeZoneOptions.forEach((zone) => {
+    const option = document.createElement("option");
+    option.value = zone;
+    option.textContent = `${getGmtLabel(zone, now)} - ${getCityLabel(zone)}`;
+    option.disabled = settings.timeZones.includes(zone);
+    elements.timeZoneSelect.appendChild(option);
+  });
+  elements.timeZoneSelect.value = "";
+
+  elements.timeZonesSetting.innerHTML = "";
+  settings.timeZones.forEach((zone) => {
+    const item = document.createElement("div");
+    item.className = "time-zone-selected-item";
+
+    const text = document.createElement("span");
+    text.textContent = `${getGmtLabel(zone, now)} - ${getCityLabel(zone)}`;
+
+    const remove = document.createElement("button");
+    remove.className = "icon-button";
+    remove.type = "button";
+    remove.title = "Remove";
+    remove.ariaLabel = `Remove ${getCityLabel(zone)}`;
+    remove.dataset.timeZone = zone;
+    remove.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12" /></svg>';
+
+    item.append(text, remove);
+    elements.timeZonesSetting.appendChild(item);
+  });
+}
+
 function getFaviconUrl(url) {
   const host = getHostname(url);
   return host ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64` : "";
@@ -369,16 +440,10 @@ async function openQuery(engine, query) {
 function updateClocks() {
   const now = new Date();
   elements.localLabel.textContent = `Local Time (${getLocalZoneLabel(now)})`;
-  elements.localTime.textContent = new Intl.DateTimeFormat([], {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false
-  }).format(now);
+  elements.localTime.innerHTML = formatLocalTime(now);
 
-  elements.localDate.textContent = new Intl.DateTimeFormat([], {
+  elements.localDate.textContent = new Intl.DateTimeFormat("en-US", {
     weekday: "long",
-    year: "numeric",
     month: "long",
     day: "numeric"
   }).format(now);
@@ -392,23 +457,66 @@ function updateClocks() {
   });
 }
 
-function getLocalZoneLabel(date) {
-  const parts = new Intl.DateTimeFormat([], {
-    timeZoneName: "short"
+function formatLocalTime(date) {
+  const isTwelveHour = settings.clockFormat === "12";
+  const parts = new Intl.DateTimeFormat(isTwelveHour ? "en-US" : [], {
+    hour: isTwelveHour ? "numeric" : "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: isTwelveHour
   }).formatToParts(date);
-  return parts.find((part) => part.type === "timeZoneName")?.value || "";
+  const hour = parts.find((part) => part.type === "hour")?.value || "--";
+  const minute = parts.find((part) => part.type === "minute")?.value || "--";
+  const second = parts.find((part) => part.type === "second")?.value || "--";
+  const dayPeriod = parts.find((part) => part.type === "dayPeriod")?.value || "";
+  const suffixes = [
+    isTwelveHour ? `<span class="day-period day-period-${dayPeriod.toLowerCase()}">${dayPeriod}</span>` : "",
+    settings.showSeconds ? `<span class="clock-seconds">${second}</span>` : ""
+  ].join("");
+
+  return `<span class="clock-main">${hour}:${minute}</span>${suffixes}`;
+}
+
+function getLocalZoneLabel(date) {
+  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return zone ? getGmtLabel(zone, date) : "";
 }
 
 function getZoneLabel(zone, date) {
+  try {
+    return `${getZoneAbbreviation(zone, date)} - ${getCityLabel(zone)}`;
+  } catch {
+    return zone;
+  }
+}
+
+function getZoneAbbreviation(zone, date) {
+  if (["Asia/Taipei", "Asia/Shanghai"].includes(zone)) return "CST";
   try {
     const parts = new Intl.DateTimeFormat("en-US", {
       timeZone: zone,
       timeZoneName: "short"
     }).formatToParts(date);
-    return parts.find((part) => part.type === "timeZoneName")?.value || zone;
+    return parts.find((part) => part.type === "timeZoneName")?.value || getGmtLabel(zone, date);
   } catch {
-    return zone;
+    return getGmtLabel(zone, date);
   }
+}
+
+function getGmtLabel(zone, date) {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: zone,
+      timeZoneName: "shortOffset"
+    }).formatToParts(date);
+    return parts.find((part) => part.type === "timeZoneName")?.value || "GMT";
+  } catch {
+    return "GMT";
+  }
+}
+
+function getCityLabel(zone) {
+  return zone.split("/").pop().replace(/_/g, " ");
 }
 
 function formatZoneTime(zone, date) {
@@ -470,6 +578,12 @@ function handleSettingsInput(event) {
     return;
   }
 
+  if (target.id === "timeZoneSelect") {
+    if (!target.value || settings.timeZones.includes(target.value)) return;
+    updateSetting("timeZones", [...settings.timeZones, target.value]);
+    return;
+  }
+
   const map = {
     themeSetting: ["theme", target.value],
     densitySetting: ["density", target.value],
@@ -479,17 +593,22 @@ function handleSettingsInput(event) {
     shortcutColumnsSetting: ["shortcutColumns", target.value],
     shortcutSlotsSetting: ["shortcutSlots", target.value],
     shortcutAlignSetting: ["shortcutAlign", target.value],
-    timeZonesSetting: [
-      "timeZones",
-      target.value
-        .split(",")
-        .map((zone) => zone.trim())
-        .filter(Boolean)
-    ]
+    clockFormatSetting: ["clockFormat", target.value],
+    showSecondsSetting: ["showSeconds", target.value === "true"]
   };
 
   const update = map[target.id];
   if (update) updateSetting(update[0], update[1]);
+}
+
+function handleTimeZoneRemove(event) {
+  if (!(event.target instanceof Element)) return;
+  const button = event.target.closest("[data-time-zone]");
+  if (!button) return;
+  updateSetting(
+    "timeZones",
+    settings.timeZones.filter((zone) => zone !== button.dataset.timeZone)
+  );
 }
 
 function reorderShortcut(fromIndex, toIndex) {
@@ -579,6 +698,7 @@ function wireEvents() {
   elements.drawer.addEventListener("change", handleSettingsInput);
   elements.shortcutEditor.addEventListener("change", handleShortcutEditorInput);
   elements.shortcutEditor.addEventListener("click", handleShortcutEditorClick);
+  elements.timeZonesSetting.addEventListener("click", handleTimeZoneRemove);
 
   elements.shortcutEditor.addEventListener("dragstart", (event) => {
     const row = event.target.closest(".shortcut-edit-row");
