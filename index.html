@@ -104,12 +104,18 @@
             </select>
           </label>
           <label>
-            Background value
-            <input id="backgroundValueSetting" type="text" spellcheck="false" />
+            Background color / value
+            <div class="color-entry">
+              <input id="backgroundColorSetting" type="color" aria-label="Background color picker" />
+              <input id="backgroundValueSetting" type="text" spellcheck="false" placeholder="#080b10" />
+            </div>
           </label>
           <label>
             Accent color
-            <input id="accentSetting" type="color" />
+            <div class="color-entry">
+              <input id="accentSetting" type="color" aria-label="Accent color picker" />
+              <input id="accentTextSetting" type="text" spellcheck="false" placeholder="#34d399" />
+            </div>
           </label>
         </section>
 
@@ -137,6 +143,15 @@
             <label>
               Visible slots
               <input id="shortcutSlotsSetting" type="number" min="4" max="48" step="1" />
+            </label>
+            <label>
+              Alignment
+              <select id="shortcutAlignSetting">
+                <option value="stretch">Stretch</option>
+                <option value="start">Left</option>
+                <option value="center">Center</option>
+                <option value="end">Right</option>
+              </select>
             </label>
           </div>
           <div class="shortcut-editor" id="shortcutEditor"></div>

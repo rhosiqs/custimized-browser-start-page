@@ -40,6 +40,7 @@ const defaultSettings = {
   defaultAi: "googleAi",
   shortcutColumns: 4,
   shortcutSlots: 12,
+  shortcutAlign: "stretch",
   timeZones: ["America/New_York", "America/Los_Angeles"],
   shortcuts: [
     { title: "Bing", url: "https://www.bing.com", color: "#0ea5e9" },
@@ -55,6 +56,9 @@ const defaultSettings = {
 
 let settings = loadSettings();
 let editorRenderQueued = false;
+let shortcutPointerDrag = null;
+let suppressShortcutClick = false;
+let shortcutEditorPointerDrag = null;
 
 const elements = {
   body: document.body,
@@ -76,12 +80,15 @@ const elements = {
   themeSetting: document.getElementById("themeSetting"),
   densitySetting: document.getElementById("densitySetting"),
   backgroundTypeSetting: document.getElementById("backgroundTypeSetting"),
+  backgroundColorSetting: document.getElementById("backgroundColorSetting"),
   backgroundValueSetting: document.getElementById("backgroundValueSetting"),
   accentSetting: document.getElementById("accentSetting"),
+  accentTextSetting: document.getElementById("accentTextSetting"),
   defaultSearchSetting: document.getElementById("defaultSearchSetting"),
   defaultAiSetting: document.getElementById("defaultAiSetting"),
   shortcutColumnsSetting: document.getElementById("shortcutColumnsSetting"),
   shortcutSlotsSetting: document.getElementById("shortcutSlotsSetting"),
+  shortcutAlignSetting: document.getElementById("shortcutAlignSetting"),
   shortcutEditor: document.getElementById("shortcutEditor"),
   addShortcut: document.getElementById("addShortcut"),
   timeZonesSetting: document.getElementById("timeZonesSetting"),
@@ -115,7 +122,7 @@ function normalizeSettings(value) {
     .map((item) => ({
       title: String(item.title || getHostname(item.url) || "Shortcut"),
       url: normalizeUrl(String(item.url || "")),
-      color: String(item.color || defaultSettings.accent)
+      color: normalizeHexColor(item.color) || defaultSettings.accent
     }))
     .filter((item) => item.url);
 
@@ -123,11 +130,36 @@ function normalizeSettings(value) {
   if (!aiEngines[merged.defaultAi]) merged.defaultAi = defaultSettings.defaultAi;
   if (!["dark", "light"].includes(merged.theme)) merged.theme = defaultSettings.theme;
   if (!["comfortable", "compact"].includes(merged.density)) merged.density = defaultSettings.density;
+  if (!["stretch", "start", "center", "end"].includes(merged.shortcutAlign)) {
+    merged.shortcutAlign = defaultSettings.shortcutAlign;
+  }
   if (!["solid", "gradient", "image"].includes(merged.backgroundType)) {
     merged.backgroundType = defaultSettings.backgroundType;
   }
+  merged.accent = normalizeHexColor(merged.accent) || defaultSettings.accent;
+  if (merged.backgroundType === "solid") {
+    merged.backgroundValue = normalizeHexColor(merged.backgroundValue) || defaultSettings.backgroundValue;
+  }
 
   return merged;
+}
+
+function isHexColor(value) {
+  return /^#[0-9a-f]{6}$/i.test(String(value || ""));
+}
+
+function normalizeHexColor(value) {
+  const clean = String(value || "").trim().replace(/^#/, "");
+  if (/^[0-9a-f]{3}$/i.test(clean)) {
+    return `#${clean
+      .split("")
+      .map((char) => char + char)
+      .join("")}`.toLowerCase();
+  }
+  if (/^[0-9a-f]{6}$/i.test(clean)) {
+    return `#${clean}`.toLowerCase();
+  }
+  return "";
 }
 
 function saveSettings() {
@@ -158,6 +190,11 @@ function applySettings() {
   document.documentElement.style.setProperty("--accent", settings.accent);
   document.documentElement.style.setProperty("--accent-strong", settings.accent);
   document.documentElement.style.setProperty("--shortcut-columns", settings.shortcutColumns);
+  document.documentElement.style.setProperty("--shortcut-grid-justify", settings.shortcutAlign);
+  document.documentElement.style.setProperty(
+    "--shortcut-track-size",
+    settings.shortcutAlign === "stretch" ? "minmax(0, 1fr)" : "minmax(112px, 166px)"
+  );
   document.documentElement.style.setProperty("--background-value", formatBackgroundValue());
 
   elements.searchEngine.value = settings.defaultSearch;
@@ -165,12 +202,24 @@ function applySettings() {
   elements.themeSetting.value = settings.theme;
   elements.densitySetting.value = settings.density;
   elements.backgroundTypeSetting.value = settings.backgroundType;
+  elements.backgroundColorSetting.hidden = settings.backgroundType !== "solid";
+  elements.backgroundColorSetting.value = isHexColor(settings.backgroundValue)
+    ? settings.backgroundValue
+    : defaultSettings.backgroundValue;
+  elements.backgroundValueSetting.placeholder =
+    settings.backgroundType === "solid"
+      ? "#080b10"
+      : settings.backgroundType === "image"
+        ? "https://example.com/background.jpg"
+        : "linear-gradient(...)";
   elements.backgroundValueSetting.value = settings.backgroundValue;
   elements.accentSetting.value = settings.accent;
+  elements.accentTextSetting.value = settings.accent;
   elements.defaultSearchSetting.value = settings.defaultSearch;
   elements.defaultAiSetting.value = settings.defaultAi;
   elements.shortcutColumnsSetting.value = settings.shortcutColumns;
   elements.shortcutSlotsSetting.value = settings.shortcutSlots;
+  elements.shortcutAlignSetting.value = settings.shortcutAlign;
   elements.timeZonesSetting.value = settings.timeZones.join(", ");
 
   renderShortcuts();
@@ -189,11 +238,13 @@ function renderShortcuts() {
   elements.shortcutGrid.innerHTML = "";
   const visible = settings.shortcuts.slice(0, settings.shortcutSlots);
 
-  visible.forEach((shortcut) => {
+  visible.forEach((shortcut, index) => {
     const tile = document.createElement("a");
     tile.className = "shortcut-tile";
     tile.href = shortcut.url;
     tile.title = shortcut.url;
+    tile.draggable = true;
+    tile.dataset.index = String(index);
     tile.style.setProperty("--tile-color", shortcut.color || settings.accent);
 
     const icon = document.createElement("span");
@@ -238,6 +289,16 @@ function renderShortcutEditor() {
       row.className = "shortcut-edit-row";
       row.dataset.index = String(index);
 
+      const dragButton = document.createElement("button");
+      dragButton.className = "icon-button drag-handle";
+      dragButton.type = "button";
+      dragButton.draggable = true;
+      dragButton.title = "Drag to reorder";
+      dragButton.ariaLabel = "Drag to reorder shortcut";
+      dragButton.dataset.action = "drag";
+      dragButton.innerHTML =
+        '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01" /></svg>';
+
       const titleInput = document.createElement("input");
       titleInput.type = "text";
       titleInput.value = shortcut.title;
@@ -258,7 +319,7 @@ function renderShortcutEditor() {
       removeButton.dataset.action = "remove";
       removeButton.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12" /></svg>';
 
-      row.append(titleInput, urlInput, removeButton);
+      row.append(dragButton, titleInput, urlInput, removeButton);
       elements.shortcutEditor.appendChild(row);
     });
   });
@@ -384,16 +445,40 @@ function handleSettingsInput(event) {
   const target = event.target;
   if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) return;
 
+  if (target.id === "backgroundTypeSetting") {
+    updateSetting("backgroundType", target.value);
+    if (target.value === "solid" && !isHexColor(settings.backgroundValue)) {
+      updateSetting("backgroundValue", defaultSettings.backgroundValue);
+    }
+    return;
+  }
+
+  if (target.id === "backgroundColorSetting") {
+    updateSetting("backgroundValue", target.value);
+    return;
+  }
+
+  if (target.id === "backgroundValueSetting" && settings.backgroundType === "solid") {
+    const color = normalizeHexColor(target.value);
+    if (color) updateSetting("backgroundValue", color);
+    return;
+  }
+
+  if (target.id === "accentSetting" || target.id === "accentTextSetting") {
+    const color = normalizeHexColor(target.value);
+    if (color) updateSetting("accent", color);
+    return;
+  }
+
   const map = {
     themeSetting: ["theme", target.value],
     densitySetting: ["density", target.value],
-    backgroundTypeSetting: ["backgroundType", target.value],
     backgroundValueSetting: ["backgroundValue", target.value],
-    accentSetting: ["accent", target.value],
     defaultSearchSetting: ["defaultSearch", target.value],
     defaultAiSetting: ["defaultAi", target.value],
     shortcutColumnsSetting: ["shortcutColumns", target.value],
     shortcutSlotsSetting: ["shortcutSlots", target.value],
+    shortcutAlignSetting: ["shortcutAlign", target.value],
     timeZonesSetting: [
       "timeZones",
       target.value
@@ -405,6 +490,34 @@ function handleSettingsInput(event) {
 
   const update = map[target.id];
   if (update) updateSetting(update[0], update[1]);
+}
+
+function reorderShortcut(fromIndex, toIndex) {
+  if (
+    !Number.isInteger(fromIndex) ||
+    !Number.isInteger(toIndex) ||
+    fromIndex === toIndex ||
+    !settings.shortcuts[fromIndex] ||
+    !settings.shortcuts[toIndex]
+  ) {
+    return;
+  }
+
+  const nextShortcuts = [...settings.shortcuts];
+  const [moved] = nextShortcuts.splice(fromIndex, 1);
+  nextShortcuts.splice(toIndex, 0, moved);
+  settings = normalizeSettings({ ...settings, shortcuts: nextShortcuts });
+  saveSettings();
+  renderShortcuts();
+  renderShortcutEditor();
+}
+
+function getShortcutTileFromPoint(x, y) {
+  return document.elementFromPoint(x, y)?.closest(".shortcut-tile:not(.shortcut-empty)");
+}
+
+function getShortcutEditorRowFromPoint(x, y) {
+  return document.elementFromPoint(x, y)?.closest(".shortcut-edit-row");
 }
 
 function handleShortcutEditorInput(event) {
@@ -428,12 +541,14 @@ function handleShortcutEditorInput(event) {
 }
 
 function handleShortcutEditorClick(event) {
-  const target = event.target.closest("[data-action='remove']");
+  const target = event.target.closest("[data-action]");
   if (!target) return;
 
   const row = target.closest(".shortcut-edit-row");
   const index = Number(row?.dataset.index);
   if (!Number.isInteger(index)) return;
+
+  if (target.dataset.action !== "remove") return;
 
   settings.shortcuts.splice(index, 1);
   settings = normalizeSettings(settings);
@@ -464,6 +579,211 @@ function wireEvents() {
   elements.drawer.addEventListener("change", handleSettingsInput);
   elements.shortcutEditor.addEventListener("change", handleShortcutEditorInput);
   elements.shortcutEditor.addEventListener("click", handleShortcutEditorClick);
+
+  elements.shortcutEditor.addEventListener("dragstart", (event) => {
+    const row = event.target.closest(".shortcut-edit-row");
+    if (!row) return;
+    if (!event.target.closest("[data-action='drag']")) {
+      event.preventDefault();
+      return;
+    }
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", row.dataset.index);
+    requestAnimationFrame(() => row.classList.add("is-dragging"));
+  });
+
+  elements.shortcutEditor.addEventListener("dragend", (event) => {
+    event.target.closest(".shortcut-edit-row")?.classList.remove("is-dragging");
+    elements.shortcutEditor.querySelectorAll(".is-drop-target").forEach((row) => {
+      row.classList.remove("is-drop-target");
+    });
+  });
+
+  elements.shortcutEditor.addEventListener("dragover", (event) => {
+    const row = event.target.closest(".shortcut-edit-row");
+    if (!row) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    elements.shortcutEditor.querySelectorAll(".is-drop-target").forEach((item) => {
+      if (item !== row) item.classList.remove("is-drop-target");
+    });
+    row.classList.add("is-drop-target");
+  });
+
+  elements.shortcutEditor.addEventListener("dragleave", (event) => {
+    const row = event.target.closest(".shortcut-edit-row");
+    if (!row || row.contains(event.relatedTarget)) return;
+    row.classList.remove("is-drop-target");
+  });
+
+  elements.shortcutEditor.addEventListener("drop", (event) => {
+    const row = event.target.closest(".shortcut-edit-row");
+    if (!row) return;
+    event.preventDefault();
+    const fromIndex = Number(event.dataTransfer.getData("text/plain"));
+    reorderShortcut(fromIndex, Number(row.dataset.index));
+  });
+
+  elements.shortcutEditor.addEventListener("pointerdown", (event) => {
+    const handle = event.target.closest("[data-action='drag']");
+    const row = handle?.closest(".shortcut-edit-row");
+    if (!row) return;
+    event.preventDefault();
+    shortcutEditorPointerDrag = {
+      fromIndex: Number(row.dataset.index),
+      startX: event.clientX,
+      startY: event.clientY,
+      handle,
+      targetRow: row,
+      moved: false
+    };
+    handle.setPointerCapture(event.pointerId);
+  });
+
+  elements.shortcutEditor.addEventListener("pointermove", (event) => {
+    if (!shortcutEditorPointerDrag) return;
+    const distance = Math.hypot(
+      event.clientX - shortcutEditorPointerDrag.startX,
+      event.clientY - shortcutEditorPointerDrag.startY
+    );
+    if (distance < 8 && !shortcutEditorPointerDrag.moved) return;
+
+    event.preventDefault();
+    shortcutEditorPointerDrag.moved = true;
+    shortcutEditorPointerDrag.targetRow.classList.add("is-dragging");
+
+    const row = getShortcutEditorRowFromPoint(event.clientX, event.clientY);
+    elements.shortcutEditor.querySelectorAll(".is-drop-target").forEach((item) => {
+      if (item !== row) item.classList.remove("is-drop-target");
+    });
+    row?.classList.add("is-drop-target");
+  });
+
+  elements.shortcutEditor.addEventListener("pointerup", (event) => {
+    if (!shortcutEditorPointerDrag) return;
+    const drag = shortcutEditorPointerDrag;
+    shortcutEditorPointerDrag = null;
+    if (drag.handle.hasPointerCapture?.(event.pointerId)) {
+      drag.handle.releasePointerCapture(event.pointerId);
+    }
+    drag.targetRow.classList.remove("is-dragging");
+
+    const row = getShortcutEditorRowFromPoint(event.clientX, event.clientY);
+    elements.shortcutEditor.querySelectorAll(".is-drop-target").forEach((item) => {
+      item.classList.remove("is-drop-target");
+    });
+
+    if (drag.moved) {
+      event.preventDefault();
+      reorderShortcut(drag.fromIndex, Number(row?.dataset.index));
+    }
+  });
+
+  elements.shortcutEditor.addEventListener("pointercancel", () => {
+    if (!shortcutEditorPointerDrag) return;
+    shortcutEditorPointerDrag.targetRow.classList.remove("is-dragging");
+    shortcutEditorPointerDrag = null;
+    elements.shortcutEditor.querySelectorAll(".is-drop-target").forEach((item) => {
+      item.classList.remove("is-drop-target");
+    });
+  });
+
+  elements.shortcutGrid.addEventListener("dragstart", (event) => {
+    const tile = event.target.closest(".shortcut-tile:not(.shortcut-empty)");
+    if (!tile) return;
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", tile.dataset.index);
+    requestAnimationFrame(() => tile.classList.add("is-dragging"));
+  });
+
+  elements.shortcutGrid.addEventListener("dragend", (event) => {
+    event.target.closest(".shortcut-tile")?.classList.remove("is-dragging");
+    elements.shortcutGrid.querySelectorAll(".is-drop-target").forEach((tile) => {
+      tile.classList.remove("is-drop-target");
+    });
+  });
+
+  elements.shortcutGrid.addEventListener("dragover", (event) => {
+    const tile = event.target.closest(".shortcut-tile:not(.shortcut-empty)");
+    if (!tile) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    elements.shortcutGrid.querySelectorAll(".is-drop-target").forEach((item) => {
+      if (item !== tile) item.classList.remove("is-drop-target");
+    });
+    tile.classList.add("is-drop-target");
+  });
+
+  elements.shortcutGrid.addEventListener("dragleave", (event) => {
+    const tile = event.target.closest(".shortcut-tile:not(.shortcut-empty)");
+    if (!tile || tile.contains(event.relatedTarget)) return;
+    tile.classList.remove("is-drop-target");
+  });
+
+  elements.shortcutGrid.addEventListener("drop", (event) => {
+    const tile = event.target.closest(".shortcut-tile:not(.shortcut-empty)");
+    if (!tile) return;
+    event.preventDefault();
+    reorderShortcut(Number(event.dataTransfer.getData("text/plain")), Number(tile.dataset.index));
+  });
+
+  elements.shortcutGrid.addEventListener(
+    "click",
+    (event) => {
+      if (!suppressShortcutClick) return;
+      event.preventDefault();
+      suppressShortcutClick = false;
+    },
+    true
+  );
+
+  elements.shortcutGrid.addEventListener("pointerdown", (event) => {
+    const tile = event.target.closest(".shortcut-tile:not(.shortcut-empty)");
+    if (!tile || event.pointerType === "mouse") return;
+    shortcutPointerDrag = {
+      fromIndex: Number(tile.dataset.index),
+      startX: event.clientX,
+      startY: event.clientY,
+      targetTile: tile,
+      moved: false
+    };
+    tile.setPointerCapture(event.pointerId);
+  });
+
+  elements.shortcutGrid.addEventListener("pointermove", (event) => {
+    if (!shortcutPointerDrag) return;
+    const distance = Math.hypot(event.clientX - shortcutPointerDrag.startX, event.clientY - shortcutPointerDrag.startY);
+    if (distance < 10 && !shortcutPointerDrag.moved) return;
+
+    event.preventDefault();
+    shortcutPointerDrag.moved = true;
+    shortcutPointerDrag.targetTile.classList.add("is-dragging");
+
+    const tile = getShortcutTileFromPoint(event.clientX, event.clientY);
+    elements.shortcutGrid.querySelectorAll(".is-drop-target").forEach((item) => {
+      if (item !== tile) item.classList.remove("is-drop-target");
+    });
+    tile?.classList.add("is-drop-target");
+  });
+
+  elements.shortcutGrid.addEventListener("pointerup", (event) => {
+    if (!shortcutPointerDrag) return;
+    const drag = shortcutPointerDrag;
+    shortcutPointerDrag = null;
+    drag.targetTile.releasePointerCapture(event.pointerId);
+    drag.targetTile.classList.remove("is-dragging");
+
+    const tile = getShortcutTileFromPoint(event.clientX, event.clientY);
+    elements.shortcutGrid.querySelectorAll(".is-drop-target").forEach((item) => {
+      item.classList.remove("is-drop-target");
+    });
+
+    if (drag.moved) {
+      event.preventDefault();
+      suppressShortcutClick = true;
+      reorderShortcut(drag.fromIndex, Number(tile?.dataset.index));
+    }
+  });
 
   elements.addShortcut.addEventListener("click", () => {
     settings.shortcuts.push({
