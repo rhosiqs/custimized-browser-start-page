@@ -153,6 +153,60 @@ body.theme-light select {
   cursor: grabbing;
 }
 
+.layout-guides {
+  position: fixed;
+  inset: 0;
+  z-index: 12;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+
+.show-guides .layout-guides {
+  opacity: 1;
+}
+
+.guide-line {
+  position: absolute;
+  background: color-mix(in srgb, var(--accent), transparent 55%);
+}
+
+.guide-line.vertical {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+
+.guide-line.horizontal {
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+.guide-line.v25 {
+  left: 25%;
+}
+
+.guide-line.v50 {
+  left: 50%;
+}
+
+.guide-line.v75 {
+  left: 75%;
+}
+
+.guide-line.h25 {
+  top: 25%;
+}
+
+.guide-line.h50 {
+  top: 50%;
+}
+
+.guide-line.h75 {
+  top: 75%;
+}
+
 .start-page {
   min-height: calc(100vh - 140px);
   display: grid;

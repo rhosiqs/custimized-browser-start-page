@@ -98,6 +98,7 @@ let shortcutEditorPointerDrag = null;
 let activeShortcutGroup = "All";
 let layoutDrag = null;
 let suppressLayoutClick = false;
+let layoutDraftPositions = null;
 
 const elements = {
   body: document.body,
@@ -130,6 +131,7 @@ const elements = {
   accentTextSetting: document.getElementById("accentTextSetting"),
   clockBackgroundSetting: document.getElementById("clockBackgroundSetting"),
   editModeSetting: document.getElementById("editModeSetting"),
+  saveLayout: document.getElementById("saveLayout"),
   defaultSearchSetting: document.getElementById("defaultSearchSetting"),
   defaultAiSetting: document.getElementById("defaultAiSetting"),
   shortcutColumnsSetting: document.getElementById("shortcutColumnsSetting"),
@@ -286,6 +288,13 @@ function getUniqueGroupName(base, groups) {
   return candidate;
 }
 
+function clonePositions(value) {
+  const normalized = normalizePositions(value);
+  return Object.fromEntries(
+    Object.entries(normalized).map(([key, entry]) => [key, { x: entry.x, y: entry.y }])
+  );
+}
+
 function saveSettings() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
 }
@@ -341,6 +350,7 @@ function applySettings() {
   elements.accentTextSetting.value = settings.accent;
   elements.clockBackgroundSetting.value = String(settings.clockBackground);
   elements.editModeSetting.value = String(settings.editMode);
+  if (elements.saveLayout) elements.saveLayout.disabled = !settings.editMode;
   elements.defaultSearchSetting.value = settings.defaultSearch;
   elements.defaultAiSetting.value = settings.defaultAi;
   elements.shortcutColumnsSetting.value = settings.shortcutColumns;
@@ -350,6 +360,12 @@ function applySettings() {
   elements.showSecondsSetting.value = String(settings.showSeconds);
 
   elements.body.classList.toggle("edit-mode", settings.editMode);
+  if (settings.editMode) {
+    if (!layoutDraftPositions) layoutDraftPositions = clonePositions(settings.elementPositions);
+  } else {
+    layoutDraftPositions = null;
+    elements.body.classList.remove("show-guides");
+  }
   elements.localClock?.classList.toggle("clock-transparent", !settings.clockBackground);
   applyLayoutPositions();
   renderShortcutGroups();
@@ -436,20 +452,63 @@ function getLayoutItems() {
 }
 
 function applyLayoutPositions() {
+  const positions =
+    settings.editMode && layoutDraftPositions ? layoutDraftPositions : settings.elementPositions;
   getLayoutItems().forEach(({ key, element }) => {
-    const position = settings.elementPositions?.[key] || { x: 0, y: 0 };
+    const position = positions?.[key] || { x: 0, y: 0 };
     element.style.transform = `translate(${position.x}px, ${position.y}px)`;
   });
 }
 
-function updateLayoutPosition(key, x, y) {
-  const nextPositions = {
-    ...settings.elementPositions,
+function updateLayoutDraftPosition(key, x, y) {
+  layoutDraftPositions = {
+    ...(layoutDraftPositions || clonePositions(settings.elementPositions)),
     [key]: { x, y }
   };
-  settings = normalizeSettings({ ...settings, elementPositions: nextPositions });
-  saveSettings();
   applyLayoutPositions();
+}
+
+function enterEditMode() {
+  if (settings.editMode) return;
+  layoutDraftPositions = clonePositions(settings.elementPositions);
+  settings = normalizeSettings({ ...settings, editMode: true });
+  saveSettings();
+  applySettings();
+}
+
+function saveLayoutChanges() {
+  if (!settings.editMode) return;
+  const committed = layoutDraftPositions || clonePositions(settings.elementPositions);
+  settings = normalizeSettings({ ...settings, editMode: false, elementPositions: committed });
+  layoutDraftPositions = null;
+  saveSettings();
+  applySettings();
+}
+
+function getGuidePositions() {
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  const points = [0.25, 0.5, 0.75];
+  return {
+    x: points.map((value) => width * value),
+    y: points.map((value) => height * value)
+  };
+}
+
+function getSnapOffset(values, guides, threshold) {
+  let bestOffset = 0;
+  let bestDistance = threshold + 1;
+  guides.forEach((guide) => {
+    values.forEach((value) => {
+      const offset = guide - value;
+      const distance = Math.abs(offset);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestOffset = offset;
+      }
+    });
+  });
+  return bestDistance <= threshold ? bestOffset : 0;
 }
 
 function handleLayoutPointerDown(event) {
@@ -459,7 +518,10 @@ function handleLayoutPointerDown(event) {
   const key = element.dataset.layoutKey;
   if (!key) return;
   event.preventDefault();
-  const position = settings.elementPositions?.[key] || { x: 0, y: 0 };
+  const positions =
+    settings.editMode && layoutDraftPositions ? layoutDraftPositions : settings.elementPositions;
+  const position = positions?.[key] || { x: 0, y: 0 };
+  const rect = element.getBoundingClientRect();
   layoutDrag = {
     key,
     element,
@@ -469,6 +531,7 @@ function handleLayoutPointerDown(event) {
     originY: position.y,
     lastX: position.x,
     lastY: position.y,
+    baseRect: rect,
     moved: false
   };
   element.setPointerCapture(event.pointerId);
@@ -482,9 +545,33 @@ function handleLayoutPointerMove(event) {
   if (!layoutDrag.moved && distance < 4) return;
   event.preventDefault();
   layoutDrag.moved = true;
-  layoutDrag.lastX = layoutDrag.originX + dx;
-  layoutDrag.lastY = layoutDrag.originY + dy;
+  const rect = layoutDrag.baseRect;
+  const centerX = rect.left + rect.width / 2 + dx;
+  const centerY = rect.top + rect.height / 2 + dy;
+  const proposedRect = {
+    left: rect.left + dx,
+    right: rect.right + dx,
+    top: rect.top + dy,
+    bottom: rect.bottom + dy,
+    centerX,
+    centerY
+  };
+  const guides = getGuidePositions();
+  const snapX = getSnapOffset(
+    [proposedRect.left, proposedRect.centerX, proposedRect.right],
+    guides.x,
+    10
+  );
+  const snapY = getSnapOffset(
+    [proposedRect.top, proposedRect.centerY, proposedRect.bottom],
+    guides.y,
+    10
+  );
+  layoutDrag.lastX = layoutDrag.originX + dx + snapX;
+  layoutDrag.lastY = layoutDrag.originY + dy + snapY;
   layoutDrag.element.style.transform = `translate(${layoutDrag.lastX}px, ${layoutDrag.lastY}px)`;
+  updateLayoutDraftPosition(layoutDrag.key, layoutDrag.lastX, layoutDrag.lastY);
+  elements.body.classList.add("show-guides");
 }
 
 function handleLayoutPointerUp(event) {
@@ -494,8 +581,9 @@ function handleLayoutPointerUp(event) {
   if (drag.element.hasPointerCapture?.(event.pointerId)) {
     drag.element.releasePointerCapture(event.pointerId);
   }
-  updateLayoutPosition(drag.key, drag.lastX, drag.lastY);
+  updateLayoutDraftPosition(drag.key, drag.lastX, drag.lastY);
   if (drag.moved) suppressLayoutClick = true;
+  elements.body.classList.remove("show-guides");
 }
 
 function handleLayoutPointerCancel(event) {
@@ -506,6 +594,7 @@ function handleLayoutPointerCancel(event) {
     drag.element.releasePointerCapture(event.pointerId);
   }
   applyLayoutPositions();
+  elements.body.classList.remove("show-guides");
 }
 
 function handleLayoutClick(event) {
@@ -852,6 +941,20 @@ function handleSettingsInput(event) {
     return;
   }
 
+  if (target.id === "editModeSetting") {
+    if (target.value === "true") {
+      enterEditMode();
+      target.value = "true";
+    } else {
+      if (settings.editMode) {
+        target.value = "true";
+      } else {
+        updateSetting("editMode", false);
+      }
+    }
+    return;
+  }
+
   if (target.id === "timeZoneSelect") {
     if (!target.value || settings.timeZones.includes(target.value)) return;
     updateSetting("timeZones", [...settings.timeZones, target.value]);
@@ -862,7 +965,6 @@ function handleSettingsInput(event) {
     themeSetting: ["theme", target.value],
     densitySetting: ["density", target.value],
     clockBackgroundSetting: ["clockBackground", target.value === "true"],
-    editModeSetting: ["editMode", target.value === "true"],
     backgroundValueSetting: ["backgroundValue", target.value],
     defaultSearchSetting: ["defaultSearch", target.value],
     defaultAiSetting: ["defaultAi", target.value],
@@ -1053,6 +1155,9 @@ function wireEvents() {
     activeShortcutGroup = name;
     saveSettings();
     applySettings();
+  });
+  elements.saveLayout?.addEventListener("click", () => {
+    saveLayoutChanges();
   });
   elements.shortcutGroupBar?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-group]");
