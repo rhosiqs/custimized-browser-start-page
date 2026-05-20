@@ -94,14 +94,32 @@ select {
   cursor: pointer;
 }
 
+select {
+  color-scheme: dark;
+}
+
 select option {
   color: var(--text);
   background: var(--bg-panel-strong);
 }
 
+body:not(.theme-light) .settings-drawer select {
+  background-color: #2b313b;
+  color: #f2f5ff;
+}
+
+body:not(.theme-light) .settings-drawer select option {
+  background: #2b313b;
+  color: #f2f5ff;
+}
+
 body.theme-light select option {
   color: #101827;
   background: #ffffff;
+}
+
+body.theme-light select {
+  color-scheme: light;
 }
 
 .sr-only {
@@ -122,6 +140,17 @@ body.theme-light select option {
   display: flex;
   justify-content: flex-start;
   padding: var(--page-pad) var(--page-pad) 0;
+}
+
+.edit-mode .draggable {
+  cursor: grab;
+  user-select: none;
+  outline: 1px dashed color-mix(in srgb, var(--accent), transparent 35%);
+  outline-offset: 6px;
+}
+
+.edit-mode .draggable:active {
+  cursor: grabbing;
 }
 
 .start-page {
@@ -147,6 +176,13 @@ body.theme-light select option {
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   backdrop-filter: blur(16px);
+}
+
+.clock-card.clock-transparent {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
 .clock-label,
@@ -611,6 +647,33 @@ body.theme-light select option {
   display: grid;
   gap: 10px;
   margin-bottom: 12px;
+}
+
+.group-editor {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.group-editor + .text-button {
+  margin-bottom: 12px;
+}
+
+.group-edit-row {
+  display: grid;
+  grid-template-columns: 1fr 32px;
+  gap: 8px;
+  align-items: center;
+}
+
+.group-edit-row .icon-button {
+  width: 32px;
+  height: 32px;
+}
+
+.group-edit-row .icon-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .shortcut-edit-row {

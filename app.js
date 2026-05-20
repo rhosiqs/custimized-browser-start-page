@@ -57,6 +57,15 @@ const defaultSettings = {
   theme: "dark",
   density: "comfortable",
   accent: "#34d399",
+  clockBackground: true,
+  editMode: false,
+  elementPositions: {
+    clock: { x: 0, y: 0 },
+    search: { x: 0, y: 0 },
+    shortcuts: { x: 0, y: 0 },
+    worldClock: { x: 0, y: 0 },
+    settingsButton: { x: 0, y: 0 }
+  },
   backgroundType: "solid",
   backgroundValue: "#080b10",
   defaultSearch: "bing",
@@ -64,6 +73,8 @@ const defaultSettings = {
   shortcutColumns: 4,
   shortcutSlots: 12,
   shortcutAlign: "stretch",
+  defaultGroupName: defaultGroup,
+  shortcutGroups: [defaultGroup, "Search", "AI", "Media", "Work"],
   clockFormat: "24",
   showSeconds: true,
   timeZones: ["America/New_York", "America/Los_Angeles"],
@@ -85,21 +96,27 @@ let shortcutPointerDrag = null;
 let suppressShortcutClick = false;
 let shortcutEditorPointerDrag = null;
 let activeShortcutGroup = "All";
+let layoutDrag = null;
+let suppressLayoutClick = false;
 
 const elements = {
   body: document.body,
+  localClock: document.getElementById("localClock"),
   localLabel: document.getElementById("localLabel"),
   localTime: document.getElementById("localTime"),
   localDate: document.getElementById("localDate"),
+  worldClock: document.getElementById("worldClock"),
   worldClockList: document.getElementById("worldClockList"),
   searchForm: document.getElementById("searchForm"),
   aiForm: document.getElementById("aiForm"),
+  searchStack: document.getElementById("searchStack"),
   searchInput: document.getElementById("searchInput"),
   aiInput: document.getElementById("aiInput"),
   searchEngine: document.getElementById("searchEngine"),
   aiEngine: document.getElementById("aiEngine"),
   shortcutGroupBar: document.getElementById("shortcutGroupBar"),
   shortcutGrid: document.getElementById("shortcutGrid"),
+  shortcutPanel: document.getElementById("shortcutPanel"),
   settingsButton: document.getElementById("settingsButton"),
   closeSettings: document.getElementById("closeSettings"),
   drawer: document.getElementById("settingsDrawer"),
@@ -111,6 +128,8 @@ const elements = {
   backgroundValueSetting: document.getElementById("backgroundValueSetting"),
   accentSetting: document.getElementById("accentSetting"),
   accentTextSetting: document.getElementById("accentTextSetting"),
+  clockBackgroundSetting: document.getElementById("clockBackgroundSetting"),
+  editModeSetting: document.getElementById("editModeSetting"),
   defaultSearchSetting: document.getElementById("defaultSearchSetting"),
   defaultAiSetting: document.getElementById("defaultAiSetting"),
   shortcutColumnsSetting: document.getElementById("shortcutColumnsSetting"),
@@ -118,8 +137,10 @@ const elements = {
   shortcutAlignSetting: document.getElementById("shortcutAlignSetting"),
   clockFormatSetting: document.getElementById("clockFormatSetting"),
   showSecondsSetting: document.getElementById("showSecondsSetting"),
+  groupEditor: document.getElementById("groupEditor"),
   shortcutEditor: document.getElementById("shortcutEditor"),
   addShortcut: document.getElementById("addShortcut"),
+  addGroup: document.getElementById("addGroup"),
   timeZoneSelect: document.getElementById("timeZoneSelect"),
   timeZonesSetting: document.getElementById("timeZonesSetting"),
   exportSettings: document.getElementById("exportSettings"),
@@ -138,13 +159,22 @@ function loadSettings() {
 }
 
 function normalizeSettings(value) {
+  const baseDefaultGroup = normalizeGroup(value.defaultGroupName, defaultGroup) || defaultGroup;
+  const baseGroups =
+    Array.isArray(value.shortcutGroups) && value.shortcutGroups.length
+      ? normalizeGroupList(value.shortcutGroups, baseDefaultGroup)
+      : normalizeGroupList(defaultSettings.shortcutGroups, baseDefaultGroup);
+
   const merged = {
     ...defaultSettings,
     ...value,
     shortcuts: Array.isArray(value.shortcuts) ? value.shortcuts : defaultSettings.shortcuts,
     timeZones: Array.isArray(value.timeZones)
       ? value.timeZones.filter((zone) => timeZoneOptions.includes(zone))
-      : defaultSettings.timeZones
+      : defaultSettings.timeZones,
+    defaultGroupName: baseDefaultGroup,
+    shortcutGroups: baseGroups,
+    elementPositions: normalizePositions(value.elementPositions)
   };
   if (!merged.timeZones.length) merged.timeZones = defaultSettings.timeZones;
 
@@ -156,9 +186,16 @@ function normalizeSettings(value) {
       title: String(item.title || getHostname(item.url) || "Shortcut"),
       url: normalizeUrl(String(item.url || "")),
       color: normalizeHexColor(item.color) || defaultSettings.accent,
-      group: normalizeGroup(item.group) || defaultGroup
+      group: normalizeGroup(item.group, baseDefaultGroup) || baseDefaultGroup
     }))
     .filter((item) => item.url);
+
+  merged.shortcuts.forEach((shortcut) => {
+    if (!merged.shortcutGroups.includes(shortcut.group)) {
+      merged.shortcutGroups.push(shortcut.group);
+    }
+  });
+  merged.shortcutGroups = normalizeGroupList(merged.shortcutGroups, merged.defaultGroupName);
 
   if (!searchEngines[merged.defaultSearch]) merged.defaultSearch = defaultSettings.defaultSearch;
   if (!aiEngines[merged.defaultAi]) merged.defaultAi = defaultSettings.defaultAi;
@@ -167,6 +204,8 @@ function normalizeSettings(value) {
   if (!["stretch", "start", "center", "end"].includes(merged.shortcutAlign)) {
     merged.shortcutAlign = defaultSettings.shortcutAlign;
   }
+  merged.clockBackground = merged.clockBackground !== false;
+  merged.editMode = merged.editMode === true;
   if (!["12", "24"].includes(merged.clockFormat)) merged.clockFormat = defaultSettings.clockFormat;
   merged.showSeconds = merged.showSeconds !== false;
   if (!["solid", "gradient", "image"].includes(merged.backgroundType)) {
@@ -198,8 +237,53 @@ function normalizeHexColor(value) {
   return "";
 }
 
-function normalizeGroup(value) {
-  return String(value || "").trim();
+function normalizeGroup(value, fallback = defaultGroup) {
+  const normalized = String(value || "").trim();
+  if (!normalized) return "";
+  return normalized.toLowerCase() === "all" ? fallback : normalized;
+}
+
+function normalizeGroupList(value, fallback = defaultGroup) {
+  const list = Array.isArray(value) ? value : [];
+  const groups = [];
+  list.forEach((group) => {
+    const clean = normalizeGroup(group, fallback) || fallback;
+    if (!groups.includes(clean)) groups.push(clean);
+  });
+  if (!groups.includes(fallback)) groups.unshift(fallback);
+  return groups;
+}
+
+function getDefaultGroupName() {
+  return settings?.defaultGroupName || defaultGroup;
+}
+
+function normalizePositionEntry(value) {
+  const x = Number(value?.x);
+  const y = Number(value?.y);
+  return {
+    x: Number.isFinite(x) ? x : 0,
+    y: Number.isFinite(y) ? y : 0
+  };
+}
+
+function normalizePositions(value) {
+  const result = {};
+  Object.keys(defaultSettings.elementPositions).forEach((key) => {
+    const entry = value?.[key] ?? defaultSettings.elementPositions[key];
+    result[key] = normalizePositionEntry(entry);
+  });
+  return result;
+}
+
+function getUniqueGroupName(base, groups) {
+  let candidate = base;
+  let index = 2;
+  while (groups.includes(candidate) || candidate.toLowerCase() === "all") {
+    candidate = `${base} ${index}`;
+    index += 1;
+  }
+  return candidate;
 }
 
 function saveSettings() {
@@ -255,6 +339,8 @@ function applySettings() {
   elements.backgroundValueSetting.value = settings.backgroundValue;
   elements.accentSetting.value = settings.accent;
   elements.accentTextSetting.value = settings.accent;
+  elements.clockBackgroundSetting.value = String(settings.clockBackground);
+  elements.editModeSetting.value = String(settings.editMode);
   elements.defaultSearchSetting.value = settings.defaultSearch;
   elements.defaultAiSetting.value = settings.defaultAi;
   elements.shortcutColumnsSetting.value = settings.shortcutColumns;
@@ -263,7 +349,11 @@ function applySettings() {
   elements.clockFormatSetting.value = settings.clockFormat;
   elements.showSecondsSetting.value = String(settings.showSeconds);
 
+  elements.body.classList.toggle("edit-mode", settings.editMode);
+  elements.localClock?.classList.toggle("clock-transparent", !settings.clockBackground);
+  applyLayoutPositions();
   renderShortcutGroups();
+  renderGroupEditor();
   renderShortcuts();
   renderShortcutEditor();
   renderTimeZoneOptions();
@@ -278,17 +368,12 @@ function formatBackgroundValue() {
 }
 
 function getShortcutGroups() {
-  const groups = [];
-  settings.shortcuts.forEach((shortcut) => {
-    const group = shortcut.group || defaultGroup;
-    if (!groups.includes(group)) groups.push(group);
-  });
-  return ["All", ...groups];
+  return normalizeGroupList(settings.shortcutGroups, getDefaultGroupName());
 }
 
 function renderShortcutGroups() {
   if (!elements.shortcutGroupBar) return;
-  const groups = getShortcutGroups();
+  const groups = ["All", ...getShortcutGroups()];
   if (!groups.includes(activeShortcutGroup)) {
     activeShortcutGroup = "All";
   }
@@ -303,6 +388,142 @@ function renderShortcutGroups() {
     button.setAttribute("role", "tab");
     button.setAttribute("aria-selected", String(group === activeShortcutGroup));
     elements.shortcutGroupBar.appendChild(button);
+  });
+}
+
+function renderGroupEditor() {
+  if (!elements.groupEditor) return;
+  elements.groupEditor.innerHTML = "";
+  const groups = getShortcutGroups();
+  groups.forEach((group) => {
+    const row = document.createElement("div");
+    row.className = "group-edit-row";
+    row.dataset.group = group;
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.value = group;
+    input.placeholder = "Group name";
+    input.dataset.group = group;
+
+    const remove = document.createElement("button");
+    remove.className = "icon-button";
+    remove.type = "button";
+    remove.title = "Remove group";
+    remove.ariaLabel = "Remove group";
+    remove.dataset.action = "remove";
+    remove.dataset.group = group;
+    remove.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12" /></svg>';
+    if (group === settings.defaultGroupName) {
+      remove.disabled = true;
+      remove.title = "Default group cannot be removed";
+      remove.ariaLabel = "Default group cannot be removed";
+    }
+
+    row.append(input, remove);
+    elements.groupEditor.appendChild(row);
+  });
+}
+
+function getLayoutItems() {
+  return [
+    { key: "clock", element: elements.localClock },
+    { key: "search", element: elements.searchStack },
+    { key: "shortcuts", element: elements.shortcutPanel },
+    { key: "worldClock", element: elements.worldClock },
+    { key: "settingsButton", element: elements.settingsButton }
+  ].filter((item) => item.element);
+}
+
+function applyLayoutPositions() {
+  getLayoutItems().forEach(({ key, element }) => {
+    const position = settings.elementPositions?.[key] || { x: 0, y: 0 };
+    element.style.transform = `translate(${position.x}px, ${position.y}px)`;
+  });
+}
+
+function updateLayoutPosition(key, x, y) {
+  const nextPositions = {
+    ...settings.elementPositions,
+    [key]: { x, y }
+  };
+  settings = normalizeSettings({ ...settings, elementPositions: nextPositions });
+  saveSettings();
+  applyLayoutPositions();
+}
+
+function handleLayoutPointerDown(event) {
+  if (!settings.editMode) return;
+  if (event.button && event.button !== 0) return;
+  const element = event.currentTarget;
+  const key = element.dataset.layoutKey;
+  if (!key) return;
+  event.preventDefault();
+  const position = settings.elementPositions?.[key] || { x: 0, y: 0 };
+  layoutDrag = {
+    key,
+    element,
+    startX: event.clientX,
+    startY: event.clientY,
+    originX: position.x,
+    originY: position.y,
+    lastX: position.x,
+    lastY: position.y,
+    moved: false
+  };
+  element.setPointerCapture(event.pointerId);
+}
+
+function handleLayoutPointerMove(event) {
+  if (!layoutDrag) return;
+  const dx = event.clientX - layoutDrag.startX;
+  const dy = event.clientY - layoutDrag.startY;
+  const distance = Math.hypot(dx, dy);
+  if (!layoutDrag.moved && distance < 4) return;
+  event.preventDefault();
+  layoutDrag.moved = true;
+  layoutDrag.lastX = layoutDrag.originX + dx;
+  layoutDrag.lastY = layoutDrag.originY + dy;
+  layoutDrag.element.style.transform = `translate(${layoutDrag.lastX}px, ${layoutDrag.lastY}px)`;
+}
+
+function handleLayoutPointerUp(event) {
+  if (!layoutDrag) return;
+  const drag = layoutDrag;
+  layoutDrag = null;
+  if (drag.element.hasPointerCapture?.(event.pointerId)) {
+    drag.element.releasePointerCapture(event.pointerId);
+  }
+  updateLayoutPosition(drag.key, drag.lastX, drag.lastY);
+  if (drag.moved) suppressLayoutClick = true;
+}
+
+function handleLayoutPointerCancel(event) {
+  if (!layoutDrag) return;
+  const drag = layoutDrag;
+  layoutDrag = null;
+  if (drag.element.hasPointerCapture?.(event.pointerId)) {
+    drag.element.releasePointerCapture(event.pointerId);
+  }
+  applyLayoutPositions();
+}
+
+function handleLayoutClick(event) {
+  if (!settings.editMode || !suppressLayoutClick) return;
+  event.preventDefault();
+  event.stopPropagation();
+  suppressLayoutClick = false;
+}
+
+function registerLayoutDraggables() {
+  getLayoutItems().forEach(({ key, element }) => {
+    element.dataset.layoutKey = key;
+    element.classList.add("draggable");
+    element.addEventListener("pointerdown", handleLayoutPointerDown);
+    element.addEventListener("pointermove", handleLayoutPointerMove);
+    element.addEventListener("pointerup", handleLayoutPointerUp);
+    element.addEventListener("pointercancel", handleLayoutPointerCancel);
+    element.addEventListener("click", handleLayoutClick, true);
   });
 }
 
@@ -393,7 +614,7 @@ function renderShortcutEditor() {
 
       const groupInput = document.createElement("input");
       groupInput.type = "text";
-      groupInput.value = shortcut.group || defaultGroup;
+      groupInput.value = shortcut.group || getDefaultGroupName();
       groupInput.placeholder = "Group";
       groupInput.dataset.field = "group";
 
@@ -640,6 +861,8 @@ function handleSettingsInput(event) {
   const map = {
     themeSetting: ["theme", target.value],
     densitySetting: ["density", target.value],
+    clockBackgroundSetting: ["clockBackground", target.value === "true"],
+    editModeSetting: ["editMode", target.value === "true"],
     backgroundValueSetting: ["backgroundValue", target.value],
     defaultSearchSetting: ["defaultSearch", target.value],
     defaultAiSetting: ["defaultAi", target.value],
@@ -704,18 +927,24 @@ function handleShortcutEditorInput(event) {
   if (!Number.isInteger(index) || !field || !settings.shortcuts[index]) return;
 
   const nextShortcuts = [...settings.shortcuts];
+  const nextValue =
+    field === "url"
+      ? normalizeUrl(target.value)
+      : field === "group"
+        ? normalizeGroup(target.value, getDefaultGroupName()) || getDefaultGroupName()
+        : target.value;
   nextShortcuts[index] = {
     ...nextShortcuts[index],
-    [field]:
-      field === "url"
-        ? normalizeUrl(target.value)
-        : field === "group"
-          ? normalizeGroup(target.value) || defaultGroup
-          : target.value
+    [field]: nextValue
   };
-  settings = normalizeSettings({ ...settings, shortcuts: nextShortcuts });
+  const nextGroups =
+    field === "group"
+      ? normalizeGroupList([...settings.shortcutGroups, nextValue], getDefaultGroupName())
+      : settings.shortcutGroups;
+  settings = normalizeSettings({ ...settings, shortcuts: nextShortcuts, shortcutGroups: nextGroups });
   saveSettings();
   renderShortcutGroups();
+  renderGroupEditor();
   renderShortcuts();
 }
 
@@ -731,6 +960,61 @@ function handleShortcutEditorClick(event) {
 
   settings.shortcuts.splice(index, 1);
   settings = normalizeSettings(settings);
+  saveSettings();
+  applySettings();
+}
+
+function handleGroupEditorInput(event) {
+  const target = event.target;
+  if (!(target instanceof HTMLInputElement)) return;
+  const row = target.closest(".group-edit-row");
+  const previousGroup = row?.dataset.group;
+  if (!previousGroup) return;
+  const nextGroup = normalizeGroup(target.value, getDefaultGroupName()) || getDefaultGroupName();
+  if (nextGroup === previousGroup) return;
+
+  const nextShortcuts = settings.shortcuts.map((shortcut) =>
+    (shortcut.group || getDefaultGroupName()) === previousGroup ? { ...shortcut, group: nextGroup } : shortcut
+  );
+  const nextDefaultGroup =
+    previousGroup === settings.defaultGroupName ? nextGroup : settings.defaultGroupName;
+  const nextGroups = normalizeGroupList(
+    settings.shortcutGroups.map((group) => (group === previousGroup ? nextGroup : group)),
+    nextDefaultGroup
+  );
+  settings = normalizeSettings({
+    ...settings,
+    shortcuts: nextShortcuts,
+    shortcutGroups: nextGroups,
+    defaultGroupName: nextDefaultGroup
+  });
+  if (activeShortcutGroup === previousGroup) activeShortcutGroup = nextGroup;
+  saveSettings();
+  applySettings();
+}
+
+function handleGroupEditorClick(event) {
+  const button = event.target.closest("[data-action='remove']");
+  if (!button) return;
+  const group = button.dataset.group;
+  if (!group) return;
+  if (group === settings.defaultGroupName) return;
+  const nextShortcuts = settings.shortcuts.map((shortcut) =>
+    (shortcut.group || getDefaultGroupName()) === group
+      ? { ...shortcut, group: getDefaultGroupName() }
+      : shortcut
+  );
+  const nextGroups = normalizeGroupList(
+    settings.shortcutGroups.filter((entry) => entry !== group),
+    settings.defaultGroupName
+  );
+  settings = normalizeSettings({
+    ...settings,
+    shortcuts: nextShortcuts,
+    shortcutGroups: nextGroups,
+    defaultGroupName: settings.defaultGroupName
+  });
+  if (activeShortcutGroup === group) activeShortcutGroup = "All";
   saveSettings();
   applySettings();
 }
@@ -759,6 +1043,17 @@ function wireEvents() {
   elements.shortcutEditor.addEventListener("change", handleShortcutEditorInput);
   elements.shortcutEditor.addEventListener("click", handleShortcutEditorClick);
   elements.timeZonesSetting.addEventListener("click", handleTimeZoneRemove);
+  elements.groupEditor?.addEventListener("change", handleGroupEditorInput);
+  elements.groupEditor?.addEventListener("click", handleGroupEditorClick);
+  elements.addGroup?.addEventListener("click", () => {
+    const groups = getShortcutGroups();
+    const name = getUniqueGroupName("New Group", groups);
+    const nextGroups = normalizeGroupList([...settings.shortcutGroups, name], settings.defaultGroupName);
+    settings = normalizeSettings({ ...settings, shortcutGroups: nextGroups });
+    activeShortcutGroup = name;
+    saveSettings();
+    applySettings();
+  });
   elements.shortcutGroupBar?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-group]");
     if (!button) return;
@@ -977,7 +1272,7 @@ function wireEvents() {
   });
 
   elements.addShortcut.addEventListener("click", () => {
-    const group = activeShortcutGroup === "All" ? defaultGroup : activeShortcutGroup;
+    const group = activeShortcutGroup === "All" ? getDefaultGroupName() : activeShortcutGroup;
     settings.shortcuts.push({
       title: "New Shortcut",
       url: "https://example.com",
@@ -1025,6 +1320,7 @@ function init() {
   populateSelect(elements.defaultSearchSetting, searchEngines);
   populateSelect(elements.aiEngine, aiEngines);
   populateSelect(elements.defaultAiSetting, aiEngines);
+  registerLayoutDraggables();
   wireEvents();
   applySettings();
   setInterval(updateClocks, 1000);

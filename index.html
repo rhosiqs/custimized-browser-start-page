@@ -8,7 +8,7 @@
   </head>
   <body>
     <header class="page-header">
-      <section class="clock-card local-clock" aria-label="Local time">
+      <section class="clock-card local-clock" id="localClock" aria-label="Local time">
         <p class="clock-label" id="localLabel">Local Time</p>
         <h1 id="localTime">--:--</h1>
         <p id="localDate">Loading...</p>
@@ -16,7 +16,7 @@
     </header>
 
     <main class="start-page" id="startPage">
-      <section class="search-stack" aria-label="Search tools">
+      <section class="search-stack" id="searchStack" aria-label="Search tools">
         <form class="search-row" id="searchForm">
           <label class="engine-select">
             <span class="sr-only">Search engine</span>
@@ -48,7 +48,7 @@
         </form>
       </section>
 
-      <section class="shortcut-panel" aria-label="Shortcuts">
+      <section class="shortcut-panel" id="shortcutPanel" aria-label="Shortcuts">
         <div class="shortcut-group-bar" id="shortcutGroupBar" role="tablist" aria-label="Shortcut groups"></div>
         <div class="shortcut-grid" id="shortcutGrid"></div>
       </section>
@@ -61,7 +61,7 @@
       </svg>
     </button>
 
-    <aside class="world-clock" aria-label="Global time">
+    <aside class="world-clock" id="worldClock" aria-label="Global time">
       <div id="worldClockList"></div>
     </aside>
 
@@ -95,6 +95,20 @@
               <select id="densitySetting">
                 <option value="comfortable">Comfortable</option>
                 <option value="compact">Compact</option>
+              </select>
+            </label>
+            <label>
+              Clock background
+              <select id="clockBackgroundSetting">
+                <option value="true">On</option>
+                <option value="false">Off</option>
+              </select>
+            </label>
+            <label>
+              Edit mode
+              <select id="editModeSetting">
+                <option value="false">Off</option>
+                <option value="true">On</option>
               </select>
             </label>
           </div>
@@ -157,6 +171,8 @@
               </select>
             </label>
           </div>
+          <div class="group-editor" id="groupEditor"></div>
+          <button class="text-button" id="addGroup" type="button">Add Group</button>
           <div class="shortcut-editor" id="shortcutEditor"></div>
           <button class="text-button" id="addShortcut" type="button">Add Shortcut</button>
         </section>
