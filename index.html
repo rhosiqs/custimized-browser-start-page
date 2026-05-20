@@ -7,13 +7,15 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <main class="start-page" id="startPage">
+    <header class="page-header">
       <section class="clock-card local-clock" aria-label="Local time">
         <p class="clock-label" id="localLabel">Local Time</p>
         <h1 id="localTime">--:--</h1>
         <p id="localDate">Loading...</p>
       </section>
+    </header>
 
+    <main class="start-page" id="startPage">
       <section class="search-stack" aria-label="Search tools">
         <form class="search-row" id="searchForm">
           <label class="engine-select">
@@ -47,6 +49,7 @@
       </section>
 
       <section class="shortcut-panel" aria-label="Shortcuts">
+        <div class="shortcut-group-bar" id="shortcutGroupBar" role="tablist" aria-label="Shortcut groups"></div>
         <div class="shortcut-grid" id="shortcutGrid"></div>
       </section>
     </main>

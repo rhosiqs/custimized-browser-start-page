@@ -51,6 +51,8 @@ const timeZoneOptions = [
   "Australia/Sydney"
 ];
 
+const defaultGroup = "General";
+
 const defaultSettings = {
   theme: "dark",
   density: "comfortable",
@@ -66,14 +68,14 @@ const defaultSettings = {
   showSeconds: true,
   timeZones: ["America/New_York", "America/Los_Angeles"],
   shortcuts: [
-    { title: "Bing", url: "https://www.bing.com", color: "#0ea5e9" },
-    { title: "Google", url: "https://www.google.com", color: "#22c55e" },
-    { title: "ChatGPT", url: "https://chatgpt.com", color: "#10a37f" },
-    { title: "Claude", url: "https://claude.ai", color: "#d97706" },
-    { title: "Gemini", url: "https://gemini.google.com", color: "#8b5cf6" },
-    { title: "YouTube", url: "https://www.youtube.com", color: "#ef4444" },
-    { title: "GitHub", url: "https://github.com", color: "#64748b" },
-    { title: "Outlook", url: "https://outlook.office.com", color: "#2563eb" }
+    { title: "Bing", url: "https://www.bing.com", color: "#0ea5e9", group: "Search" },
+    { title: "Google", url: "https://www.google.com", color: "#22c55e", group: "Search" },
+    { title: "ChatGPT", url: "https://chatgpt.com", color: "#10a37f", group: "AI" },
+    { title: "Claude", url: "https://claude.ai", color: "#d97706", group: "AI" },
+    { title: "Gemini", url: "https://gemini.google.com", color: "#8b5cf6", group: "AI" },
+    { title: "YouTube", url: "https://www.youtube.com", color: "#ef4444", group: "Media" },
+    { title: "GitHub", url: "https://github.com", color: "#64748b", group: "Work" },
+    { title: "Outlook", url: "https://outlook.office.com", color: "#2563eb", group: "Work" }
   ]
 };
 
@@ -82,6 +84,7 @@ let editorRenderQueued = false;
 let shortcutPointerDrag = null;
 let suppressShortcutClick = false;
 let shortcutEditorPointerDrag = null;
+let activeShortcutGroup = "All";
 
 const elements = {
   body: document.body,
@@ -95,6 +98,7 @@ const elements = {
   aiInput: document.getElementById("aiInput"),
   searchEngine: document.getElementById("searchEngine"),
   aiEngine: document.getElementById("aiEngine"),
+  shortcutGroupBar: document.getElementById("shortcutGroupBar"),
   shortcutGrid: document.getElementById("shortcutGrid"),
   settingsButton: document.getElementById("settingsButton"),
   closeSettings: document.getElementById("closeSettings"),
@@ -151,7 +155,8 @@ function normalizeSettings(value) {
     .map((item) => ({
       title: String(item.title || getHostname(item.url) || "Shortcut"),
       url: normalizeUrl(String(item.url || "")),
-      color: normalizeHexColor(item.color) || defaultSettings.accent
+      color: normalizeHexColor(item.color) || defaultSettings.accent,
+      group: normalizeGroup(item.group) || defaultGroup
     }))
     .filter((item) => item.url);
 
@@ -191,6 +196,10 @@ function normalizeHexColor(value) {
     return `#${clean}`.toLowerCase();
   }
   return "";
+}
+
+function normalizeGroup(value) {
+  return String(value || "").trim();
 }
 
 function saveSettings() {
@@ -254,6 +263,7 @@ function applySettings() {
   elements.clockFormatSetting.value = settings.clockFormat;
   elements.showSecondsSetting.value = String(settings.showSeconds);
 
+  renderShortcutGroups();
   renderShortcuts();
   renderShortcutEditor();
   renderTimeZoneOptions();
@@ -267,17 +277,52 @@ function formatBackgroundValue() {
   return settings.backgroundValue;
 }
 
+function getShortcutGroups() {
+  const groups = [];
+  settings.shortcuts.forEach((shortcut) => {
+    const group = shortcut.group || defaultGroup;
+    if (!groups.includes(group)) groups.push(group);
+  });
+  return ["All", ...groups];
+}
+
+function renderShortcutGroups() {
+  if (!elements.shortcutGroupBar) return;
+  const groups = getShortcutGroups();
+  if (!groups.includes(activeShortcutGroup)) {
+    activeShortcutGroup = "All";
+  }
+  elements.shortcutGroupBar.innerHTML = "";
+  groups.forEach((group) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "group-button";
+    if (group === activeShortcutGroup) button.classList.add("is-active");
+    button.dataset.group = group;
+    button.textContent = group;
+    button.setAttribute("role", "tab");
+    button.setAttribute("aria-selected", String(group === activeShortcutGroup));
+    elements.shortcutGroupBar.appendChild(button);
+  });
+}
+
 function renderShortcuts() {
   elements.shortcutGrid.innerHTML = "";
-  const visible = settings.shortcuts.slice(0, settings.shortcutSlots);
+  const entries = settings.shortcuts.map((shortcut, index) => ({ shortcut, index }));
+  const isAllGroups = activeShortcutGroup === "All";
+  const filtered = isAllGroups
+    ? entries
+    : entries.filter((entry) => entry.shortcut.group === activeShortcutGroup);
+  const visible = isAllGroups ? filtered.slice(0, settings.shortcutSlots) : filtered;
 
-  visible.forEach((shortcut, index) => {
+  visible.forEach((entry) => {
+    const shortcut = entry.shortcut;
     const tile = document.createElement("a");
     tile.className = "shortcut-tile";
     tile.href = shortcut.url;
     tile.title = shortcut.url;
-    tile.draggable = true;
-    tile.dataset.index = String(index);
+    tile.draggable = isAllGroups;
+    tile.dataset.index = String(entry.index);
     tile.style.setProperty("--tile-color", shortcut.color || settings.accent);
 
     const icon = document.createElement("span");
@@ -300,14 +345,16 @@ function renderShortcuts() {
     elements.shortcutGrid.appendChild(tile);
   });
 
-  for (let i = visible.length; i < settings.shortcutSlots; i += 1) {
-    const empty = document.createElement("button");
-    empty.className = "shortcut-tile shortcut-empty";
-    empty.type = "button";
-    empty.title = "Add shortcut";
-    empty.innerHTML = '<span class="shortcut-icon">+</span><span class="shortcut-title">Add</span>';
-    empty.addEventListener("click", openSettings);
-    elements.shortcutGrid.appendChild(empty);
+  if (isAllGroups) {
+    for (let i = visible.length; i < settings.shortcutSlots; i += 1) {
+      const empty = document.createElement("button");
+      empty.className = "shortcut-tile shortcut-empty";
+      empty.type = "button";
+      empty.title = "Add shortcut";
+      empty.innerHTML = '<span class="shortcut-icon">+</span><span class="shortcut-title">Add</span>';
+      empty.addEventListener("click", openSettings);
+      elements.shortcutGrid.appendChild(empty);
+    }
   }
 }
 
@@ -344,6 +391,12 @@ function renderShortcutEditor() {
       urlInput.placeholder = "https://example.com";
       urlInput.dataset.field = "url";
 
+      const groupInput = document.createElement("input");
+      groupInput.type = "text";
+      groupInput.value = shortcut.group || defaultGroup;
+      groupInput.placeholder = "Group";
+      groupInput.dataset.field = "group";
+
       const removeButton = document.createElement("button");
       removeButton.className = "icon-button";
       removeButton.type = "button";
@@ -352,7 +405,7 @@ function renderShortcutEditor() {
       removeButton.dataset.action = "remove";
       removeButton.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12" /></svg>';
 
-      row.append(dragButton, titleInput, urlInput, removeButton);
+      row.append(dragButton, titleInput, urlInput, groupInput, removeButton);
       elements.shortcutEditor.appendChild(row);
     });
   });
@@ -612,6 +665,7 @@ function handleTimeZoneRemove(event) {
 }
 
 function reorderShortcut(fromIndex, toIndex) {
+  if (activeShortcutGroup !== "All") return;
   if (
     !Number.isInteger(fromIndex) ||
     !Number.isInteger(toIndex) ||
@@ -652,10 +706,16 @@ function handleShortcutEditorInput(event) {
   const nextShortcuts = [...settings.shortcuts];
   nextShortcuts[index] = {
     ...nextShortcuts[index],
-    [field]: field === "url" ? normalizeUrl(target.value) : target.value
+    [field]:
+      field === "url"
+        ? normalizeUrl(target.value)
+        : field === "group"
+          ? normalizeGroup(target.value) || defaultGroup
+          : target.value
   };
   settings = normalizeSettings({ ...settings, shortcuts: nextShortcuts });
   saveSettings();
+  renderShortcutGroups();
   renderShortcuts();
 }
 
@@ -699,6 +759,13 @@ function wireEvents() {
   elements.shortcutEditor.addEventListener("change", handleShortcutEditorInput);
   elements.shortcutEditor.addEventListener("click", handleShortcutEditorClick);
   elements.timeZonesSetting.addEventListener("click", handleTimeZoneRemove);
+  elements.shortcutGroupBar?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-group]");
+    if (!button) return;
+    activeShortcutGroup = button.dataset.group || "All";
+    renderShortcutGroups();
+    renderShortcuts();
+  });
 
   elements.shortcutEditor.addEventListener("dragstart", (event) => {
     const row = event.target.closest(".shortcut-edit-row");
@@ -809,6 +876,7 @@ function wireEvents() {
   });
 
   elements.shortcutGrid.addEventListener("dragstart", (event) => {
+    if (activeShortcutGroup !== "All") return;
     const tile = event.target.closest(".shortcut-tile:not(.shortcut-empty)");
     if (!tile) return;
     event.dataTransfer.effectAllowed = "move";
@@ -824,6 +892,7 @@ function wireEvents() {
   });
 
   elements.shortcutGrid.addEventListener("dragover", (event) => {
+    if (activeShortcutGroup !== "All") return;
     const tile = event.target.closest(".shortcut-tile:not(.shortcut-empty)");
     if (!tile) return;
     event.preventDefault();
@@ -841,6 +910,7 @@ function wireEvents() {
   });
 
   elements.shortcutGrid.addEventListener("drop", (event) => {
+    if (activeShortcutGroup !== "All") return;
     const tile = event.target.closest(".shortcut-tile:not(.shortcut-empty)");
     if (!tile) return;
     event.preventDefault();
@@ -858,6 +928,7 @@ function wireEvents() {
   );
 
   elements.shortcutGrid.addEventListener("pointerdown", (event) => {
+    if (activeShortcutGroup !== "All") return;
     const tile = event.target.closest(".shortcut-tile:not(.shortcut-empty)");
     if (!tile || event.pointerType === "mouse") return;
     shortcutPointerDrag = {
@@ -906,10 +977,12 @@ function wireEvents() {
   });
 
   elements.addShortcut.addEventListener("click", () => {
+    const group = activeShortcutGroup === "All" ? defaultGroup : activeShortcutGroup;
     settings.shortcuts.push({
       title: "New Shortcut",
       url: "https://example.com",
-      color: settings.accent
+      color: settings.accent,
+      group
     });
     settings = normalizeSettings(settings);
     saveSettings();
