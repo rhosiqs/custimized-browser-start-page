@@ -98,7 +98,7 @@ select {
   color-scheme: dark;
 }
 
-select option {
+.settings-drawer select option {
   color: var(--text);
   background: var(--bg-panel-strong);
 }
@@ -113,7 +113,7 @@ body:not(.theme-light) .settings-drawer select option {
   color: #f2f5ff;
 }
 
-body.theme-light select option {
+body.theme-light .settings-drawer select option {
   color: #101827;
   background: #ffffff;
 }
@@ -345,9 +345,7 @@ body.theme-light select {
   color: color-mix(in srgb, var(--muted), transparent 22%);
 }
 
-.search-row:focus-within,
-.clock-card:hover,
-.shortcut-panel:hover {
+.search-row:focus-within {
   border-color: color-mix(in srgb, var(--accent), transparent 30%);
 }
 
