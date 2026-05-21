@@ -329,6 +329,8 @@ body.theme-light select {
   width: var(--content-width);
   display: grid;
   gap: 16px;
+  position: relative;
+  z-index: 5;
 }
 
 /* Search input row */
@@ -337,12 +339,18 @@ body.theme-light select {
   display: grid;
   grid-template-columns: minmax(124px, 172px) 1fr;
   position: relative;
+  z-index: 3;
   overflow: visible;
   background: var(--bg-panel);
   border: 1px solid color-mix(in srgb, var(--line), transparent 15%);
   border-radius: 16px;
   box-shadow: 0 14px 40px rgba(0, 0, 0, 0.2);
   backdrop-filter: blur(16px);
+}
+
+/* Ensure the AI row stays below the main search dropdown. */
+.search-row.ai-row {
+  z-index: 2;
 }
 
 /* Engine dropdown column */
@@ -394,15 +402,14 @@ body.theme-light select {
   top: calc(100% + 8px);
   left: 12px;
   right: 12px;
-  z-index: 6;
+  z-index: 20;
   display: grid;
   gap: 4px;
   padding: 8px;
-  background: var(--bg-panel-strong);
-  border: 1px solid color-mix(in srgb, var(--line), transparent 10%);
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.2);
   border-radius: 14px;
   box-shadow: var(--shadow);
-  backdrop-filter: blur(14px);
 }
 
 .suggestions[hidden] {
@@ -414,7 +421,7 @@ body.theme-light select {
   padding: 8px 10px;
   border: 0;
   border-radius: 10px;
-  color: var(--text);
+  color: #000000;
   background: transparent;
   text-align: left;
   font-size: 0.94rem;
@@ -423,8 +430,8 @@ body.theme-light select {
 
 .suggestion-item:hover,
 .suggestion-item.is-active {
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent), transparent 86%);
+  color: #000000;
+  background: #f2f2f2;
 }
 
 /* Placeholder color */
@@ -441,6 +448,8 @@ body.theme-light select {
 .shortcut-panel {
   width: var(--content-width);
   min-height: 250px;
+  position: relative;
+  z-index: 1;
   display: grid;
   gap: 16px;
   padding: clamp(16px, 3vw, 28px);
