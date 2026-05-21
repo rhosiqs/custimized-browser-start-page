@@ -6,6 +6,7 @@ Open `index.html` in your browser and set it as your home page or new-tab replac
 
 - Web search row: Bing by default, Google available.
 - AI row: Google AI Mode by default, plus ChatGPT, Claude, and Gemini.
+- Search suggestions from local history and Datamuse autocomplete.
 - Shortcut matrix with favicon icons based on each shortcut URL.
 - Bold local time and fixed global time panel.
 - Settings drawer for theme, background, default engines, grid size, shortcuts, time zones, and import/export.

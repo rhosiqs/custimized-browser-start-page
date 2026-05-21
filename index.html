@@ -25,14 +25,21 @@
             <span class="sr-only">Search engine</span>
             <select id="searchEngine"></select>
           </label>
-          <input
-            id="searchInput"
-            type="search"
-            autocomplete="off"
-            spellcheck="false"
-            placeholder="Search the web"
-            aria-label="Search the web"
-          />
+          <div class="search-input-wrap">
+            <input
+              id="searchInput"
+              type="search"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="Search the web"
+              aria-label="Search the web"
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded="false"
+              aria-controls="searchSuggestions"
+            />
+            <div class="suggestions" id="searchSuggestions" role="listbox" aria-label="Search suggestions" hidden></div>
+          </div>
         </form>
 
         <!-- AI query row -->
@@ -41,14 +48,21 @@
             <span class="sr-only">AI engine</span>
             <select id="aiEngine"></select>
           </label>
-          <input
-            id="aiInput"
-            type="search"
-            autocomplete="off"
-            spellcheck="false"
-            placeholder="Ask AI"
-            aria-label="Ask AI"
-          />
+          <div class="search-input-wrap">
+            <input
+              id="aiInput"
+              type="search"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="Ask AI"
+              aria-label="Ask AI"
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded="false"
+              aria-controls="aiSuggestions"
+            />
+            <div class="suggestions" id="aiSuggestions" role="listbox" aria-label="AI suggestions" hidden></div>
+          </div>
         </form>
       </section>
 

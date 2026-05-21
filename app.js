@@ -1,5 +1,14 @@
 // Local storage key for persisted settings.
 const STORAGE_KEY = "custom-start-page-settings-v1";
+// Local storage key for search history used in suggestions.
+const HISTORY_STORAGE_KEY = "custom-start-page-history-v1";
+// Intent: keep suggestions fresh while avoiding runaway storage growth.
+const HISTORY_LIMIT = 24;
+const SUGGESTION_LIMIT = 6;
+// Decision: Datamuse provides CORS-friendly suggestions without API keys.
+const SUGGESTION_API_TEMPLATE = "https://api.datamuse.com/sug?s={query}";
+const SUGGESTION_MIN_CHARS = 1;
+const SUGGESTION_DEBOUNCE_MS = 140;
 
 // Web search engine catalog.
 const searchEngines = {
@@ -98,6 +107,7 @@ const defaultSettings = {
 
 // Mutable runtime state.
 let settings = loadSettings();
+let queryHistory = loadQueryHistory();
 let editorRenderQueued = false;
 let shortcutPointerDrag = null;
 let suppressShortcutClick = false;
@@ -121,6 +131,8 @@ const elements = {
   searchStack: document.getElementById("searchStack"),
   searchInput: document.getElementById("searchInput"),
   aiInput: document.getElementById("aiInput"),
+  searchSuggestions: document.getElementById("searchSuggestions"),
+  aiSuggestions: document.getElementById("aiSuggestions"),
   searchEngine: document.getElementById("searchEngine"),
   aiEngine: document.getElementById("aiEngine"),
   shortcutGroupBar: document.getElementById("shortcutGroupBar"),
@@ -229,6 +241,80 @@ function normalizeSettings(value) {
   }
 
   return merged;
+}
+
+// Intent: keep lightweight local history for autocomplete suggestions only.
+function loadQueryHistory() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(HISTORY_STORAGE_KEY));
+    return normalizeQueryHistory(saved);
+  } catch {
+    return normalizeQueryHistory({});
+  }
+}
+
+function normalizeQueryHistory(value) {
+  return {
+    web: normalizeHistoryList(value?.web),
+    ai: normalizeHistoryList(value?.ai)
+  };
+}
+
+function normalizeHistoryList(value) {
+  return (Array.isArray(value) ? value : [])
+    .map((entry) => String(entry || "").trim())
+    .filter(Boolean);
+}
+
+function saveQueryHistory() {
+  localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(queryHistory));
+}
+
+function recordQueryHistory(kind, query) {
+  const cleanQuery = String(query || "").trim();
+  if (!cleanQuery) return;
+  const current = queryHistory[kind] || [];
+  const normalized = cleanQuery.toLowerCase();
+  // Guardrail: keep only the most recent unique queries.
+  const next = [cleanQuery, ...current.filter((item) => item.toLowerCase() !== normalized)].slice(
+    0,
+    HISTORY_LIMIT
+  );
+  queryHistory = { ...queryHistory, [kind]: next };
+  saveQueryHistory();
+}
+
+function getQuerySuggestions(kind, query) {
+  const cleanQuery = String(query || "").trim().toLowerCase();
+  if (!cleanQuery) return [];
+  const list = queryHistory[kind] || [];
+  return list.filter((item) => item.toLowerCase().includes(cleanQuery)).slice(0, SUGGESTION_LIMIT);
+}
+
+function mergeSuggestions(primary, secondary) {
+  const combined = [];
+  const seen = new Set();
+  [primary, secondary].forEach((list) => {
+    list.forEach((item) => {
+      const normalized = item.toLowerCase();
+      if (seen.has(normalized)) return;
+      seen.add(normalized);
+      combined.push(item);
+    });
+  });
+  return combined;
+}
+
+async function fetchRemoteSuggestions(query, signal) {
+  const url = SUGGESTION_API_TEMPLATE.replace("{query}", encodeURIComponent(query.trim()));
+  const response = await fetch(url, { signal, headers: { Accept: "application/json" } });
+  if (!response.ok) {
+    throw new Error(`Suggestion fetch failed (${response.status})`);
+  }
+  const payload = await response.json();
+  return (Array.isArray(payload) ? payload : [])
+    .map((entry) => String(entry?.word || "").trim())
+    .filter(Boolean);
 }
 
 // Color, group, and layout normalization helpers.
@@ -836,6 +922,170 @@ async function openQuery(engine, query) {
   window.location.href = buildUrl(engine.url, cleanQuery);
 }
 
+// Intent: shared autocomplete controller for both search rows.
+function wireSuggestionController({ input, list, kind, onSelect }) {
+  if (!input || !list) return;
+  let items = [];
+  let activeIndex = -1;
+  let debounceId = 0;
+  let requestId = 0;
+  let activeController = null;
+
+  function closeList() {
+    if (debounceId) {
+      window.clearTimeout(debounceId);
+      debounceId = 0;
+    }
+    // Guardrail: invalidate any in-flight requests to avoid reopening on blur.
+    requestId += 1;
+    if (activeController) {
+      activeController.abort();
+      activeController = null;
+    }
+    items = [];
+    activeIndex = -1;
+    list.innerHTML = "";
+    list.hidden = true;
+    input.setAttribute("aria-expanded", "false");
+    input.removeAttribute("aria-activedescendant");
+  }
+
+  function renderList() {
+    list.innerHTML = "";
+    if (!items.length) {
+      closeList();
+      return;
+    }
+
+    list.hidden = false;
+    input.setAttribute("aria-expanded", "true");
+    items.forEach((item, index) => {
+      const option = document.createElement("button");
+      option.type = "button";
+      option.className = "suggestion-item";
+      option.role = "option";
+      option.id = `${list.id}-option-${index}`;
+      option.dataset.index = String(index);
+      option.textContent = item;
+      option.setAttribute("aria-selected", index === activeIndex ? "true" : "false");
+      if (index === activeIndex) {
+        option.classList.add("is-active");
+        input.setAttribute("aria-activedescendant", option.id);
+      }
+      list.appendChild(option);
+    });
+
+    if (activeIndex < 0) {
+      input.removeAttribute("aria-activedescendant");
+    }
+  }
+
+  async function refreshItems(query) {
+    const cleanQuery = String(query || "").trim();
+    if (cleanQuery.length < SUGGESTION_MIN_CHARS) {
+      closeList();
+      return;
+    }
+
+    const currentRequest = (requestId += 1);
+    const localMatches = getQuerySuggestions(kind, cleanQuery);
+    items = localMatches;
+    activeIndex = -1;
+    renderList();
+
+    if (activeController) activeController.abort();
+    activeController = new AbortController();
+
+    let remoteMatches = [];
+    try {
+      remoteMatches = await fetchRemoteSuggestions(cleanQuery, activeController.signal);
+    } catch (error) {
+      // Guardrail: log fetch issues while keeping local suggestions available.
+      if (error?.name !== "AbortError") {
+        console.warn("Suggestion fetch failed:", error);
+      }
+    }
+
+    if (currentRequest !== requestId) return;
+    items = mergeSuggestions(localMatches, remoteMatches).slice(0, SUGGESTION_LIMIT);
+    activeIndex = -1;
+    renderList();
+  }
+
+  function scheduleRefresh(immediate = false) {
+    const query = input.value;
+    if (immediate) {
+      if (debounceId) window.clearTimeout(debounceId);
+      refreshItems(query);
+      return;
+    }
+    if (debounceId) window.clearTimeout(debounceId);
+    debounceId = window.setTimeout(() => refreshItems(query), SUGGESTION_DEBOUNCE_MS);
+  }
+
+  function selectItem(index) {
+    const value = items[index];
+    if (!value) return;
+    input.value = value;
+    closeList();
+    onSelect(value);
+  }
+
+  input.addEventListener("input", () => {
+    activeIndex = -1;
+    scheduleRefresh();
+  });
+
+  input.addEventListener("focus", () => {
+    scheduleRefresh(true);
+  });
+
+  input.addEventListener("blur", () => {
+    // Guardrail: delay closing to allow click selection.
+    window.setTimeout(closeList, 120);
+  });
+
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      if (!items.length) {
+        scheduleRefresh(true);
+        return;
+      }
+      activeIndex = activeIndex < 0 ? 0 : Math.min(activeIndex + 1, items.length - 1);
+      renderList();
+      return;
+    }
+    if (event.key === "ArrowUp") {
+      if (!items.length) return;
+      event.preventDefault();
+      activeIndex = Math.max(activeIndex - 1, 0);
+      renderList();
+      return;
+    }
+    if (event.key === "Enter" && activeIndex >= 0) {
+      event.preventDefault();
+      selectItem(activeIndex);
+      return;
+    }
+    if (event.key === "Escape") {
+      closeList();
+    }
+  });
+
+  list.addEventListener("mousedown", (event) => {
+    event.preventDefault();
+  });
+
+  list.addEventListener("click", (event) => {
+    const button = event.target.closest(".suggestion-item");
+    if (!button) return;
+    const index = Number(button.dataset.index);
+    if (Number.isNaN(index)) return;
+    selectItem(index);
+  });
+}
+
 // Update local and global clocks.
 function updateClocks() {
   const now = new Date();
@@ -1180,13 +1430,37 @@ function wireEvents() {
   elements.searchForm.addEventListener("submit", (event) => {
     event.preventDefault();
     const engine = searchEngines[elements.searchEngine.value] || searchEngines[settings.defaultSearch];
+    recordQueryHistory("web", elements.searchInput.value);
     openQuery(engine, elements.searchInput.value);
   });
 
   elements.aiForm.addEventListener("submit", (event) => {
     event.preventDefault();
     const engine = aiEngines[elements.aiEngine.value] || aiEngines[settings.defaultAi];
+    recordQueryHistory("ai", elements.aiInput.value);
     openQuery(engine, elements.aiInput.value);
+  });
+
+  wireSuggestionController({
+    input: elements.searchInput,
+    list: elements.searchSuggestions,
+    kind: "web",
+    onSelect: (value) => {
+      const engine = searchEngines[elements.searchEngine.value] || searchEngines[settings.defaultSearch];
+      recordQueryHistory("web", value);
+      openQuery(engine, value);
+    }
+  });
+
+  wireSuggestionController({
+    input: elements.aiInput,
+    list: elements.aiSuggestions,
+    kind: "ai",
+    onSelect: (value) => {
+      const engine = aiEngines[elements.aiEngine.value] || aiEngines[settings.defaultAi];
+      recordQueryHistory("ai", value);
+      openQuery(engine, value);
+    }
   });
 
   elements.searchEngine.addEventListener("change", () => updateSetting("defaultSearch", elements.searchEngine.value));
