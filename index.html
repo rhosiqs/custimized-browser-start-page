@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <!-- Local time card -->
     <header class="page-header">
       <section class="clock-card local-clock" id="localClock" aria-label="Local time">
         <p class="clock-label" id="localLabel">Local Time</p>
@@ -15,8 +16,10 @@
       </section>
     </header>
 
+    <!-- Main content: search rows and shortcut grid -->
     <main class="start-page" id="startPage">
       <section class="search-stack" id="searchStack" aria-label="Search tools">
+        <!-- Web search row -->
         <form class="search-row" id="searchForm">
           <label class="engine-select">
             <span class="sr-only">Search engine</span>
@@ -32,6 +35,7 @@
           />
         </form>
 
+        <!-- AI query row -->
         <form class="search-row ai-row" id="aiForm">
           <label class="engine-select">
             <span class="sr-only">AI engine</span>
@@ -48,12 +52,14 @@
         </form>
       </section>
 
+      <!-- Shortcuts with group tabs and grid -->
       <section class="shortcut-panel" id="shortcutPanel" aria-label="Shortcuts">
         <div class="shortcut-group-bar" id="shortcutGroupBar" role="tablist" aria-label="Shortcut groups"></div>
         <div class="shortcut-grid" id="shortcutGrid"></div>
       </section>
     </main>
 
+    <!-- Floating settings launcher -->
     <button class="icon-button settings-button" id="settingsButton" type="button" aria-label="Open settings" title="Settings">
       <svg aria-hidden="true" viewBox="0 0 24 24">
         <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.51a2 2 0 0 1 1-1.72l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
@@ -61,10 +67,12 @@
       </svg>
     </button>
 
+    <!-- Global time list -->
     <aside class="world-clock" id="worldClock" aria-label="Global time">
       <div id="worldClockList"></div>
     </aside>
 
+    <!-- Settings drawer and backdrop -->
     <div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
     <aside class="settings-drawer" id="settingsDrawer" aria-labelledby="settingsTitle" aria-hidden="true">
       <div class="drawer-header">
@@ -80,6 +88,7 @@
       </div>
 
       <div class="settings-content">
+        <!-- Appearance and theme settings -->
         <section class="settings-section">
           <h3>Appearance</h3>
           <div class="field-grid">
@@ -139,6 +148,7 @@
           </label>
         </section>
 
+        <!-- Default search engines -->
         <section class="settings-section">
           <h3>Search</h3>
           <div class="field-grid">
@@ -153,6 +163,7 @@
           </div>
         </section>
 
+        <!-- Shortcut layout, groups, and editor -->
         <section class="settings-section settings-section--wide">
           <h3>Shortcuts</h3>
           <div class="field-grid">
@@ -180,6 +191,7 @@
           <button class="text-button" id="addShortcut" type="button">Add Shortcut</button>
         </section>
 
+        <!-- Global clock settings -->
         <section class="settings-section">
           <h3>Global Time</h3>
           <label>
@@ -203,6 +215,7 @@
           <div class="time-zone-selected" id="timeZonesSetting"></div>
         </section>
 
+        <!-- Import, export, and reset tools -->
         <section class="settings-section settings-section--wide">
           <h3>Data</h3>
           <div class="button-row">
@@ -215,6 +228,7 @@
       </div>
     </aside>
 
+    <!-- Alignment guides used in layout edit mode -->
     <div class="layout-guides" id="layoutGuides" aria-hidden="true">
       <span class="guide-line vertical v25"></span>
       <span class="guide-line vertical v50"></span>
@@ -224,6 +238,7 @@
       <span class="guide-line horizontal h75"></span>
     </div>
 
+    <!-- App logic -->
     <script src="app.js"></script>
   </body>
 </html>

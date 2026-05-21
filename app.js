@@ -1,5 +1,7 @@
+// Local storage key for persisted settings.
 const STORAGE_KEY = "custom-start-page-settings-v1";
 
+// Web search engine catalog.
 const searchEngines = {
   bing: {
     label: "Bing",
@@ -11,6 +13,7 @@ const searchEngines = {
   }
 };
 
+// AI engine catalog.
 const aiEngines = {
   googleAi: {
     label: "Google AI",
@@ -30,6 +33,7 @@ const aiEngines = {
   }
 };
 
+// Curated time zone list for the global clock picker.
 const timeZoneOptions = [
   "Pacific/Honolulu",
   "America/Los_Angeles",
@@ -51,8 +55,10 @@ const timeZoneOptions = [
   "Australia/Sydney"
 ];
 
+// Default shortcut group label.
 const defaultGroup = "General";
 
+// Baseline settings applied on first load or reset.
 const defaultSettings = {
   theme: "dark",
   density: "comfortable",
@@ -90,6 +96,7 @@ const defaultSettings = {
   ]
 };
 
+// Mutable runtime state.
 let settings = loadSettings();
 let editorRenderQueued = false;
 let shortcutPointerDrag = null;
@@ -100,6 +107,7 @@ let layoutDrag = null;
 let suppressLayoutClick = false;
 let layoutDraftPositions = null;
 
+// DOM element references used throughout the UI.
 const elements = {
   body: document.body,
   localClock: document.getElementById("localClock"),
@@ -151,6 +159,7 @@ const elements = {
   settingsJson: document.getElementById("settingsJson")
 };
 
+// Load settings from localStorage and normalize to a safe shape.
 function loadSettings() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
@@ -160,6 +169,7 @@ function loadSettings() {
   }
 }
 
+// Merge raw settings with defaults and coerce values into valid ranges.
 function normalizeSettings(value) {
   const baseDefaultGroup = normalizeGroup(value.defaultGroupName, defaultGroup) || defaultGroup;
   const baseGroups =
@@ -221,6 +231,7 @@ function normalizeSettings(value) {
   return merged;
 }
 
+// Color, group, and layout normalization helpers.
 function isHexColor(value) {
   return /^#[0-9a-f]{6}$/i.test(String(value || ""));
 }
@@ -295,16 +306,19 @@ function clonePositions(value) {
   );
 }
 
+// Persist the current settings snapshot.
 function saveSettings() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
 }
 
+// Clamp numeric settings to valid bounds.
 function clampNumber(value, min, max, fallback) {
   const number = Number(value);
   if (!Number.isFinite(number)) return fallback;
   return Math.min(max, Math.max(min, Math.round(number)));
 }
 
+// Populate a select list from an options map.
 function populateSelect(select, options) {
   select.innerHTML = "";
   Object.entries(options).forEach(([value, option]) => {
@@ -315,6 +329,7 @@ function populateSelect(select, options) {
   });
 }
 
+// Apply settings to the DOM, CSS variables, and rendered UI.
 function applySettings() {
   elements.body.classList.toggle("theme-light", settings.theme === "light");
   elements.body.classList.toggle("density-compact", settings.density === "compact");
@@ -376,6 +391,7 @@ function applySettings() {
   updateClocks();
 }
 
+// Convert background settings into a CSS-ready value.
 function formatBackgroundValue() {
   if (settings.backgroundType === "image") {
     return `url("${settings.backgroundValue}")`;
@@ -383,6 +399,7 @@ function formatBackgroundValue() {
   return settings.backgroundValue;
 }
 
+// Shortcut group and editor rendering.
 function getShortcutGroups() {
   return normalizeGroupList(settings.shortcutGroups, getDefaultGroupName());
 }
@@ -407,6 +424,7 @@ function renderShortcutGroups() {
   });
 }
 
+// Render the editable shortcut group list inside settings.
 function renderGroupEditor() {
   if (!elements.groupEditor) return;
   elements.groupEditor.innerHTML = "";
@@ -441,6 +459,7 @@ function renderGroupEditor() {
   });
 }
 
+// Layout drag/drop helpers for movable sections.
 function getLayoutItems() {
   return [
     { key: "clock", element: elements.localClock },
@@ -451,6 +470,7 @@ function getLayoutItems() {
   ].filter((item) => item.element);
 }
 
+// Apply stored layout offsets to draggable elements.
 function applyLayoutPositions() {
   const positions =
     settings.editMode && layoutDraftPositions ? layoutDraftPositions : settings.elementPositions;
@@ -460,6 +480,7 @@ function applyLayoutPositions() {
   });
 }
 
+// Track draft layout positions while dragging.
 function updateLayoutDraftPosition(key, x, y) {
   layoutDraftPositions = {
     ...(layoutDraftPositions || clonePositions(settings.elementPositions)),
@@ -468,6 +489,7 @@ function updateLayoutDraftPosition(key, x, y) {
   applyLayoutPositions();
 }
 
+// Enable layout edit mode and snapshot positions.
 function enterEditMode() {
   if (settings.editMode) return;
   layoutDraftPositions = clonePositions(settings.elementPositions);
@@ -476,6 +498,7 @@ function enterEditMode() {
   applySettings();
 }
 
+// Commit layout edits and exit edit mode.
 function saveLayoutChanges() {
   if (!settings.editMode) return;
   const committed = layoutDraftPositions || clonePositions(settings.elementPositions);
@@ -485,6 +508,7 @@ function saveLayoutChanges() {
   applySettings();
 }
 
+// Compute snap guide positions for alignment aids.
 function getGuidePositions() {
   const width = window.innerWidth;
   const height = window.innerHeight;
@@ -495,6 +519,7 @@ function getGuidePositions() {
   };
 }
 
+// Determine best snap offset for a set of candidate positions.
 function getSnapOffset(values, guides, threshold) {
   let bestOffset = 0;
   let bestDistance = threshold + 1;
@@ -511,6 +536,7 @@ function getSnapOffset(values, guides, threshold) {
   return bestDistance <= threshold ? bestOffset : 0;
 }
 
+// Begin dragging a layout element.
 function handleLayoutPointerDown(event) {
   if (!settings.editMode) return;
   if (event.button && event.button !== 0) return;
@@ -537,6 +563,7 @@ function handleLayoutPointerDown(event) {
   element.setPointerCapture(event.pointerId);
 }
 
+// Update layout element position while dragging.
 function handleLayoutPointerMove(event) {
   if (!layoutDrag) return;
   const dx = event.clientX - layoutDrag.startX;
@@ -574,6 +601,7 @@ function handleLayoutPointerMove(event) {
   elements.body.classList.add("show-guides");
 }
 
+// Finish a drag and store the final position.
 function handleLayoutPointerUp(event) {
   if (!layoutDrag) return;
   const drag = layoutDrag;
@@ -586,6 +614,7 @@ function handleLayoutPointerUp(event) {
   elements.body.classList.remove("show-guides");
 }
 
+// Cancel a drag and reset visual guides.
 function handleLayoutPointerCancel(event) {
   if (!layoutDrag) return;
   const drag = layoutDrag;
@@ -597,6 +626,7 @@ function handleLayoutPointerCancel(event) {
   elements.body.classList.remove("show-guides");
 }
 
+// Suppress click navigation after a drag ends.
 function handleLayoutClick(event) {
   if (!settings.editMode || !suppressLayoutClick) return;
   event.preventDefault();
@@ -604,6 +634,7 @@ function handleLayoutClick(event) {
   suppressLayoutClick = false;
 }
 
+// Register pointer handlers for draggable layout items.
 function registerLayoutDraggables() {
   getLayoutItems().forEach(({ key, element }) => {
     element.dataset.layoutKey = key;
@@ -616,6 +647,7 @@ function registerLayoutDraggables() {
   });
 }
 
+// Render the shortcut grid for the active group.
 function renderShortcuts() {
   elements.shortcutGrid.innerHTML = "";
   const entries = settings.shortcuts.map((shortcut, index) => ({ shortcut, index }));
@@ -668,6 +700,7 @@ function renderShortcuts() {
   }
 }
 
+// Render the shortcut editor list in settings.
 function renderShortcutEditor() {
   if (editorRenderQueued) return;
   editorRenderQueued = true;
@@ -721,6 +754,7 @@ function renderShortcutEditor() {
   });
 }
 
+// Render time zone options and selected list.
 function renderTimeZoneOptions() {
   const now = new Date();
   elements.timeZoneSelect.innerHTML = "";
@@ -759,6 +793,7 @@ function renderTimeZoneOptions() {
   });
 }
 
+// Utility helpers for shortcut display and URL normalization.
 function getFaviconUrl(url) {
   const host = getHostname(url);
   return host ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64` : "";
@@ -787,6 +822,7 @@ function buildUrl(template, query) {
   return template.replace("{query}", encodeURIComponent(query.trim()));
 }
 
+// Route a query to the selected engine (with optional clipboard copy).
 async function openQuery(engine, query) {
   const cleanQuery = query.trim();
   if (!cleanQuery) return;
@@ -800,6 +836,7 @@ async function openQuery(engine, query) {
   window.location.href = buildUrl(engine.url, cleanQuery);
 }
 
+// Update local and global clocks.
 function updateClocks() {
   const now = new Date();
   elements.localLabel.textContent = `Local Time (${getLocalZoneLabel(now)})`;
@@ -820,6 +857,7 @@ function updateClocks() {
   });
 }
 
+// Format local time with optional seconds and day period.
 function formatLocalTime(date) {
   const isTwelveHour = settings.clockFormat === "12";
   const parts = new Intl.DateTimeFormat(isTwelveHour ? "en-US" : [], {
@@ -840,11 +878,13 @@ function formatLocalTime(date) {
   return `<span class="clock-main">${hour}:${minute}</span>${suffixes}`;
 }
 
+// Resolve local time zone label for display.
 function getLocalZoneLabel(date) {
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   return zone ? getGmtLabel(zone, date) : "";
 }
 
+// Build a readable label for a given time zone.
 function getZoneLabel(zone, date) {
   try {
     return `${getZoneAbbreviation(zone, date)} - ${getCityLabel(zone)}`;
@@ -853,6 +893,7 @@ function getZoneLabel(zone, date) {
   }
 }
 
+// Compute a time zone abbreviation with fallbacks.
 function getZoneAbbreviation(zone, date) {
   if (["Asia/Taipei", "Asia/Shanghai"].includes(zone)) return "CST";
   try {
@@ -866,6 +907,7 @@ function getZoneAbbreviation(zone, date) {
   }
 }
 
+// Compute GMT offset label for a time zone.
 function getGmtLabel(zone, date) {
   try {
     const parts = new Intl.DateTimeFormat("en-US", {
@@ -878,10 +920,12 @@ function getGmtLabel(zone, date) {
   }
 }
 
+// Extract the city segment of an IANA time zone.
 function getCityLabel(zone) {
   return zone.split("/").pop().replace(/_/g, " ");
 }
 
+// Format a time for a specific time zone.
 function formatZoneTime(zone, date) {
   try {
     return new Intl.DateTimeFormat([], {
@@ -894,6 +938,7 @@ function formatZoneTime(zone, date) {
   }
 }
 
+// Drawer open/close helpers.
 function openSettings() {
   elements.drawer.classList.add("open");
   elements.drawer.setAttribute("aria-hidden", "false");
@@ -906,12 +951,14 @@ function closeSettings() {
   elements.backdrop.hidden = true;
 }
 
+// Update a single setting and re-render.
 function updateSetting(key, value) {
   settings = normalizeSettings({ ...settings, [key]: value });
   saveSettings();
   applySettings();
 }
 
+// Handle settings input changes with special-case rules.
 function handleSettingsInput(event) {
   const target = event.target;
   if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) return;
@@ -979,6 +1026,7 @@ function handleSettingsInput(event) {
   if (update) updateSetting(update[0], update[1]);
 }
 
+// Remove a selected time zone.
 function handleTimeZoneRemove(event) {
   if (!(event.target instanceof Element)) return;
   const button = event.target.closest("[data-time-zone]");
@@ -989,6 +1037,7 @@ function handleTimeZoneRemove(event) {
   );
 }
 
+// Reorder shortcuts within the "All" group.
 function reorderShortcut(fromIndex, toIndex) {
   if (activeShortcutGroup !== "All") return;
   if (
@@ -1010,6 +1059,7 @@ function reorderShortcut(fromIndex, toIndex) {
   renderShortcutEditor();
 }
 
+// Hit-testing helpers for drag/drop reordering.
 function getShortcutTileFromPoint(x, y) {
   return document.elementFromPoint(x, y)?.closest(".shortcut-tile:not(.shortcut-empty)");
 }
@@ -1018,6 +1068,7 @@ function getShortcutEditorRowFromPoint(x, y) {
   return document.elementFromPoint(x, y)?.closest(".shortcut-edit-row");
 }
 
+// Handle edits to shortcut rows.
 function handleShortcutEditorInput(event) {
   const target = event.target;
   if (!(target instanceof HTMLInputElement)) return;
@@ -1050,6 +1101,7 @@ function handleShortcutEditorInput(event) {
   renderShortcuts();
 }
 
+// Handle remove actions in the shortcut editor.
 function handleShortcutEditorClick(event) {
   const target = event.target.closest("[data-action]");
   if (!target) return;
@@ -1066,6 +1118,7 @@ function handleShortcutEditorClick(event) {
   applySettings();
 }
 
+// Handle edits to group names.
 function handleGroupEditorInput(event) {
   const target = event.target;
   if (!(target instanceof HTMLInputElement)) return;
@@ -1095,6 +1148,7 @@ function handleGroupEditorInput(event) {
   applySettings();
 }
 
+// Handle group removal actions.
 function handleGroupEditorClick(event) {
   const button = event.target.closest("[data-action='remove']");
   if (!button) return;
@@ -1121,6 +1175,7 @@ function handleGroupEditorClick(event) {
   applySettings();
 }
 
+// Wire up all DOM event listeners.
 function wireEvents() {
   elements.searchForm.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -1420,6 +1475,7 @@ function wireEvents() {
   });
 }
 
+// Bootstrap the page once DOM is ready.
 function init() {
   populateSelect(elements.searchEngine, searchEngines);
   populateSelect(elements.defaultSearchSetting, searchEngines);
