@@ -798,6 +798,13 @@ body.density-compact .start-page {
   gap: 18px;
 }
 
+/* Make the Save button stand out with a red background */
+#saveLayout {
+  background: #28A745;
+  color: #fff;
+  border-color: transparent;
+}
+
 body.density-compact .clock-card {
   padding: 16px 18px;
 }
