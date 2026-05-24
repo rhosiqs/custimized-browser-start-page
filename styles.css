@@ -945,21 +945,11 @@ body.theme-light select {
 }
 
 /* Group editor row layout */
-.group-edit-row {
-  display: grid;
-  grid-template-columns: 1fr 32px;
-  gap: 8px;
-  align-items: center;
-}
-
-.group-edit-row .icon-button {
-  width: 32px;
-  height: 32px;
-}
-
-.group-edit-row .icon-button:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+/* Inline Category Manager container inside settings drawer */
+.inline-category-manager {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Shortcut editor row layout */
@@ -1150,3 +1140,253 @@ body.density-compact .shortcut-tile {
     height: 48px;
   }
 }
+
+/* ==========================================
+   Category Manager Addition (Styles for Modal)
+   ========================================== */
+
+.shortcut-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  margin-bottom: 6px;
+}
+
+
+
+.create-category-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.create-category-btn {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  background: #1c202d;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: #f4f7ff;
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 180ms ease;
+}
+
+.create-category-btn:hover {
+  background: #24293a;
+  border-color: rgba(225, 91, 100, 0.4);
+  color: #e15b64;
+  box-shadow: 0 0 10px rgba(225, 91, 100, 0.1);
+}
+
+.create-category-btn .plus-icon {
+  font-size: 1.15rem;
+  font-weight: 400;
+}
+
+.modal-note-box {
+  background: rgba(234, 179, 8, 0.06);
+  border-left: 3px solid #eab308;
+  padding: 10px 12px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+}
+
+.modal-note-text {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.note-badge {
+  background: #eab308;
+  color: #11141c;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  margin-right: 5px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.drag-handle-char,
+.star-char {
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.categories-section-header {
+  margin-bottom: 10px;
+}
+
+.categories-section-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #f4f7ff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.categories-tag-icon {
+  width: 15px;
+  height: 15px;
+  color: #34d399;
+  vertical-align: middle;
+}
+
+.custom-count-label {
+  color: #34d399;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.category-list-scrollable {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 4px;
+  margin-bottom: 16px;
+}
+
+/* Custom scrollbar */
+.category-list-scrollable::-webkit-scrollbar {
+  width: 5px;
+}
+.category-list-scrollable::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 99px;
+}
+.category-list-scrollable::-webkit-scrollbar-thumb {
+  background: rgba(225, 91, 100, 0.3);
+  border-radius: 99px;
+}
+.category-list-scrollable::-webkit-scrollbar-thumb:hover {
+  background: rgba(225, 91, 100, 0.55);
+}
+
+.category-edit-row {
+  display: grid;
+  grid-template-columns: 28px 28px 1fr 32px 32px;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  transition: all 160ms ease;
+}
+
+.category-edit-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(225, 91, 100, 0.2);
+}
+
+.category-edit-row.is-dragging {
+  opacity: 0.35;
+  border: 1px dashed rgba(225, 91, 100, 0.5);
+}
+
+.category-edit-row.is-drop-target {
+  background: rgba(225, 91, 100, 0.08);
+  border-color: #e15b64;
+}
+
+.category-drag-handle {
+  display: grid;
+  place-items: center;
+  color: rgba(255, 255, 255, 0.3);
+  cursor: grab;
+  font-size: 1.1rem;
+  user-select: none;
+}
+
+.category-drag-handle:active {
+  cursor: grabbing;
+}
+
+.category-tag-icon-wrap {
+  display: grid;
+  place-items: center;
+  color: #fb923c;
+}
+
+.category-tag-icon-wrap svg {
+  width: 15px;
+  height: 15px;
+}
+
+.category-name-input {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 4px 6px;
+  width: 100%;
+  outline: none;
+  transition: all 160ms ease;
+}
+
+.category-name-input:hover,
+.category-name-input:focus {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.category-star-btn,
+.category-delete-btn {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+  transition: all 160ms ease;
+}
+
+.category-star-btn:hover {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.08);
+}
+
+.category-star-btn.is-default {
+  color: #fbbf24;
+}
+
+.category-delete-btn:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.category-delete-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+  color: rgba(255, 255, 255, 0.15);
+}
+
+.category-delete-btn:disabled:hover {
+  background: transparent;
+}
+
+

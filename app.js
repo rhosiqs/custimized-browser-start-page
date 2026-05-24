@@ -281,7 +281,7 @@ const timeZoneOptions = [
 ];
 
 // Default shortcut group label.
-const defaultGroup = "General";
+const defaultGroup = "Work";
 
 // Baseline settings applied on first load or reset.
 const defaultSettings = {
@@ -305,17 +305,18 @@ const defaultSettings = {
   shortcutSlots: 12,
   shortcutAlign: "stretch",
   defaultGroupName: defaultGroup,
-  shortcutGroups: [defaultGroup, "Search", "AI", "Media", "Work"],
+  shortcutGroups: ["Work", "Shop", "Money", "For Me", "Fun", "News", "Sports", "Travel", "Tools"],
+  defaultView: "All",
   clockFormat: "24",
   showSeconds: true,
   timeZones: ["America/New_York", "America/Los_Angeles"],
   shortcuts: [
-    { title: "Bing", url: "https://www.bing.com", color: "#0ea5e9", group: "Search" },
-    { title: "Google", url: "https://www.google.com", color: "#22c55e", group: "Search" },
-    { title: "ChatGPT", url: "https://chatgpt.com", color: "#10a37f", group: "AI" },
-    { title: "Claude", url: "https://claude.ai", color: "#d97706", group: "AI" },
-    { title: "Gemini", url: "https://gemini.google.com", color: "#8b5cf6", group: "AI" },
-    { title: "YouTube", url: "https://www.youtube.com", color: "#ef4444", group: "Media" },
+    { title: "Bing", url: "https://www.bing.com", color: "#0ea5e9", group: "Tools" },
+    { title: "Google", url: "https://www.google.com", color: "#22c55e", group: "Tools" },
+    { title: "ChatGPT", url: "https://chatgpt.com", color: "#10a37f", group: "Tools" },
+    { title: "Claude", url: "https://claude.ai", color: "#d97706", group: "Tools" },
+    { title: "Gemini", url: "https://gemini.google.com", color: "#8b5cf6", group: "Tools" },
+    { title: "YouTube", url: "https://www.youtube.com", color: "#ef4444", group: "Fun" },
     { title: "GitHub", url: "https://github.com", color: "#64748b", group: "Work" },
     { title: "Outlook", url: "https://outlook.office.com", color: "#2563eb", group: "Work" }
   ]
@@ -388,7 +389,10 @@ const elements = {
   exportSettings: document.getElementById("exportSettings"),
   importSettings: document.getElementById("importSettings"),
   resetSettings: document.getElementById("resetSettings"),
-  settingsJson: document.getElementById("settingsJson")
+  settingsJson: document.getElementById("settingsJson"),
+  /* Category Manager Addition: Inline elements (rendered into groupEditor) */
+  currentDefaultCategoryText: document.getElementById("currentDefaultCategoryText"),
+  customCategoriesCount: document.getElementById("customCategoriesCount")
 };
 
 // Load settings from localStorage and normalize to a safe shape.
@@ -408,6 +412,9 @@ function normalizeSettings(value) {
     Array.isArray(value.shortcutGroups) && value.shortcutGroups.length
       ? normalizeGroupList(value.shortcutGroups, baseDefaultGroup)
       : normalizeGroupList(defaultSettings.shortcutGroups, baseDefaultGroup);
+  const baseDefaultView = (typeof value.defaultView === "string" && (value.defaultView === "All" || baseGroups.includes(value.defaultView)))
+    ? value.defaultView
+    : "All";
 
   const merged = {
     ...defaultSettings,
@@ -418,6 +425,7 @@ function normalizeSettings(value) {
       : defaultSettings.timeZones,
     defaultGroupName: baseDefaultGroup,
     shortcutGroups: baseGroups,
+    defaultView: baseDefaultView,
     elementPositions: normalizePositions(value.elementPositions)
   };
   if (!merged.timeZones.length) merged.timeZones = defaultSettings.timeZones;
@@ -910,35 +918,187 @@ function renderShortcutGroups() {
 function renderGroupEditor() {
   if (!elements.groupEditor) return;
   elements.groupEditor.innerHTML = "";
+
   const groups = getShortcutGroups();
-  groups.forEach((group) => {
+  const defaultGroupName = getDefaultGroupName();
+  const defaultView = settings.defaultView || "All";
+
+  // Update the inline note and custom count labels
+  if (elements.currentDefaultCategoryText) {
+    elements.currentDefaultCategoryText.textContent = defaultView;
+  }
+
+  const builtinGroups = ["Work", "Shop", "Money", "For Me", "Fun", "News", "Sports", "Travel", "Tools"];
+  const customGroups = groups.filter((g) => !builtinGroups.includes(g));
+  const customCount = customGroups.length;
+  if (elements.customCategoriesCount) {
+    elements.customCategoriesCount.textContent = `(${customCount}/5 custom)`;
+  }
+
+  // Populate styled category rows
+  groups.forEach((group, index) => {
     const row = document.createElement("div");
-    row.className = "group-edit-row";
+    row.className = "category-edit-row";
+    row.draggable = true;
+    row.dataset.index = String(index);
     row.dataset.group = group;
 
+    // Drag ⋮ handle
+    const handle = document.createElement("div");
+    handle.className = "category-drag-handle";
+    handle.textContent = "⋮";
+    handle.title = "Drag to reorder";
+
+    // Colored tag icon wrapper
+    const tagWrap = document.createElement("div");
+    tagWrap.className = "category-tag-icon-wrap";
+    tagWrap.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+        <line x1="7" y1="7" x2="7.01" y2="7" stroke-width="2" />
+      </svg>
+    `;
+
+    // Editable text input for category renaming
     const input = document.createElement("input");
     input.type = "text";
+    input.className = "category-name-input";
     input.value = group;
-    input.placeholder = "Group name";
+    input.placeholder = "Category name";
     input.dataset.group = group;
 
-    const remove = document.createElement("button");
-    remove.className = "icon-button";
-    remove.type = "button";
-    remove.title = "Remove group";
-    remove.ariaLabel = "Remove group";
-    remove.dataset.action = "remove";
-    remove.dataset.group = group;
-    remove.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12" /></svg>';
-    if (group === settings.defaultGroupName) {
-      remove.disabled = true;
-      remove.title = "Default group cannot be removed";
-      remove.ariaLabel = "Default group cannot be removed";
+    // Star icon button for toggling default load view
+    const starBtn = document.createElement("button");
+    starBtn.type = "button";
+    starBtn.className = "category-star-btn";
+    starBtn.title = "Set as default view on page load";
+    starBtn.ariaLabel = `Set ${group} as default view on page load`;
+    if (defaultView === group) {
+      starBtn.classList.add("is-default");
+      starBtn.innerHTML = "★";
+    } else {
+      starBtn.innerHTML = "☆";
+    }
+    starBtn.dataset.action = "set-default";
+    starBtn.dataset.group = group;
+
+    // Delete trash bin button
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "category-delete-btn";
+    deleteBtn.title = "Delete category";
+    deleteBtn.ariaLabel = `Delete category ${group}`;
+    deleteBtn.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px; height:16px;">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+      </svg>
+    `;
+    deleteBtn.dataset.action = "delete";
+    deleteBtn.dataset.group = group;
+
+    // The default group cannot be deleted
+    if (group === defaultGroupName) {
+      deleteBtn.disabled = true;
+      deleteBtn.title = "Default category cannot be removed";
+      deleteBtn.ariaLabel = "Default category cannot be removed";
     }
 
-    row.append(input, remove);
+    row.append(handle, tagWrap, input, starBtn, deleteBtn);
     elements.groupEditor.appendChild(row);
   });
+}
+
+// Rename category in settings database and migrate existing shortcut references
+function handleCategoryManagerRename(previousGroup, nextGroup) {
+  if (!previousGroup || !nextGroup || previousGroup === nextGroup) return;
+
+  const nextShortcuts = settings.shortcuts.map((shortcut) =>
+    (shortcut.group || getDefaultGroupName()) === previousGroup ? { ...shortcut, group: nextGroup } : shortcut
+  );
+  
+  const nextDefaultGroup =
+    previousGroup === settings.defaultGroupName ? nextGroup : settings.defaultGroupName;
+    
+  const nextGroups = normalizeGroupList(
+    settings.shortcutGroups.map((group) => (group === previousGroup ? nextGroup : group)),
+    nextDefaultGroup
+  );
+
+  let nextDefaultView = settings.defaultView;
+  if (settings.defaultView === previousGroup) {
+    nextDefaultView = nextGroup;
+  }
+
+  settings = normalizeSettings({
+    ...settings,
+    shortcuts: nextShortcuts,
+    shortcutGroups: nextGroups,
+    defaultGroupName: nextDefaultGroup,
+    defaultView: nextDefaultView
+  });
+
+  if (activeShortcutGroup === previousGroup) {
+    activeShortcutGroup = nextGroup;
+  }
+
+  saveSettings();
+  applySettings();
+  renderGroupEditor();
+}
+
+// Remove category and shift shortcuts into General/default category group
+function handleCategoryManagerDelete(group) {
+  if (!group || group === settings.defaultGroupName) return;
+
+  const nextShortcuts = settings.shortcuts.map((shortcut) =>
+    (shortcut.group || getDefaultGroupName()) === group
+      ? { ...shortcut, group: getDefaultGroupName() }
+      : shortcut
+  );
+
+  const nextGroups = normalizeGroupList(
+    settings.shortcutGroups.filter((entry) => entry !== group),
+    settings.defaultGroupName
+  );
+
+  let nextDefaultView = settings.defaultView;
+  if (settings.defaultView === group) {
+    nextDefaultView = "All";
+  }
+
+  settings = normalizeSettings({
+    ...settings,
+    shortcuts: nextShortcuts,
+    shortcutGroups: nextGroups,
+    defaultGroupName: settings.defaultGroupName,
+    defaultView: nextDefaultView
+  });
+
+  if (activeShortcutGroup === group) {
+    activeShortcutGroup = "All";
+  }
+
+  saveSettings();
+  applySettings();
+  renderGroupEditor();
+}
+
+// Set default tab view loaded when visiting start page
+function handleCategoryManagerSetDefault(group) {
+  if (!group) return;
+
+  // Toggle behaviour: clicking the default one resets it to load "All"
+  const nextDefaultView = settings.defaultView === group ? "All" : group;
+
+  settings = normalizeSettings({
+    ...settings,
+    defaultView: nextDefaultView
+  });
+
+  saveSettings();
+  applySettings();
+  renderGroupEditor();
 }
 
 // Layout drag/drop helpers for movable sections.
@@ -1831,62 +1991,6 @@ function handleShortcutEditorClick(event) {
   applySettings();
 }
 
-// Handle edits to group names.
-function handleGroupEditorInput(event) {
-  const target = event.target;
-  if (!(target instanceof HTMLInputElement)) return;
-  const row = target.closest(".group-edit-row");
-  const previousGroup = row?.dataset.group;
-  if (!previousGroup) return;
-  const nextGroup = normalizeGroup(target.value, getDefaultGroupName()) || getDefaultGroupName();
-  if (nextGroup === previousGroup) return;
-
-  const nextShortcuts = settings.shortcuts.map((shortcut) =>
-    (shortcut.group || getDefaultGroupName()) === previousGroup ? { ...shortcut, group: nextGroup } : shortcut
-  );
-  const nextDefaultGroup =
-    previousGroup === settings.defaultGroupName ? nextGroup : settings.defaultGroupName;
-  const nextGroups = normalizeGroupList(
-    settings.shortcutGroups.map((group) => (group === previousGroup ? nextGroup : group)),
-    nextDefaultGroup
-  );
-  settings = normalizeSettings({
-    ...settings,
-    shortcuts: nextShortcuts,
-    shortcutGroups: nextGroups,
-    defaultGroupName: nextDefaultGroup
-  });
-  if (activeShortcutGroup === previousGroup) activeShortcutGroup = nextGroup;
-  saveSettings();
-  applySettings();
-}
-
-// Handle group removal actions.
-function handleGroupEditorClick(event) {
-  const button = event.target.closest("[data-action='remove']");
-  if (!button) return;
-  const group = button.dataset.group;
-  if (!group) return;
-  if (group === settings.defaultGroupName) return;
-  const nextShortcuts = settings.shortcuts.map((shortcut) =>
-    (shortcut.group || getDefaultGroupName()) === group
-      ? { ...shortcut, group: getDefaultGroupName() }
-      : shortcut
-  );
-  const nextGroups = normalizeGroupList(
-    settings.shortcutGroups.filter((entry) => entry !== group),
-    settings.defaultGroupName
-  );
-  settings = normalizeSettings({
-    ...settings,
-    shortcuts: nextShortcuts,
-    shortcutGroups: nextGroups,
-    defaultGroupName: settings.defaultGroupName
-  });
-  if (activeShortcutGroup === group) activeShortcutGroup = "All";
-  saveSettings();
-  applySettings();
-}
 
 // Wire up all DOM event listeners.
 function wireEvents() {
@@ -1949,16 +2053,52 @@ function wireEvents() {
   elements.shortcutEditor.addEventListener("change", handleShortcutEditorInput);
   elements.shortcutEditor.addEventListener("click", handleShortcutEditorClick);
   elements.timeZonesSetting.addEventListener("click", handleTimeZoneRemove);
-  elements.groupEditor?.addEventListener("change", handleGroupEditorInput);
-  elements.groupEditor?.addEventListener("click", handleGroupEditorClick);
+  // Inline Category Manager: rename via category-name-input change
+  elements.groupEditor?.addEventListener("change", (event) => {
+    const target = event.target;
+    if (target && target.classList.contains("category-name-input")) {
+      const previousGroup = target.dataset.group;
+      const nextGroup = normalizeGroup(target.value, getDefaultGroupName()) || getDefaultGroupName();
+      handleCategoryManagerRename(previousGroup, nextGroup);
+    }
+  });
+
+  // Inline Category Manager: star and delete button actions
+  elements.groupEditor?.addEventListener("click", (event) => {
+    const btn = event.target.closest(".category-edit-row button");
+    if (!btn) return;
+    const action = btn.dataset.action;
+    const group = btn.dataset.group;
+    if (action === "set-default") {
+      handleCategoryManagerSetDefault(group);
+    } else if (action === "delete") {
+      handleCategoryManagerDelete(group);
+    }
+  });
+
+  // Inline Category Manager: CREATE CATEGORY button
   elements.addGroup?.addEventListener("click", () => {
     const groups = getShortcutGroups();
-    const name = getUniqueGroupName("New Group", groups);
+    const builtinGroups = ["Work", "Shop", "Money", "For Me", "Fun", "News", "Sports", "Travel", "Tools"];
+    const customGroups = groups.filter((g) => !builtinGroups.includes(g));
+    if (customGroups.length >= 5) {
+      alert("Maximum of 5 custom categories reached.");
+      return;
+    }
+    const name = getUniqueGroupName("New Category", groups);
     const nextGroups = normalizeGroupList([...settings.shortcutGroups, name], settings.defaultGroupName);
     settings = normalizeSettings({ ...settings, shortcutGroups: nextGroups });
     activeShortcutGroup = name;
     saveSettings();
     applySettings();
+    setTimeout(() => {
+      const inputs = elements.groupEditor ? elements.groupEditor.querySelectorAll(".category-name-input") : [];
+      const lastInput = inputs[inputs.length - 1];
+      if (lastInput) {
+        lastInput.focus();
+        lastInput.select();
+      }
+    }, 50);
   });
   elements.saveLayout?.addEventListener("click", () => {
     saveLayoutChanges();
@@ -2216,16 +2356,76 @@ function wireEvents() {
   });
 
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") closeSettings();
+    if (event.key === "Escape") {
+      closeSettings();
+    }
     if (event.key === "/" && document.activeElement === document.body) {
       event.preventDefault();
       elements.searchInput.focus();
+    }
+  });
+
+
+
+  // Drag and drop delegated listeners
+  document.addEventListener("dragstart", (event) => {
+    const row = event.target.closest(".category-edit-row");
+    if (!row) return;
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", row.dataset.index);
+    requestAnimationFrame(() => row.classList.add("is-dragging"));
+  });
+
+  document.addEventListener("dragend", (event) => {
+    const row = event.target.closest(".category-edit-row");
+    if (!row) return;
+    row.classList.remove("is-dragging");
+    document.querySelectorAll(".category-edit-row.is-drop-target").forEach((item) => {
+      item.classList.remove("is-drop-target");
+    });
+  });
+
+  document.addEventListener("dragover", (event) => {
+    const row = event.target.closest(".category-edit-row");
+    if (!row) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    document.querySelectorAll(".category-edit-row.is-drop-target").forEach((item) => {
+      if (item !== row) item.classList.remove("is-drop-target");
+    });
+    row.classList.add("is-drop-target");
+  });
+
+  document.addEventListener("dragleave", (event) => {
+    const row = event.target.closest(".category-edit-row");
+    if (!row || row.contains(event.relatedTarget)) return;
+    row.classList.remove("is-drop-target");
+  });
+
+  document.addEventListener("drop", (event) => {
+    const row = event.target.closest(".category-edit-row");
+    if (!row) return;
+    event.preventDefault();
+    const fromIndex = Number(event.dataTransfer.getData("text/plain"));
+    const toIndex = Number(row.dataset.index);
+    if (fromIndex !== toIndex && !Number.isNaN(fromIndex) && !Number.isNaN(toIndex)) {
+      const groups = getShortcutGroups();
+      const [movedGroup] = groups.splice(fromIndex, 1);
+      groups.splice(toIndex, 0, movedGroup);
+      settings = normalizeSettings({ ...settings, shortcutGroups: groups });
+      saveSettings();
+      applySettings();
+      renderGroupEditor();
     }
   });
 }
 
 // Bootstrap the page once DOM is ready.
 function init() {
+  /* Category Manager Addition: Load saved default view on page load */
+  if (settings.defaultView) {
+    activeShortcutGroup = settings.defaultView;
+  }
   populateSelect(elements.searchEngine, searchEngines);
   populateSelect(elements.defaultSearchSetting, searchEngines);
   populateSelect(elements.aiEngine, aiEngines);

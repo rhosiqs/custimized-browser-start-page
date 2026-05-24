@@ -1,2 +1,5 @@
 template_Gemini35pro
 homepageserver_review.md
+node_modules/
+package.json
+package-lock.json

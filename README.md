@@ -10,6 +10,16 @@ Open `index.html` in your browser and set it as your home page or new-tab replac
 - Shortcut matrix with favicon icons based on each shortcut URL.
 - Bold local time and fixed global time panel.
 - Settings drawer for theme, background, default engines, grid size, shortcuts, time zones, and import/export.
+- **Inline Category Manager**: Styled category editor within the settings drawer to create, delete, reorder (via drag-and-drop), rename, and set default categories on load. Features drag handles, tag icons, star toggles, and trash buttons.
+
+## Local Development & Testing
+
+To serve the start page locally:
+1. Run `npm install` to install dependencies (a lightweight static `http-server`).
+2. Run `npm run dev` to start the server.
+3. Open `http://localhost:8080` in your browser.
+
+*Note: The project remains entirely static. You can safely delete `package.json`, `package-lock.json`, and `node_modules` at any time, and the page will still function perfectly when opened directly in a browser.*
 
 ## Files
 

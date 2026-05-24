@@ -70,7 +70,9 @@
 
       <!-- Shortcuts with group tabs and grid -->
       <section class="shortcut-panel" id="shortcutPanel" aria-label="Shortcuts">
-        <div class="shortcut-group-bar" id="shortcutGroupBar" role="tablist" aria-label="Shortcut groups"></div>
+        <div class="shortcut-group-header">
+          <div class="shortcut-group-bar" id="shortcutGroupBar" role="tablist" aria-label="Shortcut groups"></div>
+        </div>
         <div class="shortcut-grid" id="shortcutGrid"></div>
       </section>
     </main>
@@ -201,8 +203,30 @@
               </select>
             </label>
           </div>
-          <div class="group-editor" id="groupEditor"></div>
-          <button class="text-button" id="addGroup" type="button">Add Group</button>
+          <!-- Inline Category Manager (replaces old group editor) -->
+          <div class="inline-category-manager">
+            <div class="create-category-container">
+              <button class="create-category-btn" id="addGroup" type="button">
+                <span class="plus-icon">+</span> CREATE CATEGORY
+              </button>
+            </div>
+            <div class="modal-note-box">
+              <p class="modal-note-text">
+                <span class="note-badge">Note</span> Drag the <span class="drag-handle-char">⋮</span> handle to reorder. The toolbar will follow this order. Categories without any websites won't appear in the toolbar. Tap the <span class="star-char">☆</span> icon to set a category as your default view on load (currently: <span id="currentDefaultCategoryText">All</span>).
+              </p>
+            </div>
+            <div class="categories-section-header">
+              <h3 class="categories-section-title">
+                Categories
+                <svg class="categories-tag-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+                  <line x1="7" y1="7" x2="7.01" y2="7" stroke-width="3" />
+                </svg>
+                <span class="custom-count-label" id="customCategoriesCount">(0/5 custom)</span>
+              </h3>
+            </div>
+            <div class="category-list-scrollable" id="groupEditor"></div>
+          </div>
           <div class="shortcut-editor" id="shortcutEditor"></div>
           <button class="text-button" id="addShortcut" type="button">Add Shortcut</button>
         </section>
@@ -243,6 +267,8 @@
         </section>
       </div>
     </aside>
+
+
 
     <!-- Alignment guides used in layout edit mode -->
     <div class="layout-guides" id="layoutGuides" aria-hidden="true">
