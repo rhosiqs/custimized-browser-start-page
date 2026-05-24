@@ -297,6 +297,8 @@ const defaultSettings = {
     worldClock: { x: 0, y: 0 },
     settingsButton: { x: 0, y: 0 }
   },
+  // Modified: migration flag for layout coordinates reset
+  layoutAlignedV1: true,
   backgroundType: "solid",
   backgroundValue: "#080b10",
   defaultSearch: "bing",
@@ -399,6 +401,18 @@ const elements = {
 function loadSettings() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    // Modified: reset stored drag positions if they were saved before the desktop layout absolute header update.
+    if (saved && saved.elementPositions && !saved.layoutAlignedV1) {
+      saved.elementPositions = {
+        clock: { x: 0, y: 0 },
+        search: { x: 0, y: 0 },
+        shortcuts: { x: 0, y: 0 },
+        worldClock: { x: 0, y: 0 },
+        settingsButton: { x: 0, y: 0 }
+      };
+      saved.layoutAlignedV1 = true;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+    }
     return normalizeSettings({ ...defaultSettings, ...saved });
   } catch {
     return normalizeSettings(defaultSettings);

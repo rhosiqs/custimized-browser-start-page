@@ -162,6 +162,24 @@ body.theme-light select {
   padding: var(--page-pad) var(--page-pad) 0;
 }
 
+/* Modified: absolute page header and start-page top alignment on desktop to align search region to top of clock */
+@media (min-width: 721px) {
+  .page-header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .page-header > * {
+    pointer-events: auto;
+  }
+  body .start-page {
+    padding-top: var(--page-pad);
+  }
+}
+
 /* Edit mode visual affordances for draggable items */
 .edit-mode .draggable {
   cursor: grab;

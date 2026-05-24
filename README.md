@@ -29,6 +29,7 @@ To serve the start page locally:
 
 ## Notes
 
+- **Desktop Layout Alignment**: The page header containing the local clock has been positioned absolutely on desktop viewports (widths > 720px) to prevent it from pushing the main content downwards. The top of the search stack and shortcuts panel now aligns with the top edge of the clock card by default.
 - Settings are saved in browser `localStorage`.
 - AI prompts are copied to the clipboard when possible before the target AI page opens.
 - Google AI Mode uses the current `udm=50` Google Search URL pattern.
