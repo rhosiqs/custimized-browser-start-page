@@ -4,11 +4,227 @@ const STORAGE_KEY = "custom-start-page-settings-v1";
 const HISTORY_STORAGE_KEY = "custom-start-page-history-v1";
 // Intent: keep suggestions fresh while avoiding runaway storage growth.
 const HISTORY_LIMIT = 24;
-const SUGGESTION_LIMIT = 6;
+const SUGGESTION_LIMIT = 8;
 // Decision: Datamuse provides CORS-friendly suggestions without API keys.
 const SUGGESTION_API_TEMPLATE = "https://api.datamuse.com/sug?s={query}";
-const SUGGESTION_MIN_CHARS = 1;
+const SUGGESTION_MIN_CHARS = 2;
 const SUGGESTION_DEBOUNCE_MS = 140;
+const PREDICTION_LIMIT = 3;
+
+// Intent: lightweight next-word prediction tables for offline chip + ghost UI.
+// Assumption: words are stored in lowercase for fast matching and consistent output.
+const BIGRAM_TABLE = {
+  this: ["is", "was", "will"],
+  how: ["to", "can", "do"],
+  what: ["is", "are", "does"],
+  where: ["is", "to", "can"],
+  when: ["is", "does", "will"],
+  who: ["is", "was", "are"],
+  why: ["is", "does", "do"],
+  i: ["am", "want", "need"],
+  you: ["are", "can", "should"],
+  we: ["are", "can", "should"],
+  they: ["are", "were", "can"],
+  can: ["you", "we", "i"],
+  learn: ["more", "to", "about"],
+  best: ["way", "tools", "practices"],
+  machine: ["learning", "vision", "translation"],
+  data: ["science", "analysis", "visualization"],
+  web: ["development", "design", "apps"],
+  open: ["source", "ai", "data"],
+  search: ["engine", "tips", "tools"],
+  ai: ["tools", "models", "prompts"],
+  github: ["copilot", "actions", "pages"],
+  google: ["search", "maps", "ai"],
+  python: ["tutorial", "examples", "guide"],
+  javascript: ["tutorial", "tips", "basics"],
+  react: ["tutorial", "hooks", "components"],
+  css: ["grid", "flexbox", "animations"],
+  node: ["js", "tutorial", "api"]
+};
+
+const TRIGRAM_TABLE = {
+  "how to": ["make", "build", "learn"],
+  "what is": ["the", "ai", "best"],
+  "where is": ["the", "my", "best"],
+  "when is": ["the", "next", "my"],
+  "who is": ["the", "best", "a"],
+  "this is": ["a", "the", "not"],
+  "machine learning": ["model", "course", "tutorial"],
+  "data science": ["course", "jobs", "salary"],
+  "open source": ["projects", "tools", "ai"],
+  "large language": ["model", "models", "api"],
+  "best way": ["to", "for", "forward"],
+  "learn to": ["code", "cook", "invest"],
+  "react hooks": ["tutorial", "guide", "examples"],
+  "css grid": ["tutorial", "layout", "guide"],
+  "github copilot": ["review", "pricing", "extensions"],
+  "google search": ["console", "tips", "operators"]
+};
+
+// Added: local suggestion corpus adapted from the reference search-prediction prototype.
+// Intent: provide broad offline matches instead of only matching a few hardcoded prefixes.
+const LOCAL_SUGGESTIONS = [
+  "this is for you",
+  "this is us",
+  "this is me",
+  "this is fine",
+  "this is america",
+  "this is where i leave you",
+  "this too shall pass",
+  "this is paris",
+  "this is not a test",
+  "this is never that",
+  "this is halloween",
+  "this is 40",
+  "this is spinal tap",
+  "that is correct",
+  "that sounds good",
+  "that 70s show",
+  "how to make money",
+  "how to lose weight",
+  "how to learn javascript",
+  "how to meditate",
+  "how to draw",
+  "how to invest",
+  "how to start a business",
+  "how to write a resume",
+  "how to cook pasta",
+  "what is ai",
+  "what is machine learning",
+  "what is the best",
+  "what is love",
+  "what is blockchain",
+  "what is chatgpt",
+  "what is python",
+  "what is typescript",
+  "best movies 2024",
+  "best restaurants near me",
+  "best practices javascript",
+  "best way to learn",
+  "best budget laptop",
+  "best vpn service",
+  "best free tools",
+  "why is the sky blue",
+  "why do we dream",
+  "why is sleep important",
+  "where is the nearest",
+  "where to buy",
+  "where is my order",
+  "where to travel",
+  "when does daylight saving end",
+  "when is thanksgiving 2024",
+  "who invented the internet",
+  "who is the richest person",
+  "hello world program",
+  "hello world python",
+  "hello world javascript",
+  "hello world in c",
+  "hello world react",
+  "hello kitty",
+  "hello fresh recipes",
+  "world war 2 timeline",
+  "world population 2024",
+  "world cup 2026",
+  "world map countries",
+  "world history timeline",
+  "world news today",
+  "learn javascript free",
+  "learn python for beginners",
+  "learn to code",
+  "learn spanish fast",
+  "learn guitar online",
+  "learn web development",
+  "learn machine learning",
+  "learn react tutorial",
+  "learn css grid",
+  "code editor online",
+  "code examples",
+  "code formatter",
+  "code review checklist",
+  "python tutorial for beginners",
+  "python data science",
+  "python machine learning",
+  "python vs javascript",
+  "python web scraping",
+  "python flask tutorial",
+  "python django tutorial",
+  "python pandas tutorial",
+  "machine learning tutorial",
+  "machine learning course",
+  "machine learning jobs",
+  "deep learning paper",
+  "deep learning framework",
+  "open source projects",
+  "open source ai tools",
+  "open source software",
+  "data science roadmap",
+  "data science course",
+  "data science salary",
+  "natural language processing",
+  "large language model",
+  "large language model tutorial",
+  "javascript async await",
+  "javascript promises",
+  "javascript frameworks 2024",
+  "react vs vue",
+  "react hooks tutorial",
+  "react native tutorial",
+  "css grid tutorial",
+  "css flexbox guide",
+  "css animations",
+  "html5 features",
+  "html email template",
+  "html css javascript course",
+  "node js tutorial",
+  "node js rest api",
+  "node js vs python",
+  "typescript tutorial",
+  "typescript vs javascript",
+  "typescript best practices",
+  "github actions tutorial",
+  "github copilot review",
+  "github pages hosting",
+  "docker tutorial",
+  "docker compose example",
+  "docker vs kubernetes",
+  "aws lambda tutorial",
+  "aws s3 tutorial",
+  "openai api tutorial",
+  "openai playground",
+  "tailwind css tutorial",
+  "next js tutorial",
+  "next js deployment",
+  "google maps api",
+  "google analytics setup",
+  "google search console",
+  "weather today",
+  "weather forecast",
+  "news today",
+  "news latest",
+  "time zone converter",
+  "translate english to spanish",
+  "currency converter usd to eur",
+  "stock price apple",
+  "bitcoin price today",
+  "recipe for banana bread",
+  "recipe for chocolate cake",
+  "youtube to mp3",
+  "youtube downloader",
+  "netflix shows 2024",
+  "amazon return policy",
+  "iphone 16 review",
+  "iphone vs android",
+  "chatgpt login",
+  "chatgpt plus price",
+  "chatgpt vs gemini",
+  "claude ai features",
+  "claude vs chatgpt",
+  "claude api pricing",
+  "ai tools for work",
+  "ai prompts for writing",
+  "google search tips"
+];
 
 // Web search engine catalog.
 const searchEngines = {
@@ -133,6 +349,10 @@ const elements = {
   aiInput: document.getElementById("aiInput"),
   searchSuggestions: document.getElementById("searchSuggestions"),
   aiSuggestions: document.getElementById("aiSuggestions"),
+  searchPredictions: document.getElementById("searchPredictions"),
+  aiPredictions: document.getElementById("aiPredictions"),
+  searchGhost: document.getElementById("searchGhost"),
+  aiGhost: document.getElementById("aiGhost"),
   searchEngine: document.getElementById("searchEngine"),
   aiEngine: document.getElementById("aiEngine"),
   shortcutGroupBar: document.getElementById("shortcutGroupBar"),
@@ -291,6 +511,32 @@ function getQuerySuggestions(kind, query) {
   return list.filter((item) => item.toLowerCase().includes(cleanQuery)).slice(0, SUGGESTION_LIMIT);
 }
 
+// Added: reference-style local matcher: prefix, word-prefix, then substring fallback.
+function getLocalSuggestionMatches(query) {
+  const cleanQuery = String(query || "").trim().toLowerCase();
+  if (!cleanQuery) return [];
+  const prefixMatches = [];
+  const wordMatches = [];
+  const substringMatches = [];
+
+  LOCAL_SUGGESTIONS.forEach((item) => {
+    const normalized = item.toLowerCase();
+    if (normalized.startsWith(cleanQuery)) {
+      prefixMatches.push(item);
+      return;
+    }
+    if (normalized.split(/\s+/).some((word) => word.startsWith(cleanQuery))) {
+      wordMatches.push(item);
+      return;
+    }
+    if (normalized.includes(cleanQuery)) {
+      substringMatches.push(item);
+    }
+  });
+
+  return [...prefixMatches, ...wordMatches, ...substringMatches].slice(0, SUGGESTION_LIMIT);
+}
+
 function mergeSuggestions(primary, secondary) {
   const combined = [];
   const seen = new Set();
@@ -315,6 +561,156 @@ async function fetchRemoteSuggestions(query, signal) {
   return (Array.isArray(payload) ? payload : [])
     .map((entry) => String(entry?.word || "").trim())
     .filter(Boolean);
+}
+
+// Intent: derive next-word predictions for chip/ghost UI using trigram→bigram back-off.
+function getPredictions(text) {
+  const raw = String(text || "");
+  const endsWithSpace = /\s$/.test(raw);
+  const tokens = raw.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (!tokens.length) return [];
+
+  const completed = endsWithSpace ? tokens : tokens.slice(0, -1);
+  const partial = endsWithSpace ? "" : tokens[tokens.length - 1] || "";
+
+  let candidates = [];
+  if (endsWithSpace) {
+    if (completed.length >= 2) {
+      candidates = TRIGRAM_TABLE[completed.slice(-2).join(" ")] || [];
+    }
+    if (!candidates.length && completed.length) {
+      candidates = BIGRAM_TABLE[completed.slice(-1)[0]] || [];
+    }
+    return candidates.slice(0, PREDICTION_LIMIT);
+  }
+
+  if (!completed.length) return [];
+  if (completed.length >= 2) {
+    candidates = TRIGRAM_TABLE[completed.slice(-2).join(" ")] || [];
+  }
+  if (!candidates.length) {
+    candidates = BIGRAM_TABLE[completed.slice(-1)[0]] || [];
+  }
+  if (!candidates.length) return [];
+
+  // Guardrail: only return words that continue the partial token.
+  return candidates.filter((word) => word.startsWith(partial)).slice(0, PREDICTION_LIMIT);
+}
+
+// Intent: splice a prediction into the current input while preserving word boundaries.
+function buildPredictionValue(text, prediction) {
+  const raw = String(text || "");
+  const endsWithSpace = /\s$/.test(raw);
+  const trimmed = raw.replace(/\s+$/, "");
+  const tokens = trimmed.trim().split(/\s+/).filter(Boolean);
+
+  if (!tokens.length) return prediction;
+  if (endsWithSpace) {
+    return `${trimmed} ${prediction}`.trim();
+  }
+
+  const base = tokens.slice(0, -1).join(" ");
+  return base ? `${base} ${prediction}` : prediction;
+}
+
+function shouldShowGhost(text, prediction) {
+  if (!prediction) return false;
+  const raw = String(text || "");
+  if (!raw.trim()) return false;
+  if (/\s$/.test(raw)) return true;
+  const partial = raw.trim().split(/\s+/).pop() || "";
+  return prediction.toLowerCase().startsWith(partial.toLowerCase());
+}
+
+// Intent: wire prediction chips + ghost text to a single input field.
+function wirePredictionController({ input, chips, ghost }) {
+  if (!input || !chips || !ghost) return;
+  let predictions = [];
+
+  function renderChips() {
+    chips.innerHTML = "";
+    if (!predictions.length) {
+      chips.hidden = true;
+      return;
+    }
+
+    const fragment = document.createDocumentFragment();
+    predictions.forEach((word, index) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "prediction-chip";
+      button.dataset.index = String(index);
+      button.textContent = word;
+      fragment.appendChild(button);
+      if (index < predictions.length - 1) {
+        const divider = document.createElement("span");
+        divider.className = "prediction-divider";
+        divider.textContent = "•";
+        fragment.appendChild(divider);
+      }
+    });
+    chips.appendChild(fragment);
+    chips.hidden = false;
+  }
+
+  function renderGhost() {
+    const primary = predictions[0];
+    if (!shouldShowGhost(input.value, primary)) {
+      ghost.textContent = "";
+      ghost.hidden = true;
+      return;
+    }
+    ghost.textContent = buildPredictionValue(input.value, primary);
+    ghost.hidden = false;
+  }
+
+  function refresh() {
+    predictions = getPredictions(input.value);
+    renderChips();
+    renderGhost();
+  }
+
+  function applyPrediction(index = 0) {
+    const value = predictions[index];
+    if (!value) return;
+    const nextValue = buildPredictionValue(input.value, value);
+    input.value = nextValue;
+    input.setSelectionRange(nextValue.length, nextValue.length);
+    refresh();
+  }
+
+  input.addEventListener("input", refresh);
+  input.addEventListener("focus", refresh);
+  input.addEventListener("blur", () => {
+    // Guardrail: delay hiding so clicks on chips still register.
+    window.setTimeout(() => {
+      chips.hidden = true;
+      ghost.hidden = true;
+    }, 120);
+  });
+
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Tab" && predictions.length) {
+      event.preventDefault();
+      applyPrediction(0);
+    }
+    if (event.key === "Escape") {
+      chips.hidden = true;
+      ghost.hidden = true;
+    }
+  });
+
+  chips.addEventListener("mousedown", (event) => {
+    event.preventDefault();
+  });
+
+  chips.addEventListener("click", (event) => {
+    const button = event.target.closest(".prediction-chip");
+    if (!button) return;
+    const index = Number(button.dataset.index);
+    if (Number.isNaN(index)) return;
+    applyPrediction(index);
+  });
 }
 
 // Color, group, and layout normalization helpers.
@@ -950,6 +1346,68 @@ function wireSuggestionController({ input, list, kind, onSelect }) {
     input.removeAttribute("aria-activedescendant");
   }
 
+  // Added: build the Google-style prediction row shown in the requested reference.
+  function appendSuggestionIcon(option) {
+    const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    icon.classList.add("suggestion-icon");
+    icon.setAttribute("viewBox", "0 0 24 24");
+    icon.setAttribute("aria-hidden", "true");
+
+    const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    circle.setAttribute("cx", "11");
+    circle.setAttribute("cy", "11");
+    circle.setAttribute("r", "7");
+    circle.setAttribute("fill", "none");
+    circle.setAttribute("stroke", "currentColor");
+    circle.setAttribute("stroke-width", "2");
+
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line.setAttribute("x1", "16.5");
+    line.setAttribute("y1", "16.5");
+    line.setAttribute("x2", "21");
+    line.setAttribute("y2", "21");
+    line.setAttribute("stroke", "currentColor");
+    line.setAttribute("stroke-width", "2");
+    line.setAttribute("stroke-linecap", "round");
+
+    icon.append(circle, line);
+    option.appendChild(icon);
+  }
+
+  // Added: mirror the reference highlighting: bold completion for prefixes, or the matched text inside a result.
+  function appendSuggestionLabel(option, value) {
+    const label = document.createElement("span");
+    label.className = "suggestion-label";
+
+    const query = input.value.trim();
+    const lowerValue = value.toLowerCase();
+    const lowerQuery = query.toLowerCase();
+    if (query && lowerValue.startsWith(lowerQuery)) {
+      label.append(document.createTextNode(value.slice(0, query.length)));
+      const completion = document.createElement("strong");
+      completion.className = "suggestion-completion";
+      completion.textContent = value.slice(query.length);
+      label.appendChild(completion);
+    } else {
+      const matchIndex = lowerQuery ? lowerValue.indexOf(lowerQuery) : -1;
+      if (matchIndex >= 0) {
+        label.append(document.createTextNode(value.slice(0, matchIndex)));
+        const match = document.createElement("strong");
+        match.className = "suggestion-completion";
+        match.textContent = value.slice(matchIndex, matchIndex + query.length);
+        label.appendChild(match);
+        label.append(document.createTextNode(value.slice(matchIndex + query.length)));
+      } else {
+        const completion = document.createElement("strong");
+        completion.className = "suggestion-completion";
+        completion.textContent = value;
+        label.appendChild(completion);
+      }
+    }
+
+    option.appendChild(label);
+  }
+
   function renderList() {
     list.innerHTML = "";
     if (!items.length) {
@@ -966,8 +1424,10 @@ function wireSuggestionController({ input, list, kind, onSelect }) {
       option.role = "option";
       option.id = `${list.id}-option-${index}`;
       option.dataset.index = String(index);
-      option.textContent = item;
       option.setAttribute("aria-selected", index === activeIndex ? "true" : "false");
+      // Modified: render prediction rows with icon + highlighted completion instead of plain text.
+      appendSuggestionIcon(option);
+      appendSuggestionLabel(option, item);
       if (index === activeIndex) {
         option.classList.add("is-active");
         input.setAttribute("aria-activedescendant", option.id);
@@ -988,8 +1448,10 @@ function wireSuggestionController({ input, list, kind, onSelect }) {
     }
 
     const currentRequest = (requestId += 1);
+    // Modified: show reference-style local matches first so any common word can open the dropdown.
+    const localDatasetMatches = getLocalSuggestionMatches(cleanQuery);
     const localMatches = getQuerySuggestions(kind, cleanQuery);
-    items = localMatches;
+    items = mergeSuggestions(localDatasetMatches, localMatches).slice(0, SUGGESTION_LIMIT);
     activeIndex = -1;
     renderList();
 
@@ -1007,7 +1469,8 @@ function wireSuggestionController({ input, list, kind, onSelect }) {
     }
 
     if (currentRequest !== requestId) return;
-    items = mergeSuggestions(localMatches, remoteMatches).slice(0, SUGGESTION_LIMIT);
+    // Modified: keep local dataset matches ahead of history and remote autocomplete matches.
+    items = mergeSuggestions(mergeSuggestions(localDatasetMatches, localMatches), remoteMatches).slice(0, SUGGESTION_LIMIT);
     activeIndex = -1;
     renderList();
   }
@@ -1461,6 +1924,18 @@ function wireEvents() {
       recordQueryHistory("ai", value);
       openQuery(engine, value);
     }
+  });
+
+  wirePredictionController({
+    input: elements.searchInput,
+    chips: elements.searchPredictions,
+    ghost: elements.searchGhost
+  });
+
+  wirePredictionController({
+    input: elements.aiInput,
+    chips: elements.aiPredictions,
+    ghost: elements.aiGhost
   });
 
   elements.searchEngine.addEventListener("change", () => updateSetting("defaultSearch", elements.searchEngine.value));

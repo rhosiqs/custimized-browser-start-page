@@ -38,8 +38,9 @@
               aria-expanded="false"
               aria-controls="searchSuggestions"
             />
-            <div class="suggestions" id="searchSuggestions" role="listbox" aria-label="Search suggestions" hidden></div>
           </div>
+          <!-- Modified: row-level dropdown spans the full search bar like browser search predictions. -->
+          <div class="suggestions" id="searchSuggestions" role="listbox" aria-label="Search suggestions" hidden></div>
         </form>
 
         <!-- AI query row -->
@@ -61,8 +62,9 @@
               aria-expanded="false"
               aria-controls="aiSuggestions"
             />
-            <div class="suggestions" id="aiSuggestions" role="listbox" aria-label="AI suggestions" hidden></div>
           </div>
+          <!-- Modified: row-level dropdown can stack above shortcuts instead of being trapped in the input column. -->
+          <div class="suggestions" id="aiSuggestions" role="listbox" aria-label="AI suggestions" hidden></div>
         </form>
       </section>
 
