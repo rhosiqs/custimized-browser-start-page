@@ -189,6 +189,30 @@
           </div>
         </section>
 
+        <!-- Global clock settings -->
+        <section class="settings-section">
+          <h3>Global Time</h3>
+          <label>
+            Clock format
+            <select id="clockFormatSetting">
+              <option value="24">24H</option>
+              <option value="12">12H</option>
+            </select>
+          </label>
+          <label>
+            Show seconds
+            <select id="showSecondsSetting">
+              <option value="true">On</option>
+              <option value="false">Off</option>
+            </select>
+          </label>
+          <label>
+            Time zones
+            <select id="timeZoneSelect"></select>
+          </label>
+          <div class="time-zone-selected" id="timeZonesSetting"></div>
+        </section>
+
         <!-- Shortcut layout, groups, and editor -->
         <section class="settings-section settings-section--wide">
           <h3>Shortcuts</h3>
@@ -237,30 +261,6 @@
           </div>
           <div class="shortcut-editor" id="shortcutEditor"></div>
           <button class="text-button" id="addShortcut" type="button">Add Shortcut</button>
-        </section>
-
-        <!-- Global clock settings -->
-        <section class="settings-section">
-          <h3>Global Time</h3>
-          <label>
-            Clock format
-            <select id="clockFormatSetting">
-              <option value="24">24H</option>
-              <option value="12">12H</option>
-            </select>
-          </label>
-          <label>
-            Show seconds
-            <select id="showSecondsSetting">
-              <option value="true">On</option>
-              <option value="false">Off</option>
-            </select>
-          </label>
-          <label>
-            Time zones
-            <select id="timeZoneSelect"></select>
-          </label>
-          <div class="time-zone-selected" id="timeZonesSetting"></div>
         </section>
 
         <!-- Import, export, and reset tools -->
