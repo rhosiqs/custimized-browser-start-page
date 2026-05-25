@@ -49,6 +49,10 @@ body {
   overflow-x: hidden;
 }
 
+body.settings-open {
+  overflow: hidden;
+}
+
 /* Background overlay for contrast */
 body::before {
   content: "";
@@ -790,29 +794,32 @@ body.theme-light select {
   backdrop-filter: blur(3px);
 }
 
-/* Full-screen settings drawer */
+/* Centered settings drawer pop-out block */
 .settings-drawer {
   position: fixed;
-  top: 0;
-  right: 0;
-  left: 0;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -46%) scale(0.96);
   z-index: 21;
-  width: 100vw;
-  height: 100vh;
+  width: min(1020px, 95vw);
+  max-height: min(88vh, 800px);
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto 1fr auto;
   color: var(--text);
   background: var(--bg-panel-strong);
-  border-left: 0;
-  box-shadow: none;
-  transform: translateX(100%);
-  transition: transform 180ms ease;
-  backdrop-filter: blur(18px);
-  grid-template-rows: auto 1fr auto;
+  border: 1px solid color-mix(in srgb, var(--line), transparent 10%);
+  border-radius: var(--radius);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(24px);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 220ms cubic-bezier(0.34, 1.3, 0.64, 1), opacity 220ms ease;
 }
 
 .settings-drawer.open {
-  transform: translateX(0);
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 1;
+  pointer-events: auto;
 }
 
 /* Settings drawer header */
@@ -821,7 +828,7 @@ body.theme-light select {
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  padding: 22px;
+  padding: 20px 24px;
   border-bottom: 1px solid var(--line);
 }
 
@@ -834,16 +841,19 @@ body.theme-light select {
   font-size: 1.25rem;
 }
 
-/* Settings layout grid */
+/* Settings layout - 3-column row layout on larger viewports */
 .settings-content {
   overflow-y: auto;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 24px;
-  align-content: start;
-  padding: 10px clamp(20px, 4vw, 56px) 36px;
-  max-width: 1200px;
-  margin: 0 auto;
+  grid-template-columns: 1fr;
+  gap: 20px;
+  padding: 20px clamp(16px, 4vw, 32px) 36px;
+}
+
+@media (min-width: 900px) {
+  .settings-content {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 /* Settings sticky action footer */
@@ -852,7 +862,7 @@ body.theme-light select {
   align-items: center;
   justify-content: flex-end;
   gap: 12px;
-  padding: 14px clamp(20px, 4vw, 56px);
+  padding: 14px clamp(16px, 4vw, 32px);
   border-top: 1px solid var(--line);
   background: var(--bg-panel-strong);
   backdrop-filter: blur(18px);
@@ -922,18 +932,18 @@ body.theme-light select {
   font-size: 1rem;
 }
 
-/* Form grid for settings fields */
+/* Form grid for settings fields - display side-by-side inside cards */
 .field-grid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 14px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px 14px;
 }
 
 /* Label typography */
 .settings-section label {
   display: grid;
-  gap: 7px;
-  margin-bottom: 14px;
+  gap: 6px;
+  margin-bottom: 10px;
   color: var(--muted);
   font-size: 0.8rem;
   font-weight: 800;

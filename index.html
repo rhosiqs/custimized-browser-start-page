@@ -150,28 +150,30 @@
             <button class="text-button" id="saveLayout" type="button">Save💾</button>
             <button class="text-button danger" id="discardLayout" type="button">Discard🗘</button>
           </div>
-          <label>
-            Background
-            <select id="backgroundTypeSetting">
-              <option value="solid">Solid</option>
-              <option value="gradient">Gradient</option>
-              <option value="image">Image URL</option>
-            </select>
-          </label>
-          <label>
-            Background color / value
-            <div class="color-entry">
-              <input id="backgroundColorSetting" type="color" aria-label="Background color picker" />
-              <input id="backgroundValueSetting" type="text" spellcheck="false" placeholder="#080b10" />
-            </div>
-          </label>
-          <label>
-            Accent color
-            <div class="color-entry">
-              <input id="accentSetting" type="color" aria-label="Accent color picker" />
-              <input id="accentTextSetting" type="text" spellcheck="false" placeholder="#34d399" />
-            </div>
-          </label>
+          <div class="field-grid" style="margin-top: 14px;">
+            <label>
+              Background
+              <select id="backgroundTypeSetting">
+                <option value="solid">Solid</option>
+                <option value="gradient">Gradient</option>
+                <option value="image">Image URL</option>
+              </select>
+            </label>
+            <label>
+              Background color / value
+              <div class="color-entry">
+                <input id="backgroundColorSetting" type="color" aria-label="Background color picker" />
+                <input id="backgroundValueSetting" type="text" spellcheck="false" placeholder="#080b10" />
+              </div>
+            </label>
+            <label style="grid-column: span 2;">
+              Accent color
+              <div class="color-entry">
+                <input id="accentSetting" type="color" aria-label="Accent color picker" />
+                <input id="accentTextSetting" type="text" spellcheck="false" placeholder="#34d399" />
+              </div>
+            </label>
+          </div>
         </section>
 
         <!-- Default search engines -->
@@ -192,24 +194,26 @@
         <!-- Global clock settings -->
         <section class="settings-section">
           <h3>Global Time</h3>
-          <label>
-            Clock format
-            <select id="clockFormatSetting">
-              <option value="24">24H</option>
-              <option value="12">12H</option>
-            </select>
-          </label>
-          <label>
-            Show seconds
-            <select id="showSecondsSetting">
-              <option value="true">On</option>
-              <option value="false">Off</option>
-            </select>
-          </label>
-          <label>
-            Time zones
-            <select id="timeZoneSelect"></select>
-          </label>
+          <div class="field-grid">
+            <label>
+              Clock format
+              <select id="clockFormatSetting">
+                <option value="24">24H</option>
+                <option value="12">12H</option>
+              </select>
+            </label>
+            <label>
+              Show seconds
+              <select id="showSecondsSetting">
+                <option value="true">On</option>
+                <option value="false">Off</option>
+              </select>
+            </label>
+            <label style="grid-column: span 2;">
+              Time zones
+              <select id="timeZoneSelect"></select>
+            </label>
+          </div>
           <div class="time-zone-selected" id="timeZonesSetting"></div>
         </section>
 

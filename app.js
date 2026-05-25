@@ -2446,6 +2446,7 @@ function openSettings() {
   elements.drawer.classList.add("open");
   elements.drawer.setAttribute("aria-hidden", "false");
   elements.backdrop.hidden = false;
+  document.body.classList.add("settings-open");
 }
 
 function closeSettings() {
@@ -2453,6 +2454,7 @@ function closeSettings() {
   elements.drawer.setAttribute("aria-hidden", "true");
   elements.backdrop.hidden = true;
   settingsSnapshot = null;
+  document.body.classList.remove("settings-open");
 }
 
 // Save current settings (already live-saved) and close the drawer.
