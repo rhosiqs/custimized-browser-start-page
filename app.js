@@ -397,10 +397,16 @@ const elements = {
   addGroup: document.getElementById("addGroup"),
   timeZoneSelect: document.getElementById("timeZoneSelect"),
   timeZonesSetting: document.getElementById("timeZonesSetting"),
-  exportSettings: document.getElementById("exportSettings"),
-  importSettings: document.getElementById("importSettings"),
+  exportFormat: document.getElementById("exportFormat"),
+  importFormat: document.getElementById("importFormat"),
+  exportSaveFile: document.getElementById("exportSaveFile"),
+  exportCopy: document.getElementById("exportCopy"),
+  importLoadFile: document.getElementById("importLoadFile"),
+  importPaste: document.getElementById("importPaste"),
+  importFileInput: document.getElementById("importFileInput"),
   resetSettings: document.getElementById("resetSettings"),
   settingsJson: document.getElementById("settingsJson"),
+  toastContainer: document.getElementById("toastContainer"),
   saveSettingsExit: document.getElementById("saveSettingsExit"),
   discardSettings: document.getElementById("discardSettings"),
   /* Category Manager Addition: Inline elements (rendered into groupEditor) */
@@ -839,6 +845,526 @@ function clonePositions(value) {
 // Persist the current settings snapshot.
 function saveSettings() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+}
+
+// ==========================================
+// Multi-format serialization / deserialization
+// ==========================================
+
+// --- JSON ---
+function settingsToJson(obj) {
+  return JSON.stringify(obj, null, 2);
+}
+
+function settingsFromJson(text) {
+  return JSON.parse(text);
+}
+
+// --- YAML (lightweight, handles flat + shallow-nested objects and arrays) ---
+function settingsToYaml(obj) {
+  const lines = [];
+  function serializeValue(value, indent) {
+    if (value === null || value === undefined) return `${indent}null`;
+    if (typeof value === "boolean") return `${indent}${value}`;
+    if (typeof value === "number") return `${indent}${value}`;
+    if (typeof value === "string") {
+      // Quote strings that could be misinterpreted as booleans/numbers or contain special chars
+      if (/^(true|false|null|~|[-+]?\d+\.?\d*([eE][-+]?\d+)?|0[xXoObB][0-9a-fA-F]+)$/i.test(value)
+          || /[:#\[\]{}&*!|>'"`,@]/.test(value)
+          || value.includes("\n") || value === "" || value.startsWith(" ") || value.endsWith(" ")) {
+        return `${indent}${JSON.stringify(value)}`;
+      }
+      return `${indent}${value}`;
+    }
+    return `${indent}${JSON.stringify(value)}`;
+  }
+
+  function serializeObject(obj, indent) {
+    const keys = Object.keys(obj);
+    keys.forEach((key) => {
+      const value = obj[key];
+      if (Array.isArray(value)) {
+        lines.push(`${indent}${key}:`);
+        value.forEach((item) => {
+          if (item !== null && typeof item === "object" && !Array.isArray(item)) {
+            // Array of objects: use block sequence mapping
+            const subKeys = Object.keys(item);
+            subKeys.forEach((sk, si) => {
+              const prefix = si === 0 ? `${indent}  - ` : `${indent}    `;
+              lines.push(`${prefix}${sk}: ${serializeValue(item[sk], "").trim()}`);
+            });
+          } else {
+            lines.push(`${indent}  - ${serializeValue(item, "").trim()}`);
+          }
+        });
+      } else if (value !== null && typeof value === "object") {
+        lines.push(`${indent}${key}:`);
+        serializeObject(value, indent + "  ");
+      } else {
+        lines.push(`${indent}${key}: ${serializeValue(value, "").trim()}`);
+      }
+    });
+  }
+
+  serializeObject(obj, "");
+  return lines.join("\n");
+}
+
+function settingsFromYaml(text) {
+  const lines = text.split(/\r?\n/);
+  const result = {};
+  const stack = [{ obj: result, indent: -1 }];
+  let currentArray = null;
+  let currentArrayKey = null;
+  let currentArrayIndent = -1;
+
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    if (!raw.trim() || raw.trim().startsWith("#")) continue;
+
+    const lineIndent = raw.search(/\S/);
+    const trimmed = raw.trim();
+
+    // Array item (starts with "- ")
+    if (trimmed.startsWith("- ")) {
+      const itemContent = trimmed.slice(2).trim();
+      // Check if it's a key: value pair (object in array)
+      const kvMatch = itemContent.match(/^([^:]+?):\s*(.*)$/);
+      if (kvMatch && currentArrayKey) {
+        const arrObj = {};
+        arrObj[kvMatch[1].trim()] = parseYamlValue(kvMatch[2].trim());
+        // Peek ahead for continuation lines of same object
+        const itemIndent = raw.indexOf("- ");
+        for (let j = i + 1; j < lines.length; j++) {
+          const nextRaw = lines[j];
+          if (!nextRaw.trim() || nextRaw.trim().startsWith("#")) continue;
+          const nextIndent = nextRaw.search(/\S/);
+          if (nextIndent <= itemIndent || nextRaw.trim().startsWith("- ")) break;
+          const nextKv = nextRaw.trim().match(/^([^:]+?):\s*(.*)$/);
+          if (nextKv) {
+            arrObj[nextKv[1].trim()] = parseYamlValue(nextKv[2].trim());
+            i = j;
+          } else break;
+        }
+        const parent = findParentForKey(stack, currentArrayKey);
+        if (parent && Array.isArray(parent[currentArrayKey])) {
+          parent[currentArrayKey].push(arrObj);
+        }
+      } else if (currentArrayKey) {
+        const parent = findParentForKey(stack, currentArrayKey);
+        if (parent && Array.isArray(parent[currentArrayKey])) {
+          parent[currentArrayKey].push(parseYamlValue(itemContent));
+        }
+      }
+      continue;
+    }
+
+    // Key: value pair
+    const kvMatch = trimmed.match(/^([^:]+?):\s*(.*)$/);
+    if (kvMatch) {
+      const key = kvMatch[1].trim();
+      const valStr = kvMatch[2].trim();
+
+      // Pop stack to correct parent based on indent
+      while (stack.length > 1 && stack[stack.length - 1].indent >= lineIndent) {
+        stack.pop();
+      }
+      const parent = stack[stack.length - 1].obj;
+
+      if (valStr === "" || valStr === undefined) {
+        // Could be a nested object or array — peek ahead
+        const nextLine = findNextNonEmptyLine(lines, i + 1);
+        if (nextLine && nextLine.trim().startsWith("- ")) {
+          // It's an array
+          parent[key] = [];
+          currentArrayKey = key;
+          currentArrayIndent = lineIndent;
+        } else {
+          // It's a nested object
+          parent[key] = {};
+          stack.push({ obj: parent[key], indent: lineIndent });
+          currentArrayKey = null;
+        }
+      } else {
+        parent[key] = parseYamlValue(valStr);
+        currentArrayKey = null;
+      }
+    }
+  }
+
+  return result;
+}
+
+function findParentForKey(stack, key) {
+  for (let i = stack.length - 1; i >= 0; i--) {
+    if (key in stack[i].obj) return stack[i].obj;
+  }
+  return stack[0].obj;
+}
+
+function findNextNonEmptyLine(lines, startIdx) {
+  for (let i = startIdx; i < lines.length; i++) {
+    if (lines[i].trim()) return lines[i];
+  }
+  return null;
+}
+
+function parseYamlValue(str) {
+  if (str === "" || str === "null" || str === "~") return null;
+  if (str === "true") return true;
+  if (str === "false") return false;
+  // Quoted strings
+  if ((str.startsWith('"') && str.endsWith('"')) || (str.startsWith("'") && str.endsWith("'"))) {
+    try { return JSON.parse(str); } catch { return str.slice(1, -1); }
+  }
+  // Numbers
+  if (/^[-+]?\d+$/.test(str)) return parseInt(str, 10);
+  if (/^[-+]?\d*\.\d+$/.test(str)) return parseFloat(str);
+  return str;
+}
+
+// --- TOML (lightweight, handles flat + shallow-nested objects and arrays) ---
+function settingsToToml(obj) {
+  const lines = [];
+  const deferred = []; // sections and array-of-tables go after flat keys
+
+  Object.keys(obj).forEach((key) => {
+    const value = obj[key];
+    if (Array.isArray(value)) {
+      // Check if it's an array of objects (use [[key]]) or array of primitives (inline)
+      if (value.length > 0 && value.every((v) => v !== null && typeof v === "object" && !Array.isArray(v))) {
+        // Array of tables
+        value.forEach((item) => {
+          deferred.push("");
+          deferred.push(`[[${key}]]`);
+          Object.keys(item).forEach((sk) => {
+            deferred.push(`${sk} = ${tomlValue(item[sk])}`);
+          });
+        });
+      } else {
+        // Inline array
+        lines.push(`${key} = [${value.map(tomlValue).join(", ")}]`);
+      }
+    } else if (value !== null && typeof value === "object") {
+      // Table section
+      deferred.push("");
+      deferred.push(`[${key}]`);
+      Object.keys(value).forEach((sk) => {
+        const sv = value[sk];
+        if (sv !== null && typeof sv === "object" && !Array.isArray(sv)) {
+          // Nested table (e.g., elementPositions.clock)
+          deferred.push("");
+          deferred.push(`[${key}.${sk}]`);
+          Object.keys(sv).forEach((ssk) => {
+            deferred.push(`${ssk} = ${tomlValue(sv[ssk])}`);
+          });
+        } else {
+          deferred.push(`${sk} = ${tomlValue(sv)}`);
+        }
+      });
+    } else {
+      lines.push(`${key} = ${tomlValue(value)}`);
+    }
+  });
+
+  return [...lines, ...deferred].join("\n");
+}
+
+function tomlValue(value) {
+  if (value === null || value === undefined) return '""';
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (typeof value === "number") return String(value);
+  if (typeof value === "string") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(tomlValue).join(", ")}]`;
+  return JSON.stringify(String(value));
+}
+
+function settingsFromToml(text) {
+  const result = {};
+  const lines = text.split(/\r?\n/);
+  let currentSection = null;     // e.g. "elementPositions"
+  let currentSubSection = null;  // e.g. "elementPositions.clock"
+  let currentArrayTable = null;  // e.g. "shortcuts"
+
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+
+    // Array of tables: [[key]]
+    const arrTableMatch = trimmed.match(/^\[\[([^\]]+)\]\]$/);
+    if (arrTableMatch) {
+      const tableName = arrTableMatch[1].trim();
+      if (!Array.isArray(result[tableName])) result[tableName] = [];
+      const entry = {};
+      result[tableName].push(entry);
+      currentArrayTable = tableName;
+      currentSection = null;
+      currentSubSection = null;
+      continue;
+    }
+
+    // Table section: [key] or [key.subkey]
+    const tableMatch = trimmed.match(/^\[([^\]]+)\]$/);
+    if (tableMatch) {
+      const tableName = tableMatch[1].trim();
+      currentArrayTable = null;
+      // Check for dotted key: [parent.child]
+      const dotIdx = tableName.indexOf(".");
+      if (dotIdx > 0) {
+        const parent = tableName.slice(0, dotIdx);
+        const child = tableName.slice(dotIdx + 1);
+        if (!result[parent] || typeof result[parent] !== "object") result[parent] = {};
+        result[parent][child] = {};
+        currentSection = parent;
+        currentSubSection = child;
+      } else {
+        if (!result[tableName] || typeof result[tableName] !== "object") result[tableName] = {};
+        currentSection = tableName;
+        currentSubSection = null;
+      }
+      continue;
+    }
+
+    // Key = value
+    const kvMatch = trimmed.match(/^([^=]+?)=(.*)$/);
+    if (kvMatch) {
+      const key = kvMatch[1].trim();
+      const valStr = kvMatch[2].trim();
+      const value = parseTomlValue(valStr);
+
+      if (currentArrayTable) {
+        // Add to the last entry in the array table
+        const arr = result[currentArrayTable];
+        if (arr.length > 0) arr[arr.length - 1][key] = value;
+      } else if (currentSubSection && currentSection) {
+        result[currentSection][currentSubSection][key] = value;
+      } else if (currentSection) {
+        result[currentSection][key] = value;
+      } else {
+        result[key] = value;
+      }
+    }
+  }
+
+  return result;
+}
+
+function parseTomlValue(str) {
+  const trimmed = str.trim();
+  if (trimmed === "true") return true;
+  if (trimmed === "false") return false;
+  // Quoted strings
+  if ((trimmed.startsWith('"') && trimmed.endsWith('"'))
+      || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+    try { return JSON.parse(trimmed); } catch { return trimmed.slice(1, -1); }
+  }
+  // Arrays
+  if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+    const inner = trimmed.slice(1, -1).trim();
+    if (!inner) return [];
+    // Split on commas, handling quoted strings
+    const items = [];
+    let current = "";
+    let inQuote = false;
+    let quoteChar = "";
+    for (let i = 0; i < inner.length; i++) {
+      const ch = inner[i];
+      if (inQuote) {
+        current += ch;
+        if (ch === quoteChar && inner[i - 1] !== "\\") inQuote = false;
+      } else if (ch === '"' || ch === "'") {
+        inQuote = true;
+        quoteChar = ch;
+        current += ch;
+      } else if (ch === ",") {
+        items.push(parseTomlValue(current.trim()));
+        current = "";
+      } else {
+        current += ch;
+      }
+    }
+    if (current.trim()) items.push(parseTomlValue(current.trim()));
+    return items;
+  }
+  // Numbers
+  if (/^[-+]?\d+$/.test(trimmed)) return parseInt(trimmed, 10);
+  if (/^[-+]?\d*\.\d+$/.test(trimmed)) return parseFloat(trimmed);
+  return trimmed;
+}
+
+// --- Plain Text (human-readable key=value, dot-notation for nesting) ---
+function settingsToText(obj) {
+  const lines = [];
+
+  function flatten(prefix, value) {
+    if (Array.isArray(value)) {
+      if (value.length > 0 && value.every((v) => v !== null && typeof v === "object" && !Array.isArray(v))) {
+        // Array of objects: emit indexed entries
+        value.forEach((item, idx) => {
+          Object.keys(item).forEach((k) => {
+            lines.push(`${prefix}[${idx}].${k} = ${primitiveToText(item[k])}`);
+          });
+        });
+      } else {
+        // Primitive array: comma-separated
+        lines.push(`${prefix} = ${value.map(primitiveToText).join(", ")}`);
+      }
+    } else if (value !== null && typeof value === "object") {
+      Object.keys(value).forEach((k) => {
+        flatten(prefix ? `${prefix}.${k}` : k, value[k]);
+      });
+    } else {
+      lines.push(`${prefix} = ${primitiveToText(value)}`);
+    }
+  }
+
+  flatten("", obj);
+  return lines.join("\n");
+}
+
+function primitiveToText(value) {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string") return value;
+  return String(value);
+}
+
+function settingsFromText(text) {
+  const result = {};
+  const lines = text.split(/\r?\n/);
+  const arrayEntries = {}; // Track array[idx].key patterns
+
+  lines.forEach((raw) => {
+    const trimmed = raw.trim();
+    if (!trimmed || trimmed.startsWith("#") || trimmed.startsWith("//")) return;
+
+    const eqIdx = trimmed.indexOf("=");
+    if (eqIdx < 0) return;
+
+    const key = trimmed.slice(0, eqIdx).trim();
+    const valStr = trimmed.slice(eqIdx + 1).trim();
+
+    // Check for indexed array pattern: shortcuts[0].title
+    const arrMatch = key.match(/^(.+?)\[(\d+)\]\.(.+)$/);
+    if (arrMatch) {
+      const arrKey = arrMatch[1];
+      const idx = parseInt(arrMatch[2], 10);
+      const prop = arrMatch[3];
+      if (!arrayEntries[arrKey]) arrayEntries[arrKey] = {};
+      if (!arrayEntries[arrKey][idx]) arrayEntries[arrKey][idx] = {};
+      arrayEntries[arrKey][idx][prop] = textToValue(valStr);
+      return;
+    }
+
+    // Dot-notation path
+    const parts = key.split(".");
+    let target = result;
+    for (let i = 0; i < parts.length - 1; i++) {
+      if (!target[parts[i]] || typeof target[parts[i]] !== "object") {
+        target[parts[i]] = {};
+      }
+      target = target[parts[i]];
+    }
+    const lastPart = parts[parts.length - 1];
+
+    // Check for comma-separated values (primitive arrays)
+    if (valStr.includes(",") && !valStr.startsWith('"')) {
+      const items = valStr.split(",").map((s) => textToValue(s.trim()));
+      target[lastPart] = items;
+    } else {
+      target[lastPart] = textToValue(valStr);
+    }
+  });
+
+  // Convert indexed array entries into actual arrays
+  Object.keys(arrayEntries).forEach((arrKey) => {
+    const entries = arrayEntries[arrKey];
+    const maxIdx = Math.max(...Object.keys(entries).map(Number));
+    const arr = [];
+    for (let i = 0; i <= maxIdx; i++) {
+      arr.push(entries[i] || {});
+    }
+    // Set on result using dot path if needed
+    const parts = arrKey.split(".");
+    let target = result;
+    for (let i = 0; i < parts.length - 1; i++) {
+      if (!target[parts[i]]) target[parts[i]] = {};
+      target = target[parts[i]];
+    }
+    target[parts[parts.length - 1]] = arr;
+  });
+
+  return result;
+}
+
+function textToValue(str) {
+  if (str === "" || str === "null") return null;
+  if (str === "true") return true;
+  if (str === "false") return false;
+  if (/^[-+]?\d+$/.test(str)) return parseInt(str, 10);
+  if (/^[-+]?\d*\.\d+$/.test(str)) return parseFloat(str);
+  return str;
+}
+
+// --- Format dispatcher ---
+const FORMAT_META = {
+  json: { ext: "json", mime: "application/json", label: "JSON" },
+  yaml: { ext: "yaml", mime: "text/yaml", label: "YAML" },
+  toml: { ext: "toml", mime: "application/toml", label: "TOML" },
+  text: { ext: "txt", mime: "text/plain", label: "Plain Text" }
+};
+
+function serializeSettings(obj, format) {
+  switch (format) {
+    case "yaml": return settingsToYaml(obj);
+    case "toml": return settingsToToml(obj);
+    case "text": return settingsToText(obj);
+    default: return settingsToJson(obj);
+  }
+}
+
+function deserializeSettings(text, format) {
+  switch (format) {
+    case "yaml": return settingsFromYaml(text);
+    case "toml": return settingsFromToml(text);
+    case "text": return settingsFromText(text);
+    default: return settingsFromJson(text);
+  }
+}
+
+// --- File download helper ---
+function downloadFile(content, filename, mimeType) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  URL.revokeObjectURL(url);
+}
+
+// --- Toast notification helper ---
+function showToast(message, type = "info") {
+  const container = document.getElementById("toastContainer");
+  if (!container) return;
+
+  const icons = {
+    success: '<svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+    error: '<svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+    info: '<svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'
+  };
+
+  const toast = document.createElement("div");
+  toast.className = `toast toast--${type}`;
+  toast.innerHTML = `${icons[type] || icons.info}<span>${message}</span>`;
+  container.appendChild(toast);
+
+  // Auto-dismiss after 2.6 seconds
+  setTimeout(() => {
+    toast.classList.add("toast-out");
+    toast.addEventListener("animationend", () => toast.remove(), { once: true });
+  }, 2600);
 }
 
 // Clamp numeric settings to valid bounds.
@@ -2586,26 +3112,105 @@ function wireEvents() {
     applySettings();
   });
 
-  elements.exportSettings.addEventListener("click", () => {
-    elements.settingsJson.value = JSON.stringify(settings, null, 2);
-    elements.settingsJson.focus();
-  });
+  // --- Multi-format export handlers ---
 
-  elements.importSettings.addEventListener("click", () => {
-    if (!elements.settingsJson.value.trim()) return;
+  // Sync file input accept attribute when import format changes
+  function updateFileAccept() {
+    const fmt = elements.importFormat.value;
+    const meta = FORMAT_META[fmt] || FORMAT_META.json;
+    elements.importFileInput.accept = `.${meta.ext},${meta.mime}`;
+  }
+  elements.importFormat.addEventListener("change", updateFileAccept);
+  updateFileAccept();
+
+  // Export → Save File
+  elements.exportSaveFile.addEventListener("click", () => {
     try {
-      settings = normalizeSettings(JSON.parse(elements.settingsJson.value));
-      saveSettings();
-      applySettings();
-    } catch {
-      elements.settingsJson.value = "Invalid JSON. Please check the imported settings.";
+      const fmt = elements.exportFormat.value;
+      const meta = FORMAT_META[fmt] || FORMAT_META.json;
+      const content = serializeSettings(settings, fmt);
+      elements.settingsJson.value = content;
+      downloadFile(content, `start-page-settings.${meta.ext}`, meta.mime);
+      showToast(`Settings saved as ${meta.label} file`, "success");
+    } catch (err) {
+      showToast(`Export failed: ${err.message}`, "error");
     }
   });
 
+  // Export → Copy to clipboard
+  elements.exportCopy.addEventListener("click", async () => {
+    try {
+      const fmt = elements.exportFormat.value;
+      const meta = FORMAT_META[fmt] || FORMAT_META.json;
+      const content = serializeSettings(settings, fmt);
+      elements.settingsJson.value = content;
+      await navigator.clipboard.writeText(content);
+      showToast(`${meta.label} copied to clipboard`, "success");
+    } catch (err) {
+      // Fallback: select textarea for manual copy
+      elements.settingsJson.select();
+      showToast("Select and copy manually (clipboard unavailable)", "info");
+    }
+  });
+
+  // Import → Load File
+  elements.importLoadFile.addEventListener("click", () => {
+    elements.importFileInput.click();
+  });
+
+  elements.importFileInput.addEventListener("change", (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const fmt = elements.importFormat.value;
+        const meta = FORMAT_META[fmt] || FORMAT_META.json;
+        const text = reader.result;
+        elements.settingsJson.value = text;
+        const parsed = deserializeSettings(text, fmt);
+        settings = normalizeSettings(parsed);
+        saveSettings();
+        applySettings();
+        showToast(`Settings imported from ${meta.label} file`, "success");
+      } catch (err) {
+        showToast(`Invalid ${FORMAT_META[elements.importFormat.value]?.label || "file"}: ${err.message}`, "error");
+      }
+    };
+    reader.onerror = () => {
+      showToast("Failed to read file", "error");
+    };
+    reader.readAsText(file);
+    // Reset so the same file can be re-imported
+    event.target.value = "";
+  });
+
+  // Import → Paste & Import from textarea
+  elements.importPaste.addEventListener("click", () => {
+    const text = elements.settingsJson.value.trim();
+    if (!text) {
+      showToast("Paste settings into the text area first", "info");
+      return;
+    }
+    try {
+      const fmt = elements.importFormat.value;
+      const meta = FORMAT_META[fmt] || FORMAT_META.json;
+      const parsed = deserializeSettings(text, fmt);
+      settings = normalizeSettings(parsed);
+      saveSettings();
+      applySettings();
+      showToast(`Settings imported from ${meta.label}`, "success");
+    } catch (err) {
+      showToast(`Invalid ${FORMAT_META[elements.importFormat.value]?.label || "data"}: ${err.message}`, "error");
+    }
+  });
+
+  // Reset all settings
   elements.resetSettings.addEventListener("click", () => {
     settings = normalizeSettings(defaultSettings);
     saveSettings();
     applySettings();
+    showToast("Settings reset to defaults", "info");
   });
 
   document.addEventListener("keydown", (event) => {
