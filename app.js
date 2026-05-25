@@ -326,6 +326,8 @@ const defaultSettings = {
 
 // Mutable runtime state.
 let settings = loadSettings();
+// Snapshot of settings captured when the drawer opens, used by Discard.
+let settingsSnapshot = null;
 let queryHistory = loadQueryHistory();
 let editorRenderQueued = false;
 let shortcutPointerDrag = null;
@@ -392,6 +394,8 @@ const elements = {
   importSettings: document.getElementById("importSettings"),
   resetSettings: document.getElementById("resetSettings"),
   settingsJson: document.getElementById("settingsJson"),
+  saveSettingsExit: document.getElementById("saveSettingsExit"),
+  discardSettings: document.getElementById("discardSettings"),
   /* Category Manager Addition: Inline elements (rendered into groupEditor) */
   currentDefaultCategoryText: document.getElementById("currentDefaultCategoryText"),
   customCategoriesCount: document.getElementById("customCategoriesCount")
@@ -1827,6 +1831,8 @@ function formatZoneTime(zone, date) {
 
 // Drawer open/close helpers.
 function openSettings() {
+  // Snapshot current settings so Discard can restore them.
+  settingsSnapshot = JSON.parse(JSON.stringify(settings));
   elements.drawer.classList.add("open");
   elements.drawer.setAttribute("aria-hidden", "false");
   elements.backdrop.hidden = false;
@@ -1836,6 +1842,23 @@ function closeSettings() {
   elements.drawer.classList.remove("open");
   elements.drawer.setAttribute("aria-hidden", "true");
   elements.backdrop.hidden = true;
+  settingsSnapshot = null;
+}
+
+// Save current settings (already live-saved) and close the drawer.
+function saveAndExitSettings() {
+  saveSettings();
+  closeSettings();
+}
+
+// Restore the snapshot captured when the drawer was opened, then close.
+function discardSettingsChanges() {
+  if (settingsSnapshot) {
+    settings = normalizeSettings(settingsSnapshot);
+    saveSettings();
+    applySettings();
+  }
+  closeSettings();
 }
 
 // Update a single setting and re-render.
@@ -2059,8 +2082,10 @@ function wireEvents() {
   elements.searchEngine.addEventListener("change", () => updateSetting("defaultSearch", elements.searchEngine.value));
   elements.aiEngine.addEventListener("change", () => updateSetting("defaultAi", elements.aiEngine.value));
   elements.settingsButton.addEventListener("click", openSettings);
-  elements.closeSettings.addEventListener("click", closeSettings);
-  elements.backdrop.addEventListener("click", closeSettings);
+  elements.closeSettings.addEventListener("click", discardSettingsChanges);
+  elements.backdrop.addEventListener("click", discardSettingsChanges);
+  elements.saveSettingsExit?.addEventListener("click", saveAndExitSettings);
+  elements.discardSettings?.addEventListener("click", discardSettingsChanges);
 
   elements.drawer.addEventListener("input", handleSettingsInput);
   elements.drawer.addEventListener("change", handleSettingsInput);
@@ -2371,7 +2396,7 @@ function wireEvents() {
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
-      closeSettings();
+      discardSettingsChanges();
     }
     if (event.key === "/" && document.activeElement === document.body) {
       event.preventDefault();

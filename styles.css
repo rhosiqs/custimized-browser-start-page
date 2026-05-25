@@ -799,6 +799,7 @@ body.theme-light select {
   transform: translateX(100%);
   transition: transform 180ms ease;
   backdrop-filter: blur(18px);
+  grid-template-rows: auto 1fr auto;
 }
 
 .settings-drawer.open {
@@ -834,6 +835,64 @@ body.theme-light select {
   padding: 10px clamp(20px, 4vw, 56px) 36px;
   max-width: 1200px;
   margin: 0 auto;
+}
+
+/* Settings sticky action footer */
+.settings-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 14px clamp(20px, 4vw, 56px);
+  border-top: 1px solid var(--line);
+  background: var(--bg-panel-strong);
+  backdrop-filter: blur(18px);
+}
+
+/* Discard button */
+.settings-discard-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger), transparent 55%);
+  background: color-mix(in srgb, var(--danger), transparent 90%);
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    transform 120ms ease;
+}
+
+.settings-discard-btn:hover {
+  background: color-mix(in srgb, var(--danger), transparent 80%);
+  border-color: color-mix(in srgb, var(--danger), transparent 28%);
+  transform: translateY(-1px);
+}
+
+/* Save & Exit button */
+.settings-save-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #fff;
+  background: var(--accent);
+  border-color: transparent;
+  box-shadow: 0 4px 18px color-mix(in srgb, var(--accent), transparent 55%);
+  transition:
+    background 160ms ease,
+    box-shadow 160ms ease,
+    transform 120ms ease;
+}
+
+.settings-save-btn:hover {
+  background: color-mix(in srgb, var(--accent), #000 12%);
+  box-shadow: 0 6px 22px color-mix(in srgb, var(--accent), transparent 40%);
+  transform: translateY(-1px);
+}
+
+.settings-save-btn:active,
+.settings-discard-btn:active {
+  transform: translateY(0);
 }
 
 /* Settings section card */
