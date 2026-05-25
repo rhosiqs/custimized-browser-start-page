@@ -304,11 +304,20 @@ body.theme-light select {
   position: relative;
   display: inline-block;
   margin: 0;
-  /* Modified: reduced padding-left/right from 0.34em to 0.26em to shrink the extra empty horizontal spacing */
-  padding: 0 0.26em;
+  padding: 0;
   font-size: clamp(2.2rem, 6vw, 4.5rem);
   line-height: 0.92;
   font-weight: 900;
+}
+
+/* Add padding on the left if AM/PM indicator is present to prevent overlap */
+.clock-card h1:has(.day-period) {
+  padding-left: 0.55em;
+}
+
+/* Add padding on the right if seconds indicator is present to prevent overlap */
+.clock-card h1:has(.clock-seconds) {
+  padding-right: 0.44em;
 }
 
 /* Main time digits */
@@ -319,7 +328,7 @@ body.theme-light select {
 /* AM/PM suffix placement */
 .day-period {
   position: absolute;
-  left: 0;
+  left: 0.05em;
   font-size: 0.2em;
   line-height: 1;
 }
@@ -335,7 +344,7 @@ body.theme-light select {
 /* Optional seconds display */
 .clock-seconds {
   position: absolute;
-  right: 0;
+  right: 0.05em;
   bottom: 0.02em;
   font-size: 0.24em;
   line-height: 1;
