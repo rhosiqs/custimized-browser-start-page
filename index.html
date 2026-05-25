@@ -72,6 +72,13 @@
       <section class="shortcut-panel" id="shortcutPanel" aria-label="Shortcuts">
         <div class="shortcut-group-header">
           <div class="shortcut-group-bar" id="shortcutGroupBar" role="tablist" aria-label="Shortcut groups"></div>
+          <button class="shortcut-edit-mode-btn" id="shortcutEditModeBtn" type="button" aria-label="Toggle shortcut edit mode" title="Edit shortcuts">
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+            Edit
+          </button>
         </div>
         <div class="shortcut-grid" id="shortcutGrid"></div>
       </section>
@@ -291,6 +298,58 @@
       <span class="guide-line horizontal h25"></span>
       <span class="guide-line horizontal h50"></span>
       <span class="guide-line horizontal h75"></span>
+    </div>
+
+    <!-- Inline shortcut edit popover -->
+    <div class="shortcut-edit-popover" id="shortcutEditPopover" hidden aria-modal="true" role="dialog" aria-label="Edit shortcut">
+      <div class="shortcut-edit-popover-content">
+        <div class="shortcut-edit-popover-header">
+          <span class="shortcut-edit-popover-title">Edit Shortcut</span>
+          <button class="shortcut-edit-popover-close" id="shortcutEditPopoverClose" type="button" aria-label="Close">
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="shortcut-edit-popover-body">
+          <label class="shortcut-edit-popover-label">
+            Name
+            <input class="shortcut-edit-popover-input" id="shortcutEditName" type="text" placeholder="Shortcut name" autocomplete="off" spellcheck="false" />
+          </label>
+          <label class="shortcut-edit-popover-label">
+            URL
+            <input class="shortcut-edit-popover-input" id="shortcutEditUrl" type="url" placeholder="https://example.com" autocomplete="off" spellcheck="false" />
+          </label>
+          <label class="shortcut-edit-popover-label">
+            Group
+            <input class="shortcut-edit-popover-input" id="shortcutEditGroup" type="text" placeholder="Group name" autocomplete="off" spellcheck="false" />
+          </label>
+        </div>
+        <div class="shortcut-edit-popover-footer">
+          <button class="shortcut-edit-popover-delete" id="shortcutEditDelete" type="button">Delete</button>
+          <button class="shortcut-edit-popover-save" id="shortcutEditSave" type="button">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Group tab rename popover -->
+    <div class="group-rename-popover" id="groupRenamePopover" hidden aria-modal="true" role="dialog" aria-label="Rename group">
+      <div class="group-rename-popover-content">
+        <div class="group-rename-popover-header">
+          <span class="group-rename-popover-title">Rename Group</span>
+          <button class="shortcut-edit-popover-close" id="groupRenamePopoverClose" type="button" aria-label="Close">
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="group-rename-popover-body">
+          <label class="shortcut-edit-popover-label">
+            Group Name
+            <input class="shortcut-edit-popover-input" id="groupRenameInput" type="text" placeholder="Group name" autocomplete="off" spellcheck="false" />
+          </label>
+        </div>
+        <div class="shortcut-edit-popover-footer">
+          <button class="shortcut-edit-popover-delete" id="groupRenameDelete" type="button">Delete Group</button>
+          <button class="shortcut-edit-popover-save" id="groupRenameSave" type="button">Save</button>
+        </div>
+      </div>
     </div>
 
     <!-- App logic -->

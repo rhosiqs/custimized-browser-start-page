@@ -11,6 +11,7 @@ Open `index.html` in your browser and set it as your home page or new-tab replac
 - Bold local time and fixed global time panel.
 - Settings drawer for theme, background, default engines, grid size, shortcuts, time zones, and import/export.
 - **Inline Category Manager**: Styled category editor within the settings drawer to create, delete, reorder (via drag-and-drop), rename, and set default categories on load. Features drag handles, tag icons, star toggles, and trash buttons.
+- **Inline Shortcut Editor & Arranger**: Toggle "Edit Shortcuts" directly on the page to edit shortcut titles/URLs, delete them, or rename/delete group tabs. When edit mode is active, shortcut tiles can be grabbed and dragged to reorder/arrange them directly within the grid in real-time.
 
 ## Local Development & Testing
 

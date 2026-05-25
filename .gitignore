@@ -1,6 +1,28 @@
+# Dependency directories
+node_modules/
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# IDEs and editors
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Log files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Project specific ignores
 template_Gemini35pro
 homepageserver_review.md
-node_modules/
 package.json
 package-lock.json
 todo_or_modify.md

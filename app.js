@@ -337,6 +337,12 @@ let activeShortcutGroup = "All";
 let layoutDrag = null;
 let suppressLayoutClick = false;
 let layoutDraftPositions = null;
+// Intent: tracks whether the inline shortcut edit mode is active.
+let shortcutInlineEditMode = false;
+// Tracks which shortcut index is currently being edited in the popover.
+let editingShortcutIndex = -1;
+// Tracks which group is being renamed in the group rename popover.
+let editingGroupName = "";
 
 // DOM element references used throughout the UI.
 const elements = {
@@ -399,7 +405,22 @@ const elements = {
   discardSettings: document.getElementById("discardSettings"),
   /* Category Manager Addition: Inline elements (rendered into groupEditor) */
   currentDefaultCategoryText: document.getElementById("currentDefaultCategoryText"),
-  customCategoriesCount: document.getElementById("customCategoriesCount")
+  customCategoriesCount: document.getElementById("customCategoriesCount"),
+  /* Inline shortcut edit mode */
+  shortcutEditModeBtn: document.getElementById("shortcutEditModeBtn"),
+  shortcutEditPopover: document.getElementById("shortcutEditPopover"),
+  shortcutEditPopoverClose: document.getElementById("shortcutEditPopoverClose"),
+  shortcutEditName: document.getElementById("shortcutEditName"),
+  shortcutEditUrl: document.getElementById("shortcutEditUrl"),
+  shortcutEditGroup: document.getElementById("shortcutEditGroup"),
+  shortcutEditSave: document.getElementById("shortcutEditSave"),
+  shortcutEditDelete: document.getElementById("shortcutEditDelete"),
+  /* Group rename popover */
+  groupRenamePopover: document.getElementById("groupRenamePopover"),
+  groupRenamePopoverClose: document.getElementById("groupRenamePopoverClose"),
+  groupRenameInput: document.getElementById("groupRenameInput"),
+  groupRenameSave: document.getElementById("groupRenameSave"),
+  groupRenameDelete: document.getElementById("groupRenameDelete")
 };
 
 // Load settings from localStorage and normalize to a safe shape.
@@ -922,16 +943,47 @@ function renderShortcutGroups() {
   }
   elements.shortcutGroupBar.innerHTML = "";
   groups.forEach((group) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "group-button";
-    if (group === activeShortcutGroup) button.classList.add("is-active");
-    button.dataset.group = group;
-    button.textContent = group;
-    button.setAttribute("role", "tab");
-    button.setAttribute("aria-selected", String(group === activeShortcutGroup));
-    elements.shortcutGroupBar.appendChild(button);
+    // In inline edit mode, each non-All tab gets a rename button.
+    if (shortcutInlineEditMode && group !== "All") {
+      const wrap = document.createElement("div");
+      wrap.className = "group-tab-edit-wrap";
+
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "group-button";
+      if (group === activeShortcutGroup) button.classList.add("is-active");
+      button.dataset.group = group;
+      button.textContent = group;
+      button.setAttribute("role", "tab");
+      button.setAttribute("aria-selected", String(group === activeShortcutGroup));
+
+      const penBtn = document.createElement("button");
+      penBtn.type = "button";
+      penBtn.className = "group-tab-pen-btn";
+      penBtn.dataset.renameGroup = group;
+      penBtn.title = `Rename group "${group}"`;
+      penBtn.setAttribute("aria-label", `Rename group "${group}"`);
+      penBtn.innerHTML = `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+
+      wrap.append(button, penBtn);
+      elements.shortcutGroupBar.appendChild(wrap);
+    } else {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "group-button";
+      if (group === activeShortcutGroup) button.classList.add("is-active");
+      button.dataset.group = group;
+      button.textContent = group;
+      button.setAttribute("role", "tab");
+      button.setAttribute("aria-selected", String(group === activeShortcutGroup));
+      elements.shortcutGroupBar.appendChild(button);
+    }
   });
+
+  // Update the edit button appearance
+  if (elements.shortcutEditModeBtn) {
+    elements.shortcutEditModeBtn.classList.toggle("is-active", shortcutInlineEditMode);
+  }
 }
 
 // Render the editable shortcut group list inside settings.
@@ -1340,7 +1392,8 @@ function renderShortcuts() {
     tile.className = "shortcut-tile";
     tile.href = shortcut.url;
     tile.title = shortcut.url;
-    tile.draggable = isAllGroups;
+    // Allow drag when in edit mode (any group) or in "All" group when not in edit mode
+    tile.draggable = shortcutInlineEditMode || (isAllGroups && !shortcutInlineEditMode);
     tile.dataset.index = String(entry.index);
     tile.style.setProperty("--tile-color", shortcut.color || settings.accent);
 
@@ -1361,10 +1414,24 @@ function renderShortcuts() {
     title.textContent = shortcut.title;
 
     tile.append(icon, title);
+
+    // In inline edit mode, show a pen icon in the top-right corner of each tile.
+    if (shortcutInlineEditMode) {
+      const penBtn = document.createElement("button");
+      penBtn.type = "button";
+      penBtn.className = "shortcut-tile-pen";
+      penBtn.dataset.editIndex = String(entry.index);
+      penBtn.title = `Edit "${shortcut.title}"`;
+      penBtn.setAttribute("aria-label", `Edit shortcut "${shortcut.title}"`);
+      penBtn.innerHTML = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+      tile.appendChild(penBtn);
+      tile.classList.add("has-edit-btn");
+    }
+
     elements.shortcutGrid.appendChild(tile);
   });
 
-  if (isAllGroups) {
+  if (isAllGroups && !shortcutInlineEditMode) {
     for (let i = visible.length; i < settings.shortcutSlots; i += 1) {
       const empty = document.createElement("button");
       empty.className = "shortcut-tile shortcut-empty";
@@ -1964,9 +2031,9 @@ function handleTimeZoneRemove(event) {
   );
 }
 
-// Reorder shortcuts within the "All" group.
+// Reorder shortcuts.
 function reorderShortcut(fromIndex, toIndex) {
-  if (activeShortcutGroup !== "All") return;
+  if (activeShortcutGroup !== "All" && !shortcutInlineEditMode) return;
   if (
     !Number.isInteger(fromIndex) ||
     !Number.isInteger(toIndex) ||
@@ -2045,6 +2112,126 @@ function handleShortcutEditorClick(event) {
   applySettings();
 }
 
+
+// Toggle the inline shortcut edit mode.
+function toggleShortcutInlineEditMode() {
+  shortcutInlineEditMode = !shortcutInlineEditMode;
+  closeShortcutEditPopover();
+  closeGroupRenamePopover();
+  renderShortcutGroups();
+  renderShortcuts();
+}
+
+// Open the shortcut edit popover for a specific shortcut index.
+function openShortcutEditPopover(index) {
+  const shortcut = settings.shortcuts[index];
+  if (!shortcut) return;
+  editingShortcutIndex = index;
+  elements.shortcutEditName.value = shortcut.title;
+  elements.shortcutEditUrl.value = shortcut.url;
+  elements.shortcutEditGroup.value = shortcut.group || getDefaultGroupName();
+  elements.shortcutEditPopover.hidden = false;
+  requestAnimationFrame(() => {
+    elements.shortcutEditPopover.classList.add("is-open");
+    elements.shortcutEditName.focus();
+    elements.shortcutEditName.select();
+  });
+}
+
+// Close the shortcut edit popover.
+function closeShortcutEditPopover() {
+  elements.shortcutEditPopover.classList.remove("is-open");
+  setTimeout(() => {
+    if (!elements.shortcutEditPopover.classList.contains("is-open")) {
+      elements.shortcutEditPopover.hidden = true;
+    }
+  }, 200);
+  editingShortcutIndex = -1;
+}
+
+// Save changes from the shortcut edit popover.
+function saveShortcutFromPopover() {
+  const index = editingShortcutIndex;
+  if (index < 0 || !settings.shortcuts[index]) {
+    closeShortcutEditPopover();
+    return;
+  }
+  const newTitle = elements.shortcutEditName.value.trim() || getHostname(elements.shortcutEditUrl.value) || "Shortcut";
+  const newUrl = normalizeUrl(elements.shortcutEditUrl.value.trim());
+  const newGroup = normalizeGroup(elements.shortcutEditGroup.value.trim(), getDefaultGroupName()) || getDefaultGroupName();
+  if (!newUrl) {
+    elements.shortcutEditUrl.focus();
+    return;
+  }
+  const nextShortcuts = [...settings.shortcuts];
+  nextShortcuts[index] = { ...nextShortcuts[index], title: newTitle, url: newUrl, group: newGroup };
+  const nextGroups = normalizeGroupList([...settings.shortcutGroups, newGroup], getDefaultGroupName());
+  settings = normalizeSettings({ ...settings, shortcuts: nextShortcuts, shortcutGroups: nextGroups });
+  saveSettings();
+  renderShortcutGroups();
+  renderGroupEditor();
+  renderShortcuts();
+  renderShortcutEditor();
+  closeShortcutEditPopover();
+}
+
+// Delete the shortcut currently open in the popover.
+function deleteShortcutFromPopover() {
+  const index = editingShortcutIndex;
+  if (index < 0 || !settings.shortcuts[index]) {
+    closeShortcutEditPopover();
+    return;
+  }
+  settings.shortcuts.splice(index, 1);
+  settings = normalizeSettings(settings);
+  saveSettings();
+  applySettings();
+  closeShortcutEditPopover();
+}
+
+// Open the group rename popover for the given group name.
+function openGroupRenamePopover(group) {
+  editingGroupName = group;
+  elements.groupRenameInput.value = group;
+  // Disable delete for the default group
+  elements.groupRenameDelete.disabled = group === settings.defaultGroupName;
+  elements.groupRenamePopover.hidden = false;
+  requestAnimationFrame(() => {
+    elements.groupRenamePopover.classList.add("is-open");
+    elements.groupRenameInput.focus();
+    elements.groupRenameInput.select();
+  });
+}
+
+// Close the group rename popover.
+function closeGroupRenamePopover() {
+  elements.groupRenamePopover.classList.remove("is-open");
+  setTimeout(() => {
+    if (!elements.groupRenamePopover.classList.contains("is-open")) {
+      elements.groupRenamePopover.hidden = true;
+    }
+  }, 200);
+  editingGroupName = "";
+}
+
+// Save the group rename from the popover.
+function saveGroupRenameFromPopover() {
+  const previousGroup = editingGroupName;
+  const nextGroup = normalizeGroup(elements.groupRenameInput.value.trim(), getDefaultGroupName()) || getDefaultGroupName();
+  closeGroupRenamePopover();
+  if (previousGroup && nextGroup && previousGroup !== nextGroup) {
+    handleCategoryManagerRename(previousGroup, nextGroup);
+  }
+}
+
+// Delete the group currently open in the rename popover.
+function deleteGroupFromPopover() {
+  const group = editingGroupName;
+  closeGroupRenamePopover();
+  if (group) {
+    handleCategoryManagerDelete(group);
+  }
+}
 
 // Wire up all DOM event listeners.
 function wireEvents() {
@@ -2279,7 +2466,12 @@ function wireEvents() {
   });
 
   elements.shortcutGrid.addEventListener("dragstart", (event) => {
-    if (activeShortcutGroup !== "All") return;
+    if (activeShortcutGroup !== "All" && !shortcutInlineEditMode) return;
+    // Don't drag if starting from the pen button
+    if (event.target.closest(".shortcut-tile-pen")) {
+      event.preventDefault();
+      return;
+    }
     const tile = event.target.closest(".shortcut-tile:not(.shortcut-empty)");
     if (!tile) return;
     event.dataTransfer.effectAllowed = "move";
@@ -2295,7 +2487,7 @@ function wireEvents() {
   });
 
   elements.shortcutGrid.addEventListener("dragover", (event) => {
-    if (activeShortcutGroup !== "All") return;
+    if (activeShortcutGroup !== "All" && !shortcutInlineEditMode) return;
     const tile = event.target.closest(".shortcut-tile:not(.shortcut-empty)");
     if (!tile) return;
     event.preventDefault();
@@ -2313,7 +2505,7 @@ function wireEvents() {
   });
 
   elements.shortcutGrid.addEventListener("drop", (event) => {
-    if (activeShortcutGroup !== "All") return;
+    if (activeShortcutGroup !== "All" && !shortcutInlineEditMode) return;
     const tile = event.target.closest(".shortcut-tile:not(.shortcut-empty)");
     if (!tile) return;
     event.preventDefault();
@@ -2331,7 +2523,9 @@ function wireEvents() {
   );
 
   elements.shortcutGrid.addEventListener("pointerdown", (event) => {
-    if (activeShortcutGroup !== "All") return;
+    if (activeShortcutGroup !== "All" && !shortcutInlineEditMode) return;
+    // Don't pointer-drag if starting from the pen button
+    if (event.target.closest(".shortcut-tile-pen")) return;
     const tile = event.target.closest(".shortcut-tile:not(.shortcut-empty)");
     if (!tile || event.pointerType === "mouse") return;
     shortcutPointerDrag = {
@@ -2416,6 +2610,9 @@ function wireEvents() {
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
+      // Intent: close popovers first, then fall back to discarding settings.
+      if (!elements.shortcutEditPopover.hidden) { closeShortcutEditPopover(); return; }
+      if (!elements.groupRenamePopover.hidden) { closeGroupRenamePopover(); return; }
       discardSettingsChanges();
     }
     if (event.key === "/" && document.activeElement === document.body) {
@@ -2476,6 +2673,60 @@ function wireEvents() {
       applySettings();
       renderGroupEditor();
     }
+  });
+
+  // ---- Inline Shortcut Edit Mode ----
+  elements.shortcutEditModeBtn?.addEventListener("click", toggleShortcutInlineEditMode);
+
+  // Delegate pen-icon clicks within the shortcut grid
+  elements.shortcutGrid.addEventListener("click", (event) => {
+    if (!shortcutInlineEditMode) return;
+    const penBtn = event.target.closest(".shortcut-tile-pen");
+    if (!penBtn) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const index = Number(penBtn.dataset.editIndex);
+    if (!Number.isNaN(index)) openShortcutEditPopover(index);
+  });
+
+  // Prevent navigating to shortcuts when inline edit mode is active
+  elements.shortcutGrid.addEventListener("click", (event) => {
+    if (!shortcutInlineEditMode) return;
+    const tile = event.target.closest(".shortcut-tile:not(.shortcut-empty)");
+    if (!tile || event.target.closest(".shortcut-tile-pen")) return;
+    event.preventDefault();
+  }, true);
+
+  // Shortcut edit popover controls
+  elements.shortcutEditPopoverClose?.addEventListener("click", closeShortcutEditPopover);
+  elements.shortcutEditSave?.addEventListener("click", saveShortcutFromPopover);
+  elements.shortcutEditDelete?.addEventListener("click", deleteShortcutFromPopover);
+  elements.shortcutEditName?.addEventListener("keydown", (e) => { if (e.key === "Enter") saveShortcutFromPopover(); });
+  elements.shortcutEditUrl?.addEventListener("keydown", (e) => { if (e.key === "Enter") saveShortcutFromPopover(); });
+  elements.shortcutEditGroup?.addEventListener("keydown", (e) => { if (e.key === "Enter") saveShortcutFromPopover(); });
+
+  // Close popover on backdrop click
+  elements.shortcutEditPopover?.addEventListener("click", (e) => {
+    if (e.target === elements.shortcutEditPopover) closeShortcutEditPopover();
+  });
+
+  // ---- Group Tab Rename Popover ----
+  elements.shortcutGroupBar?.addEventListener("click", (event) => {
+    if (!shortcutInlineEditMode) return;
+    const penBtn = event.target.closest("[data-rename-group]");
+    if (!penBtn) return;
+    event.stopPropagation();
+    openGroupRenamePopover(penBtn.dataset.renameGroup);
+  });
+
+  elements.groupRenamePopoverClose?.addEventListener("click", closeGroupRenamePopover);
+  elements.groupRenameSave?.addEventListener("click", saveGroupRenameFromPopover);
+  elements.groupRenameDelete?.addEventListener("click", deleteGroupFromPopover);
+  elements.groupRenameInput?.addEventListener("keydown", (e) => { if (e.key === "Enter") saveGroupRenameFromPopover(); });
+
+  // Close group rename popover on backdrop click
+  elements.groupRenamePopover?.addEventListener("click", (e) => {
+    if (e.target === elements.groupRenamePopover) closeGroupRenamePopover();
   });
 }
 
