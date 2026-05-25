@@ -1032,13 +1032,26 @@ body.theme-light select {
    Multi-format Export / Import UI
    ========================================== */
 
+/* Grid layout for side-by-side Export / Import rows */
+.data-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+@media (min-width: 768px) {
+  .data-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 /* Row layout for export and import controls */
 .export-import-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: start;
 }
 
 /* Label badge (Export / Import) */
@@ -1054,6 +1067,22 @@ body.theme-light select {
   border-radius: 6px;
   text-align: center;
   flex-shrink: 0;
+  margin-top: 6px;
+}
+
+/* Controls container (dropdown and buttons stacked vertically) */
+.export-import-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: start;
+}
+
+/* Horizontal button row */
+.export-import-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 /* Compact format dropdown */
@@ -1072,6 +1101,11 @@ body.theme-light select {
   transition: border-color 160ms ease;
   cursor: pointer;
   flex-shrink: 0;
+}
+
+.settings-section select.format-select {
+  width: 220px;
+  max-width: 100%;
 }
 
 .format-select:focus {
