@@ -4,6 +4,19 @@ A premium, static new-tab start page designed for fast navigation, time manageme
 
 ---
 
+## 🚀 Version 0.2.0 (New Engines & Integrations)
+
+- **Added Perplexity & Grok Integration**:
+  - Configured custom query routing parameters for both platforms (`https://www.perplexity.ai/?q={query}` and `https://grok.com/?q={query}`).
+  - Added new default shortcuts to the homepage search and tools panel with custom brand-colored tiles (Teal for Perplexity, Charcoal Gray for Grok).
+  - Integrated local suggestions for both services into the predictive autocomplete system (e.g., `grok vs chatgpt`, `perplexity search`).
+- **Added DuckDuckGo Search Engine**:
+  - Integrated DuckDuckGo query routing (`https://duckduckgo.com/?q={query}`) under the primary Web Search stack.
+  - Added a new brand-colored shortcut tile for DuckDuckGo (Orange, `#de5833`) inside the tools matrix.
+  - Extended suggestion query auto-completions with DuckDuckGo-related lookup items.
+
+---
+
 ## 🚀 Version 0.1.0 (New Features)
 
 This release focuses on bringing shortcut management and interface alignment directly to the main screen, bypassing the settings panel for a faster, more intuitive experience:
@@ -41,9 +54,9 @@ This release focuses on bringing shortcut management and interface alignment dir
 - **Dynamic Clock & Date**: Large, bold local time and date with optional seconds display.
 - **World Time Zones**: A side-panel listing global clocks showing configured GMT time zones.
 - **Unified Search Stack**:
-  - Clean web search bar (Bing by default, Google available).
+  - Clean web search bar (Bing by default, Google and DuckDuckGo available).
   - Search suggestions powered by local query history and Datamuse API autocomplete.
-  - AI Mode toggles: Direct clipboard copying and navigation to ChatGPT, Claude, Gemini, or Google AI Mode (`udm=50`).
+  - AI Mode toggles: Direct clipboard copying and navigation to ChatGPT, Claude, Gemini, Perplexity, Grok, or Google AI Mode (`udm=50`).
 - **Shortcut Grid Matrix**: Dynamically loads website favicons from Google Favicon API with initials fallback if the icon fails to load.
 - **Inline Category Manager**: Accessible via settings drawer to create, delete, reorder (via drag-and-drop handles), rename, and set default landing categories.
 - **Local Persistence & Data Migration**: All configurations are stored securely in browser `localStorage`. Includes a settings panel with multi-format Import/Export support (JSON, YAML, TOML, Plain Text) with file download, clipboard copy, and file upload options.

@@ -221,6 +221,12 @@ const LOCAL_SUGGESTIONS = [
   "claude ai features",
   "claude vs chatgpt",
   "claude api pricing",
+  "perplexity search",
+  "perplexity vs chatgpt",
+  "grok ai",
+  "grok vs chatgpt",
+  "duckduckgo search",
+  "duckduckgo vs google",
   "ai tools for work",
   "ai prompts for writing",
   "google search tips"
@@ -235,6 +241,10 @@ const searchEngines = {
   google: {
     label: "Google",
     url: "https://www.google.com/search?q={query}"
+  },
+  duckduckgo: {
+    label: "DuckDuckGo",
+    url: "https://duckduckgo.com/?q={query}"
   }
 };
 
@@ -255,6 +265,14 @@ const aiEngines = {
   gemini: {
     label: "Gemini",
     url: "https://gemini.google.com/app?q={query}"
+  },
+  perplexity: {
+    label: "Perplexity",
+    url: "https://www.perplexity.ai/?q={query}"
+  },
+  grok: {
+    label: "Grok",
+    url: "https://grok.com/?q={query}"
   }
 };
 
@@ -315,9 +333,12 @@ const defaultSettings = {
   shortcuts: [
     { title: "Bing", url: "https://www.bing.com", color: "#0ea5e9", group: "Tools" },
     { title: "Google", url: "https://www.google.com", color: "#22c55e", group: "Tools" },
+    { title: "DuckDuckGo", url: "https://duckduckgo.com", color: "#de5833", group: "Tools" },
     { title: "ChatGPT", url: "https://chatgpt.com", color: "#10a37f", group: "Tools" },
     { title: "Claude", url: "https://claude.ai", color: "#d97706", group: "Tools" },
     { title: "Gemini", url: "https://gemini.google.com", color: "#8b5cf6", group: "Tools" },
+    { title: "Perplexity", url: "https://www.perplexity.ai", color: "#20b2aa", group: "Tools" },
+    { title: "Grok", url: "https://grok.com", color: "#6b7280", group: "Tools" },
     { title: "YouTube", url: "https://www.youtube.com", color: "#ef4444", group: "Fun" },
     { title: "GitHub", url: "https://github.com", color: "#64748b", group: "Work" },
     { title: "Outlook", url: "https://outlook.office.com", color: "#2563eb", group: "Work" }
