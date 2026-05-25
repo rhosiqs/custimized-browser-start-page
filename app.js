@@ -377,6 +377,7 @@ const elements = {
   clockBackgroundSetting: document.getElementById("clockBackgroundSetting"),
   editModeSetting: document.getElementById("editModeSetting"),
   saveLayout: document.getElementById("saveLayout"),
+  discardLayout: document.getElementById("discardLayout"),
   defaultSearchSetting: document.getElementById("defaultSearchSetting"),
   defaultAiSetting: document.getElementById("defaultAiSetting"),
   shortcutColumnsSetting: document.getElementById("shortcutColumnsSetting"),
@@ -874,6 +875,7 @@ function applySettings() {
   elements.clockBackgroundSetting.value = String(settings.clockBackground);
   elements.editModeSetting.value = String(settings.editMode);
   if (elements.saveLayout) elements.saveLayout.disabled = !settings.editMode;
+  if (elements.discardLayout) elements.discardLayout.disabled = !settings.editMode;
   elements.defaultSearchSetting.value = settings.defaultSearch;
   elements.defaultAiSetting.value = settings.defaultAi;
   elements.shortcutColumnsSetting.value = settings.shortcutColumns;
@@ -1156,6 +1158,11 @@ function enterEditMode() {
   settings = normalizeSettings({ ...settings, editMode: true });
   saveSettings();
   applySettings();
+  // Close the drawer so its backdrop doesn't intercept drag interactions.
+  // Settings are already persisted above, so use plain closeSettings()
+  // (not discard) and clear the snapshot to avoid a rollback on close.
+  settingsSnapshot = null;
+  closeSettings();
 }
 
 // Commit layout edits and exit edit mode.
@@ -1164,6 +1171,16 @@ function saveLayoutChanges() {
   const committed = layoutDraftPositions || clonePositions(settings.elementPositions);
   settings = normalizeSettings({ ...settings, editMode: false, elementPositions: committed });
   layoutDraftPositions = null;
+  saveSettings();
+  applySettings();
+}
+
+// Discard layout edits and restore the previously saved positions.
+function discardLayoutChanges() {
+  if (!settings.editMode) return;
+  // Drop the draft — saved positions remain untouched.
+  layoutDraftPositions = null;
+  settings = normalizeSettings({ ...settings, editMode: false });
   saveSettings();
   applySettings();
 }
@@ -2141,6 +2158,9 @@ function wireEvents() {
   });
   elements.saveLayout?.addEventListener("click", () => {
     saveLayoutChanges();
+  });
+  elements.discardLayout?.addEventListener("click", () => {
+    discardLayoutChanges();
   });
   elements.shortcutGroupBar?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-group]");

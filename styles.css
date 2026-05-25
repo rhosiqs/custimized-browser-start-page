@@ -1119,6 +1119,26 @@ body.density-compact .start-page {
   border-color: transparent;
 }
 
+/* Discard layout button — danger tint */
+#discardLayout {
+  background: color-mix(in srgb, var(--danger), transparent 88%);
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger), transparent 55%);
+}
+
+#discardLayout:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger), transparent 78%);
+  border-color: color-mix(in srgb, var(--danger), transparent 30%);
+}
+
+/* Disabled state for both layout buttons */
+#saveLayout:disabled,
+#discardLayout:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 /* Compact clock adjustments */
 body.density-compact .clock-card {
   /* Modified: reduced padding and min-width for compact density mode */
