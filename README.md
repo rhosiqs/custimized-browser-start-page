@@ -2,6 +2,13 @@
 
 A premium, static new-tab start page designed for fast navigation, time management, and search queries with local persistence. Open [index.html](file:///d:/01_Programs/06_BrowserStartPage/index.html) directly in your browser or serve it locally.
 
+## 🚀 Version 0.3.0 (Default Settings Update)
+
+- **Clock default format**: Updated the default clock layout format from 24-hour to **12-hour**.
+- **Shortcut groups**: Cleaned up default categories; kept only "All" and **"Work"**. Any other groups are removed from the default configurations.
+- **Empty defaults**: Configured shortcuts to be empty by default so users can start with a clean page.
+- **Port config**: Set local dev server port to **8400** to bypass Windows TCP exclusion port restrictions.
+
 ---
 
 ## 🚀 Version 0.2.0 (New Engines & Integrations)
@@ -94,7 +101,7 @@ The **Data** section in Settings now supports exporting and importing your confi
 To serve the start page locally:
 1. Run `npm install` to install dependencies (installs a lightweight `http-server` package).
 2. Run `npm run dev` to start the local static server.
-3. Open `http://localhost:8080` in your web browser.
+3. Open `http://127.0.0.1:8400` in your web browser.
 
 *Note: The project is entirely client-side. You can safely delete `package.json`, `package-lock.json`, and `node_modules` at any time, and open `index.html` directly in the browser.*
 

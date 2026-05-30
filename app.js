@@ -325,24 +325,12 @@ const defaultSettings = {
   shortcutSlots: 12,
   shortcutAlign: "stretch",
   defaultGroupName: defaultGroup,
-  shortcutGroups: ["Work", "Shop", "Money", "For Me", "Fun", "News", "Sports", "Travel", "Tools"],
+  shortcutGroups: ["Work"],
   defaultView: "All",
-  clockFormat: "24",
+  clockFormat: "12",
   showSeconds: true,
   timeZones: ["America/New_York", "America/Los_Angeles"],
-  shortcuts: [
-    { title: "Bing", url: "https://www.bing.com", color: "#0ea5e9", group: "Tools" },
-    { title: "Google", url: "https://www.google.com", color: "#22c55e", group: "Tools" },
-    { title: "DuckDuckGo", url: "https://duckduckgo.com", color: "#de5833", group: "Tools" },
-    { title: "ChatGPT", url: "https://chatgpt.com", color: "#10a37f", group: "Tools" },
-    { title: "Claude", url: "https://claude.ai", color: "#d97706", group: "Tools" },
-    { title: "Gemini", url: "https://gemini.google.com", color: "#8b5cf6", group: "Tools" },
-    { title: "Perplexity", url: "https://www.perplexity.ai", color: "#20b2aa", group: "Tools" },
-    { title: "Grok", url: "https://grok.com", color: "#6b7280", group: "Tools" },
-    { title: "YouTube", url: "https://www.youtube.com", color: "#ef4444", group: "Fun" },
-    { title: "GitHub", url: "https://github.com", color: "#64748b", group: "Work" },
-    { title: "Outlook", url: "https://outlook.office.com", color: "#2563eb", group: "Work" }
-  ]
+  shortcuts: []
 };
 
 // Mutable runtime state.
@@ -1547,7 +1535,7 @@ function renderGroupEditor() {
     elements.currentDefaultCategoryText.textContent = defaultView;
   }
 
-  const builtinGroups = ["Work", "Shop", "Money", "For Me", "Fun", "News", "Sports", "Travel", "Tools"];
+  const builtinGroups = ["Work"];
   const customGroups = groups.filter((g) => !builtinGroups.includes(g));
   const customCount = customGroups.length;
   if (elements.customCategoriesCount) {
@@ -2871,7 +2859,7 @@ function wireEvents() {
   // Inline Category Manager: CREATE CATEGORY button
   elements.addGroup?.addEventListener("click", () => {
     const groups = getShortcutGroups();
-    const builtinGroups = ["Work", "Shop", "Money", "For Me", "Fun", "News", "Sports", "Travel", "Tools"];
+    const builtinGroups = ["Work"];
     const customGroups = groups.filter((g) => !builtinGroups.includes(g));
     if (customGroups.length >= 5) {
       alert("Maximum of 5 custom categories reached.");
