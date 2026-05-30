@@ -26,3 +26,10 @@ homepageserver_review.md
 package.json
 package-lock.json
 todo_or_modify.md
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example
