@@ -66,6 +66,33 @@
           <!-- Modified: row-level dropdown can stack above shortcuts instead of being trapped in the input column. -->
           <div class="suggestions" id="aiSuggestions" role="listbox" aria-label="AI suggestions" hidden></div>
         </form>
+
+        <!-- Address row -->
+        <form class="search-row address-row" id="addressForm">
+          <label class="engine-select">
+            <span class="sr-only">Protocol</span>
+            <select id="addressProtocol">
+              <option value="https://">https://</option>
+              <option value="http://">http://</option>
+              <option value="doi.org/">doi.org</option>
+            </select>
+          </label>
+          <div class="search-input-wrap">
+            <input
+              id="addressInput"
+              type="text"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="Enter address"
+              aria-label="Enter address"
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded="false"
+              aria-controls="addressSuggestions"
+            />
+          </div>
+          <div class="suggestions" id="addressSuggestions" role="listbox" aria-label="Address suggestions" hidden></div>
+        </form>
       </section>
 
       <!-- Shortcuts with group tabs and grid -->

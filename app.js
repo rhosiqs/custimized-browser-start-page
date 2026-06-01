@@ -364,17 +364,21 @@ const elements = {
   worldClockList: document.getElementById("worldClockList"),
   searchForm: document.getElementById("searchForm"),
   aiForm: document.getElementById("aiForm"),
+  addressForm: document.getElementById("addressForm"),
   searchStack: document.getElementById("searchStack"),
   searchInput: document.getElementById("searchInput"),
   aiInput: document.getElementById("aiInput"),
+  addressInput: document.getElementById("addressInput"),
   searchSuggestions: document.getElementById("searchSuggestions"),
   aiSuggestions: document.getElementById("aiSuggestions"),
+  addressSuggestions: document.getElementById("addressSuggestions"),
   searchPredictions: document.getElementById("searchPredictions"),
   aiPredictions: document.getElementById("aiPredictions"),
   searchGhost: document.getElementById("searchGhost"),
   aiGhost: document.getElementById("aiGhost"),
   searchEngine: document.getElementById("searchEngine"),
   aiEngine: document.getElementById("aiEngine"),
+  addressProtocol: document.getElementById("addressProtocol"),
   shortcutGroupBar: document.getElementById("shortcutGroupBar"),
   shortcutGrid: document.getElementById("shortcutGrid"),
   shortcutPanel: document.getElementById("shortcutPanel"),
@@ -2784,6 +2788,15 @@ function wireEvents() {
     const engine = aiEngines[elements.aiEngine.value] || aiEngines[settings.defaultAi];
     recordQueryHistory("ai", elements.aiInput.value);
     openQuery(engine, elements.aiInput.value);
+  });
+
+  elements.addressForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const protocol = elements.addressProtocol.value;
+    const input = elements.addressInput.value.trim();
+    if (!input) return;
+    const url = protocol === "doi.org/" ? `https://doi.org/${input}` : `${protocol}${input}`;
+    window.location.href = url;
   });
 
   wireSuggestionController({

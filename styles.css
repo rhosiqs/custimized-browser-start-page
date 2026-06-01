@@ -392,6 +392,12 @@ body.theme-light select {
   z-index: 2;
 }
 
+/* Address row — shorter height with same width */
+.search-row.address-row {
+  height: 42px;
+  z-index: 1;
+}
+
 /* Added: lift the active row so AI predictions are not hidden behind lower page layers. */
 .search-row:focus-within {
   z-index: 70;

@@ -27,9 +27,13 @@ package.json
 package-lock.json
 todo_or_modify.md
 
+# Bug report (auto-generated, not part of source)
+bug_report.md
+
 # wrangler files
 .wrangler
 .dev.vars*
 !.dev.vars.example
 .env*
 !.env.example
+wrangler.jsonc
