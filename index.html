@@ -26,6 +26,7 @@
             <select id="searchEngine"></select>
           </label>
           <div class="search-input-wrap">
+            <div class="prediction-chips" id="searchPredictions" hidden></div>
             <input
               id="searchInput"
               type="search"
@@ -38,6 +39,7 @@
               aria-expanded="false"
               aria-controls="searchSuggestions"
             />
+            <div class="ghost-text" id="searchGhost"></div>
           </div>
           <!-- Modified: row-level dropdown spans the full search bar like browser search predictions. -->
           <div class="suggestions" id="searchSuggestions" role="listbox" aria-label="Search suggestions" hidden></div>
@@ -50,6 +52,7 @@
             <select id="aiEngine"></select>
           </label>
           <div class="search-input-wrap">
+            <div class="prediction-chips" id="aiPredictions" hidden></div>
             <input
               id="aiInput"
               type="search"
@@ -62,6 +65,7 @@
               aria-expanded="false"
               aria-controls="aiSuggestions"
             />
+            <div class="ghost-text" id="aiGhost"></div>
           </div>
           <!-- Modified: row-level dropdown can stack above shortcuts instead of being trapped in the input column. -->
           <div class="suggestions" id="aiSuggestions" role="listbox" aria-label="AI suggestions" hidden></div>
