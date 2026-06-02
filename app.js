@@ -331,7 +331,8 @@ const defaultSettings = {
   clockFormat: "12",
   showSeconds: true,
   timeZones: ["America/New_York", "America/Los_Angeles"],
-  shortcuts: []
+  shortcuts: [],
+  copyQueryToClipboard: false
 };
 
 // Mutable runtime state.
@@ -401,6 +402,7 @@ const elements = {
   defaultSearchSetting: document.getElementById("defaultSearchSetting"),
   defaultAiSetting: document.getElementById("defaultAiSetting"),
   defaultFocusOnLoadSetting: document.getElementById("defaultFocusOnLoadSetting"),
+  copyQueryToClipboardSetting: document.getElementById("copyQueryToClipboardSetting"),
   shortcutColumnsSetting: document.getElementById("shortcutColumnsSetting"),
   shortcutSlotsSetting: document.getElementById("shortcutSlotsSetting"),
   shortcutAlignSetting: document.getElementById("shortcutAlignSetting"),
@@ -525,6 +527,7 @@ function normalizeSettings(value) {
   merged.editMode = merged.editMode === true;
   if (!["12", "24"].includes(merged.clockFormat)) merged.clockFormat = defaultSettings.clockFormat;
   merged.showSeconds = merged.showSeconds !== false;
+  merged.copyQueryToClipboard = merged.copyQueryToClipboard === true;
   if (!["solid", "gradient", "image"].includes(merged.backgroundType)) {
     merged.backgroundType = defaultSettings.backgroundType;
   }
@@ -1445,6 +1448,9 @@ function applySettings() {
   elements.defaultSearchSetting.value = settings.defaultSearch;
   elements.defaultAiSetting.value = settings.defaultAi;
   elements.defaultFocusOnLoadSetting.value = settings.defaultFocusOnLoad;
+  if (elements.copyQueryToClipboardSetting) {
+    elements.copyQueryToClipboardSetting.value = String(settings.copyQueryToClipboard);
+  }
   elements.shortcutColumnsSetting.value = settings.shortcutColumns;
   elements.shortcutSlotsSetting.value = settings.shortcutSlots;
   elements.shortcutAlignSetting.value = settings.shortcutAlign;
@@ -1483,7 +1489,12 @@ function getShortcutGroups() {
 
 function renderShortcutGroups() {
   if (!elements.shortcutGroupBar) return;
-  const groups = ["All", ...getShortcutGroups()];
+  const groups = [
+    "All",
+    ...getShortcutGroups().filter((group) =>
+      settings.shortcuts.some((shortcut) => shortcut.group === group)
+    )
+  ];
   if (!groups.includes(activeShortcutGroup)) {
     activeShortcutGroup = "All";
   }
@@ -2117,10 +2128,13 @@ async function openQuery(engine, query) {
   const cleanQuery = query.trim();
   if (!cleanQuery) return;
 
-  try {
-    await navigator.clipboard.writeText(cleanQuery);
-  } catch {
-    // Clipboard access is optional. URL routing still works without it.
+  if (settings.copyQueryToClipboard) {
+    try {
+      await navigator.clipboard.writeText(cleanQuery);
+      showToast("Search query copied to clipboard", "success");
+    } catch {
+      // Clipboard access is optional. URL routing still works without it.
+    }
   }
 
   window.location.href = buildUrl(engine.url, cleanQuery);
@@ -2558,6 +2572,7 @@ function handleSettingsInput(event) {
     defaultSearchSetting: ["defaultSearch", target.value],
     defaultAiSetting: ["defaultAi", target.value],
     defaultFocusOnLoadSetting: ["defaultFocusOnLoad", target.value],
+    copyQueryToClipboardSetting: ["copyQueryToClipboard", target.value === "true"],
     shortcutColumnsSetting: ["shortcutColumns", target.value],
     shortcutSlotsSetting: ["shortcutSlots", target.value],
     shortcutAlignSetting: ["shortcutAlign", target.value],
@@ -2720,6 +2735,7 @@ function saveShortcutFromPopover() {
   const newGroup = normalizeGroup(elements.shortcutEditGroup.value.trim(), getDefaultGroupName()) || getDefaultGroupName();
   if (!newUrl) {
     elements.shortcutEditUrl.focus();
+    showToast("URL cannot be empty", "error");
     return;
   }
   const nextShortcuts = [...settings.shortcuts];

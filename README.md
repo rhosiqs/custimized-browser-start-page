@@ -2,6 +2,12 @@
 
 A premium, static new-tab start page designed for fast navigation, time management, and search queries with local persistence. Open [index.html](file:///d:/01_Programs/06_BrowserStartPage/index.html) directly in your browser or serve it locally.
 
+## 🚀 Version 0.4.0 (Medium Priority Bug Fixes)
+
+- **Search clipboard copy opt-in**: Added a new setting "Copy search query" under Search settings (defaults to Off) to prevent silently overwriting the user's clipboard.
+- **Filter empty toolbar tabs**: Categorized tabs in the shortcut toolbar are now filtered so that empty groups/categories do not appear.
+- **Shortcut URL validation**: Added validation feedback with an error toast when trying to save a shortcut with an empty URL.
+
 ## 🚀 Version 0.3.0 (Default Settings Update)
 
 - **Clock default format**: Updated the default clock layout format from 24-hour to **12-hour**.
