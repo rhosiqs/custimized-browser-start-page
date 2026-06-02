@@ -319,6 +319,7 @@ const defaultSettings = {
   layoutAlignedV1: true,
   backgroundType: "solid",
   backgroundValue: "#080b10",
+  defaultFocusOnLoad: "searchInput",
   defaultSearch: "bing",
   defaultAi: "googleAi",
   shortcutColumns: 4,
@@ -399,6 +400,7 @@ const elements = {
   discardLayout: document.getElementById("discardLayout"),
   defaultSearchSetting: document.getElementById("defaultSearchSetting"),
   defaultAiSetting: document.getElementById("defaultAiSetting"),
+  defaultFocusOnLoadSetting: document.getElementById("defaultFocusOnLoadSetting"),
   shortcutColumnsSetting: document.getElementById("shortcutColumnsSetting"),
   shortcutSlotsSetting: document.getElementById("shortcutSlotsSetting"),
   shortcutAlignSetting: document.getElementById("shortcutAlignSetting"),
@@ -466,6 +468,7 @@ function loadSettings() {
 
 // Merge raw settings with defaults and coerce values into valid ranges.
 function normalizeSettings(value) {
+  const focusTargets = new Set(["searchInput", "aiInput", "addressInput", "none"]);
   const baseDefaultGroup = normalizeGroup(value.defaultGroupName, defaultGroup) || defaultGroup;
   const baseGroups =
     Array.isArray(value.shortcutGroups) && value.shortcutGroups.length
@@ -510,6 +513,9 @@ function normalizeSettings(value) {
 
   if (!searchEngines[merged.defaultSearch]) merged.defaultSearch = defaultSettings.defaultSearch;
   if (!aiEngines[merged.defaultAi]) merged.defaultAi = defaultSettings.defaultAi;
+  if (!focusTargets.has(merged.defaultFocusOnLoad)) {
+    merged.defaultFocusOnLoad = defaultSettings.defaultFocusOnLoad;
+  }
   if (!["dark", "light"].includes(merged.theme)) merged.theme = defaultSettings.theme;
   if (!["comfortable", "compact"].includes(merged.density)) merged.density = defaultSettings.density;
   if (!["stretch", "start", "center", "end"].includes(merged.shortcutAlign)) {
@@ -1438,6 +1444,7 @@ function applySettings() {
   if (elements.discardLayout) elements.discardLayout.disabled = !settings.editMode;
   elements.defaultSearchSetting.value = settings.defaultSearch;
   elements.defaultAiSetting.value = settings.defaultAi;
+  elements.defaultFocusOnLoadSetting.value = settings.defaultFocusOnLoad;
   elements.shortcutColumnsSetting.value = settings.shortcutColumns;
   elements.shortcutSlotsSetting.value = settings.shortcutSlots;
   elements.shortcutAlignSetting.value = settings.shortcutAlign;
@@ -2550,6 +2557,7 @@ function handleSettingsInput(event) {
     backgroundValueSetting: ["backgroundValue", target.value],
     defaultSearchSetting: ["defaultSearch", target.value],
     defaultAiSetting: ["defaultAi", target.value],
+    defaultFocusOnLoadSetting: ["defaultFocusOnLoad", target.value],
     shortcutColumnsSetting: ["shortcutColumns", target.value],
     shortcutSlotsSetting: ["shortcutSlots", target.value],
     shortcutAlignSetting: ["shortcutAlign", target.value],
@@ -2559,6 +2567,16 @@ function handleSettingsInput(event) {
 
   const update = map[target.id];
   if (update) updateSetting(update[0], update[1]);
+}
+
+function applyDefaultFocusOnLoad() {
+  if (settings.defaultFocusOnLoad === "none") return;
+  const target = elements[settings.defaultFocusOnLoad];
+  if (!(target instanceof HTMLInputElement)) return;
+  target.focus();
+  if (target.type === "search" || target.type === "text") {
+    target.select();
+  }
 }
 
 // Remove a selected time zone.
@@ -3372,6 +3390,7 @@ function init() {
   registerLayoutDraggables();
   wireEvents();
   applySettings();
+  requestAnimationFrame(applyDefaultFocusOnLoad);
   setInterval(updateClocks, 1000);
 }
 
