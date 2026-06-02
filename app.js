@@ -1673,7 +1673,6 @@ function handleCategoryManagerRename(previousGroup, nextGroup) {
 
   saveSettings();
   applySettings();
-  renderGroupEditor();
 }
 
 // Remove category and shift shortcuts into General/default category group
@@ -1710,7 +1709,6 @@ function handleCategoryManagerDelete(group) {
 
   saveSettings();
   applySettings();
-  renderGroupEditor();
 }
 
 // Set default tab view loaded when visiting start page
@@ -1727,7 +1725,6 @@ function handleCategoryManagerSetDefault(group) {
 
   saveSettings();
   applySettings();
-  renderGroupEditor();
 }
 
 // Layout drag/drop helpers for movable sections.
@@ -2518,6 +2515,10 @@ function updateSetting(key, value) {
 function handleSettingsInput(event) {
   const target = event.target;
   if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) return;
+
+  // Filter input/change events by element type to prevent double firing.
+  if (target instanceof HTMLSelectElement && event.type !== "change") return;
+  if (target instanceof HTMLInputElement && event.type !== "input") return;
 
   if (target.id === "backgroundTypeSetting") {
     updateSetting("backgroundType", target.value);
