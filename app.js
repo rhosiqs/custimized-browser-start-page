@@ -559,7 +559,10 @@ function normalizeQueryHistory(value) {
 
 // Intent: predict websites based on history, shortcut domains, and default popular websites.
 function getAddressSuggestions(query) {
-  const cleanQuery = String(query || "").trim().toLowerCase();
+  let cleanQuery = String(query || "").trim().toLowerCase();
+  // Strip protocol scheme (e.g. https://, http://, doi.org/) for matching domains
+  const schemeRegex = /^(?:[a-zA-Z][a-zA-Z0-9+.-]*:\/\/|doi\.org\/)/i;
+  cleanQuery = cleanQuery.replace(schemeRegex, "");
   if (!cleanQuery) return [];
 
   // 1. Gather all candidates from history
@@ -2977,7 +2980,8 @@ function wireEvents() {
     }
 
     recordQueryHistory("address", input);
-    const url = protocol === "doi.org/" ? `https://doi.org/${input}` : `${protocol}${input}`;
+    const hasScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//i.test(input) || input.toLowerCase().startsWith("doi.org/");
+    const url = hasScheme ? input : (protocol === "doi.org/" ? `https://doi.org/${input}` : `${protocol}${input}`);
     window.location.href = url;
   });
 
@@ -3010,7 +3014,8 @@ function wireEvents() {
     onSelect: (value) => {
       recordQueryHistory("address", value);
       const protocol = elements.addressProtocol.value;
-      const url = protocol === "doi.org/" ? `https://doi.org/${value}` : `${protocol}${value}`;
+      const hasScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//i.test(value) || value.toLowerCase().startsWith("doi.org/");
+      const url = hasScheme ? value : (protocol === "doi.org/" ? `https://doi.org/${value}` : `${protocol}${value}`);
       window.location.href = url;
     }
   });
