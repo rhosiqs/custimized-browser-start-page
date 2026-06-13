@@ -552,9 +552,133 @@ function loadQueryHistory() {
 function normalizeQueryHistory(value) {
   return {
     web: normalizeHistoryList(value?.web),
-    ai: normalizeHistoryList(value?.ai)
+    ai: normalizeHistoryList(value?.ai),
+    address: normalizeHistoryList(value?.address)
   };
 }
+
+// Intent: predict websites based on history, shortcut domains, and default popular websites.
+function getAddressSuggestions(query) {
+  const cleanQuery = String(query || "").trim().toLowerCase();
+  if (!cleanQuery) return [];
+
+  // 1. Gather all candidates from history
+  const historyList = queryHistory.address || [];
+
+  // 2. Gather domains from shortcuts
+  const shortcutDomains = [];
+  if (settings && settings.shortcuts && Array.isArray(settings.shortcuts)) {
+    settings.shortcuts.forEach((s) => {
+      if (!s.url) return;
+      try {
+        let urlStr = s.url.trim();
+        if (!/^https?:\/\//i.test(urlStr)) {
+          urlStr = "https://" + urlStr;
+        }
+        const hostname = new URL(urlStr).hostname.replace(/^www\./i, "");
+        if (hostname) {
+          shortcutDomains.push(hostname);
+        }
+      } catch (e) {
+        // fallback regex match for domain if URL parsing fails
+        const match = s.url.match(/(?:https?:\/\/)?(?:www\.)?([^\/\s]+)/i);
+        if (match && match[1]) {
+          shortcutDomains.push(match[1]);
+        }
+      }
+    });
+  }
+
+  // 3. Gather domains from default popular websites
+  const defaultDomains = [
+    "google.com",
+    "github.com",
+    "youtube.com",
+    "wikipedia.org",
+    "reddit.com",
+    "twitter.com",
+    "stackoverflow.com",
+    "facebook.com",
+    "amazon.com",
+    "netflix.com",
+    "gmail.com",
+    "microsoft.com",
+    "chatgpt.com",
+    "openai.com",
+    "gemini.google.com",
+    "apple.com",
+    "yahoo.com",
+    "linkedin.com",
+    "bing.com",
+    "baidu.com",
+    "bilibili.com"
+  ];
+
+  // 4. Perform prefix matching and substring matching
+  const prefixHistory = [];
+  const substringHistory = [];
+  historyList.forEach((item) => {
+    const normalized = item.toLowerCase();
+    if (normalized.startsWith(cleanQuery)) {
+      prefixHistory.push(item);
+    } else if (normalized.includes(cleanQuery)) {
+      substringHistory.push(item);
+    }
+  });
+
+  const prefixShortcuts = [];
+  const substringShortcuts = [];
+  shortcutDomains.forEach((item) => {
+    const normalized = item.toLowerCase();
+    if (normalized.startsWith(cleanQuery)) {
+      prefixShortcuts.push(item);
+    } else if (normalized.includes(cleanQuery)) {
+      substringShortcuts.push(item);
+    }
+  });
+
+  const prefixDefaults = [];
+  const substringDefaults = [];
+  defaultDomains.forEach((item) => {
+    const normalized = item.toLowerCase();
+    if (normalized.startsWith(cleanQuery)) {
+      prefixDefaults.push(item);
+    } else if (normalized.includes(cleanQuery)) {
+      substringDefaults.push(item);
+    }
+  });
+
+  // Combine and deduplicate
+  const seen = new Set();
+  const result = [];
+
+  const addUnique = (list) => {
+    list.forEach((item) => {
+      const normalized = item.toLowerCase();
+      if (!seen.has(normalized)) {
+        seen.add(normalized);
+        result.push(item);
+      }
+    });
+  };
+
+  // Order priority:
+  // 1. History prefix matches
+  // 2. Shortcut prefix matches
+  // 3. Default domain prefix matches
+  // 4. History substring matches
+  // 5. Shortcut substring matches
+  // 6. Default domain substring matches
+  addUnique(prefixHistory);
+  addUnique(prefixShortcuts);
+  addUnique(prefixDefaults);
+  addUnique(substringHistory);
+  addUnique(substringShortcuts);
+  addUnique(substringDefaults);
+
+  return result.slice(0, SUGGESTION_LIMIT);
+}
+
 
 function normalizeHistoryList(value) {
   return (Array.isArray(value) ? value : [])
@@ -2243,6 +2367,7 @@ function wireSuggestionController({ input, list, kind, onSelect }) {
       option.role = "option";
       option.id = `${list.id}-option-${index}`;
       option.dataset.index = String(index);
+      option.dataset.value = item;
       option.setAttribute("aria-selected", index === activeIndex ? "true" : "false");
       // Modified: render prediction rows with icon + highlighted completion instead of plain text.
       appendSuggestionIcon(option);
@@ -2261,12 +2386,21 @@ function wireSuggestionController({ input, list, kind, onSelect }) {
 
   async function refreshItems(query) {
     const cleanQuery = String(query || "").trim();
-    if (cleanQuery.length < SUGGESTION_MIN_CHARS) {
+    const minChars = kind === "address" ? 1 : SUGGESTION_MIN_CHARS;
+    if (cleanQuery.length < minChars) {
       closeList();
       return;
     }
 
     const currentRequest = (requestId += 1);
+
+    if (kind === "address") {
+      items = getAddressSuggestions(cleanQuery);
+      activeIndex = -1;
+      renderList();
+      return;
+    }
+
     // Modified: show reference-style local matches first so any common word can open the dropdown.
     const localDatasetMatches = getLocalSuggestionMatches(cleanQuery);
     const localMatches = getQuerySuggestions(kind, cleanQuery);
@@ -2828,8 +2962,21 @@ function wireEvents() {
   elements.addressForm.addEventListener("submit", (event) => {
     event.preventDefault();
     const protocol = elements.addressProtocol.value;
-    const input = elements.addressInput.value.trim();
+    let input = elements.addressInput.value.trim();
     if (!input) return;
+
+    // Auto-predict / autocomplete from the first suggestion if matches prefix
+    if (elements.addressSuggestions && !elements.addressSuggestions.hidden) {
+      const firstItemBtn = elements.addressSuggestions.querySelector(".suggestion-item");
+      if (firstItemBtn && firstItemBtn.dataset.value) {
+        const val = firstItemBtn.dataset.value;
+        if (val.toLowerCase().startsWith(input.toLowerCase())) {
+          input = val;
+        }
+      }
+    }
+
+    recordQueryHistory("address", input);
     const url = protocol === "doi.org/" ? `https://doi.org/${input}` : `${protocol}${input}`;
     window.location.href = url;
   });
@@ -2853,6 +3000,18 @@ function wireEvents() {
       const engine = aiEngines[elements.aiEngine.value] || aiEngines[settings.defaultAi];
       recordQueryHistory("ai", value);
       openQuery(engine, value);
+    }
+  });
+
+  wireSuggestionController({
+    input: elements.addressInput,
+    list: elements.addressSuggestions,
+    kind: "address",
+    onSelect: (value) => {
+      recordQueryHistory("address", value);
+      const protocol = elements.addressProtocol.value;
+      const url = protocol === "doi.org/" ? `https://doi.org/${value}` : `${protocol}${value}`;
+      window.location.href = url;
     }
   });
 

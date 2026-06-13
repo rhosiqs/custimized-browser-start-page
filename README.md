@@ -2,6 +2,16 @@
 
 A premium, static new-tab start page designed for fast navigation, time management, and search queries with local persistence. Open [index.html](file:///d:/01_Programs/06_BrowserStartPage/index.html) directly in your browser or serve it locally.
 
+## 🚀 Version 0.5.0 (Address Bar Autocomplete & Website Prediction)
+
+- **Address bar website prediction**: As you type in the address bar (e.g. `goo`), it suggests matching domains using a dropdown list.
+- **Deduplicated search sources**: Matches are gathered and prioritized from:
+  1. Address navigation history (saved locally).
+  2. Shortcut domains (automatically extracted from your shortcut list).
+  3. Default popular domains (such as `google.com`, `github.com`, `youtube.com`).
+- **Enter key autocomplete integration**: Pressing Enter in the address input automatically navigates to the top predicted matching website if a prefix match is found.
+- **Unified suggestion styling**: Leverages the existing modern search suggestions styling with custom navigation history indicators.
+
 ## 🚀 Version 0.4.0 (Bug Fixes & Refinements)
 
 - **Search clipboard copy opt-in**: Added a new setting "Copy search query" under Search settings (defaults to Off) to prevent silently overwriting the user's clipboard.
