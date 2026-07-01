@@ -466,9 +466,13 @@ function loadSettings() {
       saved.layoutAlignedV1 = true;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
     }
-    return normalizeSettings({ ...defaultSettings, ...saved });
+    const loaded = normalizeSettings({ ...defaultSettings, ...saved });
+    loaded.editMode = false;
+    return loaded;
   } catch {
-    return normalizeSettings(defaultSettings);
+    const loaded = normalizeSettings(defaultSettings);
+    loaded.editMode = false;
+    return loaded;
   }
 }
 
@@ -997,7 +1001,8 @@ function clonePositions(value) {
 
 // Persist the current settings snapshot.
 function saveSettings() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  const toSave = { ...settings, editMode: false };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
 }
 
 // ==========================================
