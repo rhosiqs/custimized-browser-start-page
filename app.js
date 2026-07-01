@@ -2146,7 +2146,7 @@ function renderShortcuts() {
     elements.shortcutGrid.appendChild(tile);
   });
 
-  if (isAllGroups && !shortcutInlineEditMode) {
+  if (isAllGroups) {
     for (let i = visible.length; i < settings.shortcutSlots; i += 1) {
       const empty = document.createElement("button");
       empty.className = "shortcut-tile shortcut-empty";
