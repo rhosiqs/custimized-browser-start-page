@@ -2148,7 +2148,8 @@ body.density-compact .shortcut-tile {
 
 /* Ensure [hidden] attribute still hides the element (overrides any display rule) */
 .shortcut-edit-popover[hidden],
-.group-rename-popover[hidden] {
+.group-rename-popover[hidden],
+.layout-edit-bar[hidden] {
   display: none !important;
 }
 
