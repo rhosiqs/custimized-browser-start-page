@@ -2153,7 +2153,7 @@ function renderShortcuts() {
       empty.type = "button";
       empty.title = "Add shortcut";
       empty.innerHTML = '<span class="shortcut-icon">+</span><span class="shortcut-title">Add</span>';
-      empty.addEventListener("click", openSettings);
+      empty.addEventListener("click", () => openSettings("shortcuts"));
       elements.shortcutGrid.appendChild(empty);
     }
   }
@@ -2642,7 +2642,7 @@ function formatZoneTime(zone, date) {
 }
 
 // Drawer open/close helpers.
-function openSettings() {
+function openSettings(defaultTab) {
   // Snapshot current settings so Discard can restore them.
   settingsSnapshot = JSON.parse(JSON.stringify(settings));
   elements.drawer.classList.add("open");
@@ -2650,11 +2650,12 @@ function openSettings() {
   elements.backdrop.hidden = false;
   document.body.classList.add("settings-open");
 
-  // Reset navigation to the first tab (Appearance) on open
+  // Reset navigation to the specified tab or default to first tab (Appearance) on open
+  const tabName = (typeof defaultTab === "string") ? defaultTab : "appearance";
   const navContainer = document.getElementById("settingsNav");
   if (navContainer) {
-    navContainer.querySelectorAll(".settings-nav-btn").forEach((btn, idx) => {
-      if (idx === 0) {
+    navContainer.querySelectorAll(".settings-nav-btn").forEach((btn) => {
+      if (btn.dataset.pane === tabName) {
         btn.classList.add("active");
         btn.setAttribute("aria-selected", "true");
       } else {
@@ -2663,8 +2664,8 @@ function openSettings() {
       }
     });
     const panes = document.querySelectorAll(".settings-pane");
-    panes.forEach((pane, idx) => {
-      pane.hidden = idx !== 0;
+    panes.forEach((pane) => {
+      pane.hidden = pane.id !== `pane-${tabName}`;
     });
   }
 }
