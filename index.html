@@ -143,252 +143,323 @@
         </button>
       </div>
 
-      <div class="settings-content" id="settingsContent">
-        <!-- Appearance and theme settings -->
-        <section class="settings-section">
-          <h3>Appearance</h3>
-          <div class="field-grid">
-            <label>
-              Theme
-              <select id="themeSetting">
-                <option value="dark">Dark</option>
-                <option value="light">Light</option>
-              </select>
-            </label>
-            <label>
-              Density
-              <select id="densitySetting">
-                <option value="comfortable">Comfortable</option>
-                <option value="compact">Compact</option>
-              </select>
-            </label>
-            <label>
-              Clock background
-              <select id="clockBackgroundSetting">
-                <option value="true">On</option>
-                <option value="false">Off</option>
-              </select>
-            </label>
-            <label>
-              Edit mode
-              <select id="editModeSetting">
-                <option value="false">Off</option>
-                <option value="true">On</option>
-              </select>
-            </label>
-          </div>
-          <div class="button-row">
-            <button class="text-button" id="saveLayout" type="button">Save💾</button>
-            <button class="text-button danger" id="discardLayout" type="button">Discard🗘</button>
-          </div>
-          <div class="field-grid" style="margin-top: 14px;">
-            <label>
-              Background
-              <select id="backgroundTypeSetting">
-                <option value="solid">Solid</option>
-                <option value="gradient">Gradient</option>
-                <option value="image">Image URL</option>
-              </select>
-            </label>
-            <label>
-              Background color / value
-              <div class="color-entry">
-                <input id="backgroundColorSetting" type="color" aria-label="Background color picker" />
-                <input id="backgroundValueSetting" type="text" spellcheck="false" placeholder="#080b10" />
+      <div class="settings-layout">
+        <!-- Sidebar Navigation -->
+        <nav class="settings-nav" id="settingsNav" role="tablist" aria-label="Settings sections">
+          <button class="settings-nav-btn active" data-pane="appearance" type="button" role="tab" aria-selected="true" aria-controls="pane-appearance">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"/>
+              <circle cx="7.5" cy="10.5" r="1.5" fill="currentColor"/>
+              <circle cx="11.5" cy="7.5" r="1.5" fill="currentColor"/>
+              <circle cx="16.5" cy="9.5" r="1.5" fill="currentColor"/>
+              <circle cx="15.5" cy="14.5" r="1.5" fill="currentColor"/>
+            </svg>
+            Appearance
+          </button>
+          <button class="settings-nav-btn" data-pane="search" type="button" role="tab" aria-selected="false" aria-controls="pane-search">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            Search
+          </button>
+          <button class="settings-nav-btn" data-pane="time" type="button" role="tab" aria-selected="false" aria-controls="pane-time">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            Global Time
+          </button>
+          <button class="settings-nav-btn" data-pane="shortcuts" type="button" role="tab" aria-selected="false" aria-controls="pane-shortcuts">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+            </svg>
+            Shortcuts
+          </button>
+          <button class="settings-nav-btn" data-pane="data" type="button" role="tab" aria-selected="false" aria-controls="pane-data">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+              <polyline points="17 21 17 13 7 13 7 21"/>
+              <polyline points="7 3 7 8 15 8"/>
+            </svg>
+            Data &amp; Reset
+          </button>
+        </nav>
+
+        <!-- Content Panes -->
+        <div class="settings-panes">
+          <!-- Pane 1: Appearance -->
+          <div class="settings-pane active" id="pane-appearance" role="tabpanel" aria-labelledby="tab-appearance">
+            <section class="settings-section">
+              <h3>Appearance</h3>
+              <div class="field-grid">
+                <label>
+                  Theme
+                  <select id="themeSetting">
+                    <option value="dark">Dark</option>
+                    <option value="light">Light</option>
+                  </select>
+                </label>
+                <label>
+                  Density
+                  <select id="densitySetting">
+                    <option value="comfortable">Comfortable</option>
+                    <option value="compact">Compact</option>
+                  </select>
+                </label>
+                <label class="toggle-container">
+                  <span>Clock background</span>
+                  <div class="toggle-switch-wrapper">
+                    <label class="toggle-switch">
+                      <input id="clockBackgroundSetting" type="checkbox" />
+                      <span class="toggle-slider"></span>
+                    </label>
+                  </div>
+                </label>
               </div>
-            </label>
-            <label style="grid-column: span 2;">
-              Accent color
-              <div class="color-entry">
-                <input id="accentSetting" type="color" aria-label="Accent color picker" />
-                <input id="accentTextSetting" type="text" spellcheck="false" placeholder="#34d399" />
+
+              <div class="field-grid" style="margin-top: 14px;">
+                <label>
+                  Background
+                  <select id="backgroundTypeSetting">
+                    <option value="solid">Solid</option>
+                    <option value="gradient">Gradient</option>
+                    <option value="image">Image URL</option>
+                  </select>
+                </label>
+                <label>
+                  Background color / value
+                  <div class="color-entry">
+                    <input id="backgroundColorSetting" type="color" aria-label="Background color picker" />
+                    <input id="backgroundValueSetting" type="text" spellcheck="false" placeholder="#080b10" />
+                  </div>
+                </label>
+                <label style="grid-column: span 2;">
+                  Accent color
+                  <div class="color-entry">
+                    <input id="accentSetting" type="color" aria-label="Accent color picker" />
+                    <input id="accentTextSetting" type="text" spellcheck="false" placeholder="#34d399" />
+                  </div>
+                </label>
               </div>
-            </label>
+            </section>
           </div>
-        </section>
 
-        <!-- Default search engines -->
-        <section class="settings-section">
-          <h3>Search</h3>
-          <div class="field-grid">
-            <label>
-              Web default
-              <select id="defaultSearchSetting"></select>
-            </label>
-            <label>
-              AI default
-              <select id="defaultAiSetting"></select>
-            </label>
-            <label>
-              Default focus on load
-              <select id="defaultFocusOnLoadSetting">
-                <option value="searchInput">Normal search box</option>
-                <option value="aiInput">AI search box</option>
-                <option value="addressInput">Address box</option>
-                <option value="none">None</option>
-              </select>
-            </label>
-            <label>
-              Copy search query
-              <select id="copyQueryToClipboardSetting">
-                <option value="false">Off</option>
-                <option value="true">On</option>
-              </select>
-            </label>
-          </div>
-        </section>
-
-        <!-- Global clock settings -->
-        <section class="settings-section">
-          <h3>Global Time</h3>
-          <div class="field-grid">
-            <label>
-              Clock format
-              <select id="clockFormatSetting">
-                <option value="24">24H</option>
-                <option value="12">12H</option>
-              </select>
-            </label>
-            <label>
-              Show seconds
-              <select id="showSecondsSetting">
-                <option value="true">On</option>
-                <option value="false">Off</option>
-              </select>
-            </label>
-            <label style="grid-column: span 2;">
-              Time zones
-              <select id="timeZoneSelect"></select>
-            </label>
-          </div>
-          <div class="time-zone-selected" id="timeZonesSetting"></div>
-        </section>
-
-        <!-- Shortcut layout, groups, and editor -->
-        <section class="settings-section settings-section--wide">
-          <h3>Shortcuts</h3>
-          <div class="field-grid">
-            <label>
-              Columns
-              <input id="shortcutColumnsSetting" type="number" min="2" max="8" step="1" />
-            </label>
-            <label>
-              Visible slots
-              <input id="shortcutSlotsSetting" type="number" min="4" max="48" step="1" />
-            </label>
-            <label>
-              Alignment
-              <select id="shortcutAlignSetting">
-                <option value="stretch">Stretch</option>
-                <option value="start">Left</option>
-                <option value="center">Center</option>
-                <option value="end">Right</option>
-              </select>
-            </label>
-          </div>
-          <!-- Inline Category Manager (replaces old group editor) -->
-          <div class="inline-category-manager">
-            <div class="create-category-container">
-              <button class="create-category-btn" id="addGroup" type="button">
-                <span class="plus-icon">+</span> CREATE CATEGORY
-              </button>
-            </div>
-            <div class="modal-note-box">
-              <p class="modal-note-text">
-                <span class="note-badge">Note</span> Drag the <span class="drag-handle-char">⋮</span> handle to reorder. The toolbar will follow this order. Categories without any websites won't appear in the toolbar. Tap the <span class="star-char">☆</span> icon to set a category as your default view on load (currently: <span id="currentDefaultCategoryText">All</span>).
-              </p>
-            </div>
-            <div class="categories-section-header">
-              <h3 class="categories-section-title">
-                Categories
-                <svg class="categories-tag-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
-                  <line x1="7" y1="7" x2="7.01" y2="7" stroke-width="3" />
-                </svg>
-                <span class="custom-count-label" id="customCategoriesCount">(0/5 custom)</span>
-              </h3>
-            </div>
-            <div class="category-list-scrollable" id="groupEditor"></div>
-          </div>
-          <div class="shortcut-editor" id="shortcutEditor"></div>
-          <button class="text-button" id="addShortcut" type="button">Add Shortcut</button>
-        </section>
-
-        <!-- Import, export, and reset tools -->
-        <section class="settings-section settings-section--wide">
-          <h3>Data</h3>
-
-          <!-- Export/Import Grid -->
-          <!-- Export/Import Grid -->
-          <div class="data-grid">
-            <!-- Export row -->
-            <div class="export-import-row">
-              <span class="export-import-label">Export</span>
-              <div class="export-import-controls">
-                <select class="format-select" id="exportFormat">
-                  <option value="json">JSON</option>
-                  <option value="yaml">YAML</option>
-                  <option value="toml">TOML</option>
-                  <option value="text">Plain Text</option>
-                </select>
-                <div class="export-import-buttons">
-                  <button class="action-btn" id="exportSaveFile" type="button" title="Download as file">
-                    <svg aria-hidden="true" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    Save File
-                  </button>
-                  <button class="action-btn" id="exportCopy" type="button" title="Copy to clipboard">
-                    <svg aria-hidden="true" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                    Copy
-                  </button>
-                </div>
+          <!-- Pane 2: Search -->
+          <div class="settings-pane" id="pane-search" role="tabpanel" aria-labelledby="tab-search" hidden>
+            <section class="settings-section">
+              <h3>Search</h3>
+              <div class="field-grid">
+                <label>
+                  Web default
+                  <select id="defaultSearchSetting"></select>
+                </label>
+                <label>
+                  AI default
+                  <select id="defaultAiSetting"></select>
+                </label>
+                <label>
+                  Default focus on load
+                  <select id="defaultFocusOnLoadSetting">
+                    <option value="searchInput">Normal search box</option>
+                    <option value="aiInput">AI search box</option>
+                    <option value="addressInput">Address box</option>
+                    <option value="none">None</option>
+                  </select>
+                </label>
+                <label class="toggle-container">
+                  <span>Copy search query</span>
+                  <div class="toggle-switch-wrapper">
+                    <label class="toggle-switch">
+                      <input id="copyQueryToClipboardSetting" type="checkbox" />
+                      <span class="toggle-slider"></span>
+                    </label>
+                  </div>
+                </label>
               </div>
-            </div>
+            </section>
+          </div>
 
-            <!-- Import row -->
-            <div class="export-import-row">
-              <span class="export-import-label">Import</span>
-              <div class="export-import-controls">
-                <select class="format-select" id="importFormat">
-                  <option value="json">JSON</option>
-                  <option value="yaml">YAML</option>
-                  <option value="toml">TOML</option>
-                  <option value="text">Plain Text</option>
-                </select>
-                <div class="export-import-buttons">
-                  <button class="action-btn" id="importLoadFile" type="button" title="Load from file">
-                    <svg aria-hidden="true" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    Load File
-                  </button>
-                  <button class="action-btn" id="importPaste" type="button" title="Import from textarea below">
-                    <svg aria-hidden="true" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
-                    Paste &amp; Import
+          <!-- Pane 3: Global Time -->
+          <div class="settings-pane" id="pane-time" role="tabpanel" aria-labelledby="tab-time" hidden>
+            <section class="settings-section">
+              <h3>Global Time</h3>
+              <div class="field-grid">
+                <label>
+                  Clock format
+                  <select id="clockFormatSetting">
+                    <option value="24">24H</option>
+                    <option value="12">12H</option>
+                  </select>
+                </label>
+                <label class="toggle-container">
+                  <span>Show seconds</span>
+                  <div class="toggle-switch-wrapper">
+                    <label class="toggle-switch">
+                      <input id="showSecondsSetting" type="checkbox" />
+                      <span class="toggle-slider"></span>
+                    </label>
+                  </div>
+                </label>
+                <label style="grid-column: span 2;">
+                  Time zones
+                  <select id="timeZoneSelect"></select>
+                </label>
+              </div>
+              <div class="time-zone-selected" id="timeZonesSetting"></div>
+            </section>
+          </div>
+
+          <!-- Pane 4: Shortcuts -->
+          <div class="settings-pane" id="pane-shortcuts" role="tabpanel" aria-labelledby="tab-shortcuts" hidden>
+            <section class="settings-section settings-section--wide">
+              <h3>Shortcuts</h3>
+              <div class="field-grid">
+                <label>
+                  Columns
+                  <div class="stepper">
+                    <button type="button" class="stepper-btn decrement" data-target="shortcutColumnsSetting">−</button>
+                    <input id="shortcutColumnsSetting" type="number" min="2" max="8" step="1" readonly />
+                    <button type="button" class="stepper-btn increment" data-target="shortcutColumnsSetting">+</button>
+                  </div>
+                </label>
+                <label>
+                  Visible slots
+                  <div class="stepper">
+                    <button type="button" class="stepper-btn decrement" data-target="shortcutSlotsSetting">−</button>
+                    <input id="shortcutSlotsSetting" type="number" min="4" max="48" step="1" readonly />
+                    <button type="button" class="stepper-btn increment" data-target="shortcutSlotsSetting">+</button>
+                  </div>
+                </label>
+                <label style="grid-column: span 2;">
+                  Alignment
+                  <select id="shortcutAlignSetting">
+                    <option value="stretch">Stretch</option>
+                    <option value="start">Left</option>
+                    <option value="center">Center</option>
+                    <option value="end">Right</option>
+                  </select>
+                </label>
+              </div>
+              <!-- Inline Category Manager (replaces old group editor) -->
+              <div class="inline-category-manager">
+                <div class="create-category-container">
+                  <button class="create-category-btn" id="addGroup" type="button">
+                    <span class="plus-icon">+</span> CREATE CATEGORY
                   </button>
                 </div>
+                <div class="modal-note-box">
+                  <p class="modal-note-text">
+                    <span class="note-badge">Note</span> Drag the <span class="drag-handle-char">⋮</span> handle to reorder. The toolbar will follow this order. Categories without any websites won't appear in the toolbar. Tap the <span class="star-char">☆</span> icon to set a category as your default view on load (currently: <span id="currentDefaultCategoryText">All</span>).
+                  </p>
+                </div>
+                <div class="categories-section-header">
+                  <h3 class="categories-section-title">
+                    Categories
+                    <svg class="categories-tag-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+                      <line x1="7" y1="7" x2="7.01" y2="7" stroke-width="3" />
+                    </svg>
+                    <span class="custom-count-label" id="customCategoriesCount">(0/5 custom)</span>
+                  </h3>
+                </div>
+                <div class="category-list-scrollable" id="groupEditor"></div>
               </div>
-            </div>
+              <div class="shortcut-editor" id="shortcutEditor"></div>
+              <button class="text-button" id="addShortcut" type="button">Add Shortcut</button>
+            </section>
           </div>
 
-          <input type="file" id="importFileInput" hidden aria-hidden="true" />
-          <textarea id="settingsJson" rows="6" spellcheck="false" placeholder="Export or paste settings here (supports JSON, YAML, TOML, plain text)"></textarea>
+          <!-- Pane 5: Data -->
+          <div class="settings-pane" id="pane-data" role="tabpanel" aria-labelledby="tab-data" hidden>
+            <section class="settings-section settings-section--wide">
+              <h3>Data &amp; Reset</h3>
 
-          <div class="button-row" style="margin-top:10px">
-            <button class="text-button danger" id="resetSettings" type="button">Reset All Settings</button>
+              <!-- Export/Import Grid -->
+              <div class="data-grid">
+                <!-- Export row -->
+                <div class="export-import-row">
+                  <span class="export-import-label">Export</span>
+                  <div class="export-import-controls">
+                    <select class="format-select" id="exportFormat">
+                      <option value="json">JSON</option>
+                      <option value="yaml">YAML</option>
+                      <option value="toml">TOML</option>
+                      <option value="text">Plain Text</option>
+                    </select>
+                    <div class="export-import-buttons">
+                      <button class="action-btn" id="exportSaveFile" type="button" title="Download as file">
+                        <svg aria-hidden="true" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Save File
+                      </button>
+                      <button class="action-btn" id="exportCopy" type="button" title="Copy to clipboard">
+                        <svg aria-hidden="true" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        Copy
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Import row -->
+                <div class="export-import-row">
+                  <span class="export-import-label">Import</span>
+                  <div class="export-import-controls">
+                    <select class="format-select" id="importFormat">
+                      <option value="json">JSON</option>
+                      <option value="yaml">YAML</option>
+                      <option value="toml">TOML</option>
+                      <option value="text">Plain Text</option>
+                    </select>
+                    <div class="export-import-buttons">
+                      <button class="action-btn" id="importLoadFile" type="button" title="Load from file">
+                        <svg aria-hidden="true" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        Load File
+                      </button>
+                      <button class="action-btn" id="importPaste" type="button" title="Import from textarea below">
+                        <svg aria-hidden="true" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+                        Paste &amp; Import
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <input type="file" id="importFileInput" hidden aria-hidden="true" />
+              <textarea id="settingsJson" rows="6" spellcheck="false" placeholder="Export or paste settings here (supports JSON, YAML, TOML, plain text)"></textarea>
+
+              <div class="button-row" style="margin-top:10px">
+                <button class="text-button danger" id="resetSettings" type="button">Reset All Settings</button>
+              </div>
+            </section>
           </div>
-        </section>
+        </div>
       </div>
 
       <!-- Settings action footer -->
       <div class="settings-footer">
-        <button class="text-button settings-discard-btn" id="discardSettings" type="button">
-          <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18M10.5 10.677A2 2 0 0 0 10 12a2 2 0 1 0 4 0 2 2 0 0 0-.677-1.5M6.362 6.362A9 9 0 0 0 12 21a9 9 0 0 0 9-9 9 9 0 0 0-9-9 9 9 0 0 0-6.362 2.638"/></svg>
-          Discard
+        <button class="text-button settings-edit-layout-btn" id="editLayoutBtn" type="button">
+          <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+          Edit Layout
         </button>
         <button class="text-button settings-save-btn" id="saveSettingsExit" type="button">
           <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-          Save &amp; Exit
+          Save &amp; Close
         </button>
       </div>
     </aside>
+
+    <!-- Floating layout edit toolbar -->
+    <div class="layout-edit-bar" id="layoutEditBar" hidden>
+      <span class="layout-edit-title">Layout Edit Mode</span>
+      <div class="layout-edit-actions">
+        <button class="text-button" id="saveLayoutBar" type="button">Save Layout</button>
+        <button class="text-button danger" id="discardLayoutBar" type="button">Discard</button>
+      </div>
+    </div>
 
 
 

@@ -1,0 +1,11 @@
+{
+  "name": "custimized-browser-start-page",
+  "version": "1.0.0",
+  "description": "Customized Browser Start Page with modern Settings UI",
+  "scripts": {
+    "dev": "http-server -p 8400"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}

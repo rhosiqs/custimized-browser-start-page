@@ -399,6 +399,10 @@ const elements = {
   editModeSetting: document.getElementById("editModeSetting"),
   saveLayout: document.getElementById("saveLayout"),
   discardLayout: document.getElementById("discardLayout"),
+  editLayoutBtn: document.getElementById("editLayoutBtn"),
+  layoutEditBar: document.getElementById("layoutEditBar"),
+  saveLayoutBar: document.getElementById("saveLayoutBar"),
+  discardLayoutBar: document.getElementById("discardLayoutBar"),
   defaultSearchSetting: document.getElementById("defaultSearchSetting"),
   defaultAiSetting: document.getElementById("defaultAiSetting"),
   defaultFocusOnLoadSetting: document.getElementById("defaultFocusOnLoadSetting"),
@@ -462,9 +466,13 @@ function loadSettings() {
       saved.layoutAlignedV1 = true;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
     }
-    return normalizeSettings({ ...defaultSettings, ...saved });
+    const loaded = normalizeSettings({ ...defaultSettings, ...saved });
+    loaded.editMode = false;
+    return loaded;
   } catch {
-    return normalizeSettings(defaultSettings);
+    const loaded = normalizeSettings(defaultSettings);
+    loaded.editMode = false;
+    return loaded;
   }
 }
 
@@ -993,7 +1001,8 @@ function clonePositions(value) {
 
 // Persist the current settings snapshot.
 function saveSettings() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  const toSave = { ...settings, editMode: false };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
 }
 
 // ==========================================
@@ -1568,21 +1577,46 @@ function applySettings() {
   elements.backgroundValueSetting.value = settings.backgroundValue;
   elements.accentSetting.value = settings.accent;
   elements.accentTextSetting.value = settings.accent;
-  elements.clockBackgroundSetting.value = String(settings.clockBackground);
-  elements.editModeSetting.value = String(settings.editMode);
+  
+  if (elements.clockBackgroundSetting) {
+    if (elements.clockBackgroundSetting.type === "checkbox") {
+      elements.clockBackgroundSetting.checked = settings.clockBackground;
+    } else {
+      elements.clockBackgroundSetting.value = String(settings.clockBackground);
+    }
+  }
+
+  if (elements.editModeSetting) {
+    elements.editModeSetting.value = String(settings.editMode);
+  }
   if (elements.saveLayout) elements.saveLayout.disabled = !settings.editMode;
   if (elements.discardLayout) elements.discardLayout.disabled = !settings.editMode;
+  if (elements.layoutEditBar) {
+    elements.layoutEditBar.hidden = !settings.editMode;
+  }
+  
   elements.defaultSearchSetting.value = settings.defaultSearch;
   elements.defaultAiSetting.value = settings.defaultAi;
   elements.defaultFocusOnLoadSetting.value = settings.defaultFocusOnLoad;
   if (elements.copyQueryToClipboardSetting) {
-    elements.copyQueryToClipboardSetting.value = String(settings.copyQueryToClipboard);
+    if (elements.copyQueryToClipboardSetting.type === "checkbox") {
+      elements.copyQueryToClipboardSetting.checked = settings.copyQueryToClipboard;
+    } else {
+      elements.copyQueryToClipboardSetting.value = String(settings.copyQueryToClipboard);
+    }
   }
   elements.shortcutColumnsSetting.value = settings.shortcutColumns;
   elements.shortcutSlotsSetting.value = settings.shortcutSlots;
   elements.shortcutAlignSetting.value = settings.shortcutAlign;
   elements.clockFormatSetting.value = settings.clockFormat;
-  elements.showSecondsSetting.value = String(settings.showSeconds);
+  
+  if (elements.showSecondsSetting) {
+    if (elements.showSecondsSetting.type === "checkbox") {
+      elements.showSecondsSetting.checked = settings.showSeconds;
+    } else {
+      elements.showSecondsSetting.value = String(settings.showSeconds);
+    }
+  }
 
   elements.body.classList.toggle("edit-mode", settings.editMode);
   if (settings.editMode) {
@@ -2112,14 +2146,14 @@ function renderShortcuts() {
     elements.shortcutGrid.appendChild(tile);
   });
 
-  if (isAllGroups && !shortcutInlineEditMode) {
+  if (isAllGroups) {
     for (let i = visible.length; i < settings.shortcutSlots; i += 1) {
       const empty = document.createElement("button");
       empty.className = "shortcut-tile shortcut-empty";
       empty.type = "button";
       empty.title = "Add shortcut";
       empty.innerHTML = '<span class="shortcut-icon">+</span><span class="shortcut-title">Add</span>';
-      empty.addEventListener("click", openSettings);
+      empty.addEventListener("click", () => openSettings("shortcuts"));
       elements.shortcutGrid.appendChild(empty);
     }
   }
@@ -2608,13 +2642,32 @@ function formatZoneTime(zone, date) {
 }
 
 // Drawer open/close helpers.
-function openSettings() {
+function openSettings(defaultTab) {
   // Snapshot current settings so Discard can restore them.
   settingsSnapshot = JSON.parse(JSON.stringify(settings));
   elements.drawer.classList.add("open");
   elements.drawer.setAttribute("aria-hidden", "false");
   elements.backdrop.hidden = false;
   document.body.classList.add("settings-open");
+
+  // Reset navigation to the specified tab or default to first tab (Appearance) on open
+  const tabName = (typeof defaultTab === "string") ? defaultTab : "appearance";
+  const navContainer = document.getElementById("settingsNav");
+  if (navContainer) {
+    navContainer.querySelectorAll(".settings-nav-btn").forEach((btn) => {
+      if (btn.dataset.pane === tabName) {
+        btn.classList.add("active");
+        btn.setAttribute("aria-selected", "true");
+      } else {
+        btn.classList.remove("active");
+        btn.setAttribute("aria-selected", "false");
+      }
+    });
+    const panes = document.querySelectorAll(".settings-pane");
+    panes.forEach((pane) => {
+      pane.hidden = pane.id !== `pane-${tabName}`;
+    });
+  }
 }
 
 function closeSettings() {
@@ -2655,7 +2708,8 @@ function handleSettingsInput(event) {
 
   // Filter input/change events by element type to prevent double firing.
   if (target instanceof HTMLSelectElement && event.type !== "change") return;
-  if (target instanceof HTMLInputElement && event.type !== "input") return;
+  if (target instanceof HTMLInputElement && target.type !== "checkbox" && event.type !== "input") return;
+  if (target instanceof HTMLInputElement && target.type === "checkbox" && event.type !== "change") return;
 
   if (target.id === "backgroundTypeSetting") {
     updateSetting("backgroundType", target.value);
@@ -2702,20 +2756,23 @@ function handleSettingsInput(event) {
     return;
   }
 
+  const isCheckbox = target instanceof HTMLInputElement && target.type === "checkbox";
+  const val = isCheckbox ? target.checked : target.value;
+
   const map = {
-    themeSetting: ["theme", target.value],
-    densitySetting: ["density", target.value],
-    clockBackgroundSetting: ["clockBackground", target.value === "true"],
-    backgroundValueSetting: ["backgroundValue", target.value],
-    defaultSearchSetting: ["defaultSearch", target.value],
-    defaultAiSetting: ["defaultAi", target.value],
-    defaultFocusOnLoadSetting: ["defaultFocusOnLoad", target.value],
-    copyQueryToClipboardSetting: ["copyQueryToClipboard", target.value === "true"],
-    shortcutColumnsSetting: ["shortcutColumns", target.value],
-    shortcutSlotsSetting: ["shortcutSlots", target.value],
-    shortcutAlignSetting: ["shortcutAlign", target.value],
-    clockFormatSetting: ["clockFormat", target.value],
-    showSecondsSetting: ["showSeconds", target.value === "true"]
+    themeSetting: ["theme", val],
+    densitySetting: ["density", val],
+    clockBackgroundSetting: ["clockBackground", val],
+    backgroundValueSetting: ["backgroundValue", val],
+    defaultSearchSetting: ["defaultSearch", val],
+    defaultAiSetting: ["defaultAi", val],
+    defaultFocusOnLoadSetting: ["defaultFocusOnLoad", val],
+    copyQueryToClipboardSetting: ["copyQueryToClipboard", val],
+    shortcutColumnsSetting: ["shortcutColumns", val],
+    shortcutSlotsSetting: ["shortcutSlots", val],
+    shortcutAlignSetting: ["shortcutAlign", val],
+    clockFormatSetting: ["clockFormat", val],
+    showSecondsSetting: ["showSeconds", val]
   };
 
   const update = map[target.id];
@@ -3096,6 +3153,71 @@ function wireEvents() {
     saveLayoutChanges();
   });
   elements.discardLayout?.addEventListener("click", () => {
+    discardLayoutChanges();
+  });
+
+  // Sidebar tab selection
+  const navContainer = document.getElementById("settingsNav");
+  navContainer?.addEventListener("click", (event) => {
+    const tabBtn = event.target.closest(".settings-nav-btn");
+    if (!tabBtn) return;
+    const targetPaneId = `pane-${tabBtn.dataset.pane}`;
+    
+    // Deactivate current active tab
+    navContainer.querySelectorAll(".settings-nav-btn").forEach(btn => {
+      btn.classList.remove("active");
+      btn.setAttribute("aria-selected", "false");
+    });
+    
+    // Activate clicked tab
+    tabBtn.classList.add("active");
+    tabBtn.setAttribute("aria-selected", "true");
+    
+    // Hide all panes
+    const panes = document.querySelectorAll(".settings-pane");
+    panes.forEach(pane => {
+      pane.hidden = true;
+    });
+    
+    // Show target pane
+    const targetPane = document.getElementById(targetPaneId);
+    if (targetPane) {
+      targetPane.hidden = false;
+    }
+  });
+
+  // Stepper input buttons
+  document.querySelectorAll(".stepper-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const targetId = btn.getAttribute("data-target");
+      const input = document.getElementById(targetId);
+      if (!input) return;
+      const min = parseInt(input.min, 10) || 0;
+      const max = parseInt(input.max, 10) || Infinity;
+      const step = parseInt(input.step, 10) || 1;
+      let val = parseInt(input.value, 10) || 0;
+      if (btn.classList.contains("increment")) {
+        val = Math.min(max, val + step);
+      } else {
+        val = Math.max(min, val - step);
+      }
+      input.value = val;
+      // Dispatch custom input event so standard listener triggers and updates settings object
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  });
+
+  // Edit Layout from settings footer
+  elements.editLayoutBtn?.addEventListener("click", () => {
+    enterEditMode();
+  });
+
+  // Floating Layout Edit Mode toolbar actions
+  elements.saveLayoutBar?.addEventListener("click", () => {
+    saveLayoutChanges();
+  });
+  
+  elements.discardLayoutBar?.addEventListener("click", () => {
     discardLayoutChanges();
   });
   elements.shortcutGroupBar?.addEventListener("click", (event) => {

@@ -2,6 +2,14 @@
 
 A premium, static new-tab start page designed for fast navigation, time management, and search queries with local persistence. Open [index.html](file:///d:/01_Programs/06_BrowserStartPage/index.html) directly in your browser or serve it locally.
 
+## 🚀 Version 0.6.0 (Modern Settings UI & Layout Edit Mode Redesign)
+
+- **Two-Pane Sidebar Layout**: Refactored the settings panel from a long, messy scrolling view to a tabbed interface (Appearance, Search, Global Time, Shortcuts, Data & Reset) for intuitive navigation.
+- **Toggle Switches for Boolean Settings**: Replaced old, clunky `<select>` dropdowns (On/Off) with modern, animated slide toggles for options like Clock Background, Show Seconds, and Copy Search Query.
+- **Stepper Controls for Numeric Inputs**: Replaced text input slots for shortcut columns and slots with responsive decrement/increment buttons.
+- **Dedicated Floating Edit Mode Bar**: Extracted layout edit controls from the settings drawer. Enabling "Edit Layout" now closes the settings drawer and displays an on-screen floating bar with "Save Layout" and "Discard" options, preventing Backdrop overlap.
+- **Simplified Footer Action**: Streamlined drawer actions down to a single "Save & Close" button, utilizing the close button (✕) for discarding changes.
+
 ## 🚀 Version 0.5.0 (Address Bar Autocomplete & Website Prediction)
 
 - **Address bar website prediction**: As you type in the address bar (e.g. `goo`), it suggests matching domains using a dropdown list.

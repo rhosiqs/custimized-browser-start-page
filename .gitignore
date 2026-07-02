@@ -23,8 +23,6 @@ yarn-error.log*
 # Project specific ignores
 template_Gemini35pro
 homepageserver_review.md
-package.json
-package-lock.json
 todo_or_modify.md
 
 # Bug report (auto-generated, not part of source)
