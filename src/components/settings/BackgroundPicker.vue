@@ -223,13 +223,14 @@ function processFile(file) {
 
 .custom-label {
   font-size: 0.82rem;
-  color: rgba(255, 255, 255, 0.5);
+  font-weight: 500;
+  color: #ffffff;
 }
 
 .custom-color-input {
   width: 36px;
   height: 36px;
-  border: 2px solid rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.25);
   border-radius: 10px;
   cursor: pointer;
   background: transparent;
@@ -246,7 +247,7 @@ function processFile(file) {
 }
 
 .upload-zone {
-  border: 2px dashed rgba(255, 255, 255, 0.12);
+  border: 2px dashed rgba(255, 255, 255, 0.3);
   border-radius: 14px;
   padding: 28px 16px;
   text-align: center;
@@ -260,18 +261,19 @@ function processFile(file) {
 
 .upload-zone:hover,
 .upload-zone.drag-over {
-  border-color: rgba(108, 99, 255, 0.5);
-  background: rgba(108, 99, 255, 0.06);
+  border-color: rgba(59, 130, 246, 0.7);
+  background: rgba(59, 130, 246, 0.1);
 }
 
 .upload-zone p {
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .upload-hint {
-  font-size: 0.72rem;
-  color: rgba(255, 255, 255, 0.25);
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .file-input {

@@ -291,10 +291,10 @@ function doReset() {
 
 .section-title {
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.85);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -310,7 +310,8 @@ function doReset() {
 
 .setting-row span {
   font-size: 0.88rem;
-  color: rgba(255, 255, 255, 0.8);
+  font-weight: 500;
+  color: #ffffff;
 }
 
 .color-row {
@@ -322,13 +323,14 @@ function doReset() {
 
 .color-row span {
   font-size: 0.88rem;
-  color: rgba(255, 255, 255, 0.8);
+  font-weight: 500;
+  color: #ffffff;
 }
 
 .color-picker {
   width: 36px;
   height: 36px;
-  border: 2px solid rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.25);
   border-radius: 10px;
   cursor: pointer;
   background: transparent;
@@ -345,21 +347,22 @@ function doReset() {
 }
 
 .api-hint {
-  font-size: 0.72rem;
-  color: rgba(255, 255, 255, 0.35);
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.65);
   margin-top: 6px;
 }
 
 .api-hint a {
-  color: #6C63FF;
-  text-decoration: none;
-}
-
-.api-hint a:hover {
+  color: #60a5fa;
   text-decoration: underline;
 }
 
+.api-hint a:hover {
+  color: #93c5fd;
+}
+
 .reset-dialog {
-  background: rgba(15, 15, 30, 0.98) !important;
+  background: rgba(15, 23, 42, 0.98) !important;
+  color: #ffffff !important;
 }
 </style>
