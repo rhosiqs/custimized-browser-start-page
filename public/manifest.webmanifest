@@ -1,0 +1,18 @@
+{
+  "name": "Browser Start Page",
+  "short_name": "StartPage",
+  "description": "A personalized browser homepage with all your favorite sites, news, weather, notes, and more.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a1a",
+  "theme_color": "#0a0a1a",
+  "lang": "en",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
