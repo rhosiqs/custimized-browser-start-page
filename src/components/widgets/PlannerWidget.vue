@@ -143,13 +143,15 @@ onMounted(loadTasks)
 
 .add-task {
   margin-bottom: 12px;
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 12px;
   padding: 4px 8px;
 }
 
 .task-input {
-  font-size: 0.85rem;
+  font-size: 0.9rem;
+  color: #ffffff !important;
 }
 
 .tasks-list {

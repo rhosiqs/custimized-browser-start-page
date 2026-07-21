@@ -39,8 +39,9 @@
     <v-dialog v-model="dialogVisible" max-width="380">
       <v-card
         rounded="xl"
+        class="dialog-card"
         :style="{
-          background: 'rgba(15, 15, 30, 0.98)',
+          background: 'rgba(15, 23, 42, 0.98)',
           backdropFilter: 'blur(30px)',
         }"
       >
