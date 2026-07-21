@@ -74,20 +74,20 @@
     <!-- Disclosures Modal -->
     <v-dialog v-model="showDisclosures" max-width="500">
       <v-card rounded="xl" class="dialog-card">
-        <v-card-title class="d-flex justify-space-between align-center px-5 pt-4">
+        <v-card-title class="d-flex justify-space-between align-center px-5 pt-4 pb-2">
           <span class="font-weight-bold text-white text-h6">Privacy & Disclosures</span>
           <v-btn icon variant="text" size="small" @click="showDisclosures = false">
             <v-icon color="white">mdi-close</v-icon>
           </v-btn>
         </v-card-title>
         <v-card-text class="px-5 pb-5 text-body-2 text-grey-lighten-2">
-          <p class="mb-3"><b>Best Homepage Ever</b> respects your privacy:</p>
-          <ul class="pl-4 mb-3">
+          <p class="mb-3"><b class="text-white">Best Homepage Ever</b> respects your privacy:</p>
+          <ul class="pl-4 mb-3 text-grey-lighten-2">
             <li class="mb-1">100% ad-free experience.</li>
             <li class="mb-1">All settings, notes, and shortcuts are stored locally in your browser (localStorage).</li>
             <li class="mb-1">No personal tracking or data selling.</li>
           </ul>
-          <p class="text-caption text-grey-darken-1">Version 4.6.5 (Local Build)</p>
+          <p class="text-caption text-grey-lighten-1">Version 4.6.5 (Local Build)</p>
         </v-card-text>
       </v-card>
     </v-dialog>
@@ -95,20 +95,20 @@
     <!-- Announcements Modal -->
     <v-dialog v-model="showAnnouncements" max-width="480">
       <v-card rounded="xl" class="dialog-card">
-        <v-card-title class="d-flex justify-space-between align-center px-5 pt-4">
+        <v-card-title class="d-flex justify-space-between align-center px-5 pt-4 pb-2">
           <span class="font-weight-bold text-white text-h6">What's New</span>
           <v-btn icon variant="text" size="small" @click="showAnnouncements = false">
             <v-icon color="white">mdi-close</v-icon>
           </v-btn>
         </v-card-title>
-        <v-card-text class="px-5 pb-5 text-body-2 text-grey-lighten-2">
-          <div class="mb-3">
-            <span class="font-weight-bold text-primary">✨ Daily Brief Update</span>
-            <p class="text-caption text-grey-lighten-1">Get real-time news headlines dynamically rendered inside your dashboard.</p>
+        <v-card-text class="px-5 pb-5 pt-2">
+          <div class="mb-4">
+            <div class="font-weight-bold text-blue-lighten-2 text-subtitle-2 mb-1">✨ Daily Brief Update</div>
+            <p class="text-body-2 text-grey-lighten-2">Get real-time news headlines dynamically rendered inside your dashboard.</p>
           </div>
-          <div class="mb-3">
-            <span class="font-weight-bold text-primary">🎨 Custom Background Uploads</span>
-            <p class="text-caption text-grey-lighten-1">Upload your own images or choose from solid colors in Settings.</p>
+          <div class="mb-2">
+            <div class="font-weight-bold text-blue-lighten-2 text-subtitle-2 mb-1">🎨 Custom Background Uploads</div>
+            <p class="text-body-2 text-grey-lighten-2">Upload your own images or choose from solid colors in Settings.</p>
           </div>
         </v-card-text>
       </v-card>
@@ -117,20 +117,20 @@
     <!-- Keyboard Shortcuts Help Modal -->
     <v-dialog v-model="showShortcutsHelp" max-width="420">
       <v-card rounded="xl" class="dialog-card">
-        <v-card-title class="d-flex justify-space-between align-center px-5 pt-4">
+        <v-card-title class="d-flex justify-space-between align-center px-5 pt-4 pb-2">
           <span class="font-weight-bold text-white text-h6">Keyboard Shortcuts</span>
           <v-btn icon variant="text" size="small" @click="showShortcutsHelp = false">
             <v-icon color="white">mdi-close</v-icon>
           </v-btn>
         </v-card-title>
-        <v-card-text class="px-5 pb-5">
-          <div class="d-flex justify-space-between align-center mb-2">
-            <span class="text-body-2 text-white">Focus Search Bar</span>
-            <code class="bg-grey-darken-3 px-2 py-1 rounded text-caption text-white">/</code>
+        <v-card-text class="px-5 pb-5 pt-2">
+          <div class="d-flex justify-space-between align-center mb-3">
+            <span class="text-body-2 text-grey-lighten-1">Focus Search Bar</span>
+            <code class="bg-grey-darken-3 px-3 py-1 rounded text-caption text-white font-weight-bold">/</code>
           </div>
           <div class="d-flex justify-space-between align-center mb-2">
-            <span class="text-body-2 text-white">Execute Search</span>
-            <code class="bg-grey-darken-3 px-2 py-1 rounded text-caption text-white">Enter</code>
+            <span class="text-body-2 text-grey-lighten-1">Execute Search</span>
+            <code class="bg-grey-darken-3 px-3 py-1 rounded text-caption text-white font-weight-bold">Enter</code>
           </div>
         </v-card-text>
       </v-card>
