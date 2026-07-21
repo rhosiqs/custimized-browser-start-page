@@ -481,4 +481,33 @@ const tools = [
   backdrop-filter: blur(24px);
   border: 1px solid rgba(255, 255, 255, 0.15);
 }
+
+@media (max-width: 768px) {
+  .bottom-dock-bar {
+    padding: 0 10px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .bottom-dock-bar::-webkit-scrollbar {
+    display: none;
+  }
+  .dock-left-tools {
+    gap: 4px;
+  }
+  .dock-right-pills {
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .dock-pill {
+    padding: 3px 10px;
+    font-size: 0.68rem;
+  }
+  .fab-btn {
+    right: 16px;
+    bottom: 58px;
+    width: 42px;
+    height: 42px;
+  }
+}
 </style>

@@ -74,4 +74,15 @@ defineEmits(['open-modal'])
 .bg-green {
   background: #4ade80;
 }
+
+@media (max-width: 640px) {
+  .left-dock {
+    left: 8px;
+    gap: 8px;
+  }
+  .dock-circle-btn {
+    width: 36px;
+    height: 36px;
+  }
+}
 </style>

@@ -94,4 +94,17 @@ const formattedDate = computed(() => {
   margin-top: 2px;
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
 }
+
+@media (max-width: 768px) {
+  .clock-widget {
+    text-align: center;
+    padding-right: 0;
+  }
+  .time-container {
+    justify-content: center;
+  }
+  .time-main {
+    font-size: 38px;
+  }
+}
 </style>

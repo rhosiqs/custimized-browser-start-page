@@ -209,4 +209,22 @@ watch(() => props.requestedModal, (newVal) => {
   border: 1px solid rgba(255, 255, 255, 0.15) !important;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6) !important;
 }
+
+@media (max-width: 768px) {
+  .top-clock-area {
+    position: relative;
+    top: 0;
+    right: 0;
+    margin: 16px auto 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+
+  .center-hero-section {
+    margin-top: 24px;
+    padding: 0 44px;
+    gap: 20px;
+  }
+}
 </style>
