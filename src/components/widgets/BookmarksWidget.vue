@@ -48,14 +48,13 @@
         <v-card-title class="pt-5 px-5 text-white font-weight-bold">
           {{ isEditing ? 'Edit Bookmark' : 'Add Bookmark' }}
         </v-card-title>
-        <v-card-text class="px-5">
+        <v-card-text class="px-5 pt-3">
           <v-text-field
             v-model="formData.name"
             label="Name"
             variant="outlined"
             rounded="lg"
             density="comfortable"
-            hide-details
             class="mb-3"
           />
           <v-text-field
@@ -64,7 +63,6 @@
             variant="outlined"
             rounded="lg"
             density="comfortable"
-            hide-details
             placeholder="https://..."
             class="mb-3"
           />
@@ -75,7 +73,7 @@
             variant="outlined"
             rounded="lg"
             density="comfortable"
-            hide-details
+            class="mb-2"
           />
         </v-card-text>
         <v-card-actions class="px-5 pb-5">

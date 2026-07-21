@@ -123,14 +123,13 @@
           <v-icon color="white">mdi-close</v-icon>
         </v-btn>
       </v-card-title>
-      <v-card-text class="px-4 pt-2">
+      <v-card-text class="px-4 pt-3">
         <v-text-field
           v-model="loginEmail"
           label="Email Address"
           variant="outlined"
           rounded="lg"
           density="comfortable"
-          hide-details
           class="mb-3"
         />
         <v-text-field
@@ -140,8 +139,7 @@
           variant="outlined"
           rounded="lg"
           density="comfortable"
-          hide-details
-          class="mb-4"
+          class="mb-3"
         />
         <v-btn block color="primary" size="large" rounded="lg" class="mb-3" @click="doLogin">
           Sign In

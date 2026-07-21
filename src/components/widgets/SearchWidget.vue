@@ -91,16 +91,16 @@
             <v-icon color="white">mdi-close</v-icon>
           </v-btn>
         </v-card-title>
-        <v-card-text class="px-5">
+        <v-card-text class="px-5 pb-5">
           <p class="text-body-2 text-grey-lighten-1 mb-3">Filter shortcuts by category:</p>
-          <div class="d-flex flex-wrap gap-2">
+          <div class="category-chip-group">
             <v-chip
               v-for="cat in categories"
               :key="cat"
               :color="activeCategory === cat ? 'primary' : undefined"
               :variant="activeCategory === cat ? 'flat' : 'outlined'"
               size="small"
-              class="ma-1"
+              class="cat-option-chip"
               @click="selectCategory(cat); showCategoryMenu = false;"
             >
               {{ cat }}
@@ -367,5 +367,18 @@ onUnmounted(() => {
   background: rgba(15, 23, 42, 0.98) !important;
   backdrop-filter: blur(24px);
   border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.category-chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.cat-option-chip {
+  margin: 0 !important;
+  cursor: pointer;
+  font-weight: 600;
 }
 </style>
