@@ -1,69 +1,48 @@
 <template>
-  <v-container fluid class="widget-grid-container">
-    <!-- Clock -->
-    <div v-if="settings.widgetVisibility.clock" class="widget-section clock-section">
+  <div class="grid-layout">
+    <!-- Top Right Clock Area -->
+    <div class="top-clock-area" v-if="settings.widgetVisibility.clock">
       <ClockWidget />
     </div>
 
-    <!-- Search -->
-    <div v-if="settings.widgetVisibility.search" class="widget-section search-section">
-      <SearchWidget />
+    <!-- Center Hero Section (Search & Bookmarks) -->
+    <div class="center-hero-section">
+      <!-- Search Bar & Floating Categories -->
+      <div class="search-container" v-if="settings.widgetVisibility.search">
+        <SearchWidget />
+      </div>
+
+      <!-- Floating App Bookmarks Grid -->
+      <div class="bookmarks-container" v-if="settings.widgetVisibility.bookmarks">
+        <BookmarksWidget />
+      </div>
     </div>
 
-    <!-- Bookmarks -->
-    <div v-if="settings.widgetVisibility.bookmarks" class="widget-section bookmarks-section">
-      <BookmarksWidget />
-    </div>
+    <!-- Modals for Widgets (Opened via Footer Pills / Left Dock) -->
+    <v-dialog v-model="activeModal.notes" max-width="500">
+      <NotesWidget />
+    </v-dialog>
 
-    <!-- Cards Row -->
-    <v-row class="widget-cards-row" justify="center">
-      <!-- Weather -->
-      <v-col
-        v-if="settings.widgetVisibility.weather"
-        cols="12" sm="6" md="4" lg="3"
-      >
-        <WeatherWidget />
-      </v-col>
+    <v-dialog v-model="activeModal.planner" max-width="500">
+      <PlannerWidget />
+    </v-dialog>
 
-      <!-- News -->
-      <v-col
-        v-if="settings.widgetVisibility.news"
-        cols="12" sm="6" md="4" lg="5"
-      >
-        <NewsWidget />
-      </v-col>
+    <v-dialog v-model="activeModal.dailyBrief" max-width="600">
+      <DailyBriefWidget />
+    </v-dialog>
 
-      <!-- Notes -->
-      <v-col
-        v-if="settings.widgetVisibility.notes"
-        cols="12" sm="6" md="4" lg="4"
-      >
-        <NotesWidget />
-      </v-col>
-    </v-row>
+    <v-dialog v-model="activeModal.weather" max-width="450">
+      <WeatherWidget />
+    </v-dialog>
 
-    <!-- Second Row -->
-    <v-row class="widget-cards-row" justify="center">
-      <!-- Planner -->
-      <v-col
-        v-if="settings.widgetVisibility.planner"
-        cols="12" sm="6" md="4" lg="4"
-      >
-        <PlannerWidget />
-      </v-col>
-
-      <!-- Daily Brief -->
-      <v-col
-        v-if="settings.widgetVisibility.dailyBrief"
-        cols="12" sm="6" md="4" lg="4"
-      >
-        <DailyBriefWidget />
-      </v-col>
-    </v-row>
-  </v-container>
+    <v-dialog v-model="activeModal.news" max-width="600">
+      <NewsWidget />
+    </v-dialog>
+  </div>
 </template>
 
 <script setup>
+import { reactive, watch } from 'vue'
 import { useSettings } from '../../composables/useSettings.js'
 import ClockWidget from '../widgets/ClockWidget.vue'
 import SearchWidget from '../widgets/SearchWidget.vue'
@@ -74,45 +53,60 @@ import NotesWidget from '../widgets/NotesWidget.vue'
 import PlannerWidget from '../widgets/PlannerWidget.vue'
 import DailyBriefWidget from '../widgets/DailyBriefWidget.vue'
 
+const props = defineProps({
+  requestedModal: String,
+})
+
 const { settings } = useSettings()
+
+const activeModal = reactive({
+  notes: false,
+  planner: false,
+  dailyBrief: false,
+  weather: false,
+  news: false,
+})
+
+watch(() => props.requestedModal, (newVal) => {
+  if (newVal === 'notes') activeModal.notes = true
+  if (newVal === 'planner') activeModal.planner = true
+  if (newVal === 'dailyBrief') activeModal.dailyBrief = true
+  if (newVal === 'weather') activeModal.weather = true
+  if (newVal === 'news') activeModal.news = true
+})
 </script>
 
 <style scoped>
-.widget-grid-container {
-  max-width: 1400px;
-  padding: 0 24px 60px;
-}
-
-.widget-section {
+.grid-layout {
+  position: relative;
+  width: 100%;
+  min-height: calc(100vh - 110px);
   display: flex;
+  flex-direction: column;
+}
+
+.top-clock-area {
+  position: absolute;
+  top: 10px;
+  right: 40px;
+  z-index: 10;
+}
+
+.center-hero-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  margin-bottom: 12px;
+  margin-top: 80px;
+  gap: 30px;
+  padding: 0 20px;
 }
 
-.clock-section {
-  margin-top: 20px;
-  margin-bottom: 4px;
+.search-container {
+  width: 100%;
 }
 
-.search-section {
-  margin-bottom: 28px;
-}
-
-.bookmarks-section {
-  margin-bottom: 32px;
-}
-
-.widget-cards-row {
-  margin-bottom: 16px;
-}
-
-@media (max-width: 600px) {
-  .widget-grid-container {
-    padding: 0 12px 40px;
-  }
-
-  .clock-section {
-    margin-top: 8px;
-  }
+.bookmarks-container {
+  width: 100%;
 }
 </style>

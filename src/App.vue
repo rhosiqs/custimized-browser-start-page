@@ -1,46 +1,32 @@
 <template>
   <v-app :style="backgroundStyle">
-    <!-- Background overlay for readability -->
+    <!-- Background overlay for contrast -->
     <div class="background-overlay"></div>
 
-    <NavBar
-      @open-settings="showSettings = true"
-    />
+    <!-- Top Header Navigation Bar -->
+    <NavBar @open-settings="showSettings = true" />
 
+    <!-- Left Action Dock -->
+    <LeftDock @open-modal="handleOpenModal" />
+
+    <!-- Main Content Area -->
     <v-main class="main-content">
-      <WidgetGrid />
+      <WidgetGrid :requestedModal="modalToOpen" />
     </v-main>
 
-    <!-- Settings Drawer -->
-    <SettingsDrawer
-      v-model="showSettings"
-    />
+    <!-- Bottom Translucent Footer Dock -->
+    <BottomDock @open-modal="handleOpenModal" />
 
-    <!-- Context Menu -->
-    <Teleport to="body">
-      <div
-        v-if="contextMenu.show"
-        class="context-menu"
-        :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }"
-        @click="contextMenu.show = false"
-      >
-        <div
-          v-for="item in contextMenu.items"
-          :key="item.label"
-          class="context-menu-item"
-          @click="item.action"
-        >
-          <v-icon size="18">{{ item.icon }}</v-icon>
-          {{ item.label }}
-        </div>
-      </div>
-    </Teleport>
+    <!-- Settings Drawer -->
+    <SettingsDrawer v-model="showSettings" />
   </v-app>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, provide, reactive } from 'vue'
+import { ref, computed } from 'vue'
 import NavBar from './components/layout/NavBar.vue'
+import LeftDock from './components/layout/LeftDock.vue'
+import BottomDock from './components/layout/BottomDock.vue'
 import WidgetGrid from './components/layout/WidgetGrid.vue'
 import SettingsDrawer from './components/settings/SettingsDrawer.vue'
 import { useSettings } from './composables/useSettings.js'
@@ -48,6 +34,14 @@ import { useSettings } from './composables/useSettings.js'
 const { settings } = useSettings()
 
 const showSettings = ref(false)
+const modalToOpen = ref('')
+
+function handleOpenModal(type) {
+  modalToOpen.value = ''
+  setTimeout(() => {
+    modalToOpen.value = type
+  }, 10)
+}
 
 // Background style
 const backgroundStyle = computed(() => {
@@ -64,41 +58,6 @@ const backgroundStyle = computed(() => {
   }
   return { background: '#0a0a1a' }
 })
-
-// Context menu
-const contextMenu = reactive({
-  show: false,
-  x: 0,
-  y: 0,
-  items: [],
-})
-
-function showContextMenu(event, items) {
-  event.preventDefault()
-  contextMenu.x = event.clientX
-  contextMenu.y = event.clientY
-  contextMenu.items = items
-  contextMenu.show = true
-}
-
-function hideContextMenu() {
-  contextMenu.show = false
-}
-
-provide('contextMenu', { showContextMenu, hideContextMenu })
-
-// Close context menu on click elsewhere
-function onDocumentClick() {
-  contextMenu.show = false
-}
-
-onMounted(() => {
-  document.addEventListener('click', onDocumentClick)
-})
-
-onUnmounted(() => {
-  document.removeEventListener('click', onDocumentClick)
-})
 </script>
 
 <style scoped>
@@ -108,7 +67,7 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.15);
   pointer-events: none;
   z-index: 0;
 }
@@ -116,6 +75,6 @@ onUnmounted(() => {
 .main-content {
   position: relative;
   z-index: 1;
-  padding-top: 20px;
+  padding-bottom: 60px;
 }
 </style>

@@ -1,31 +1,35 @@
 <template>
-  <div class="bookmarks-wrapper glass-surface">
+  <div class="bookmarks-widget">
     <div class="bookmarks-grid">
       <div
         v-for="bookmark in bookmarks"
         :key="bookmark.id"
-        class="bookmark-item"
+        class="bookmark-tile"
         @click="openBookmark(bookmark.url)"
         @contextmenu.prevent="openEditDialog(bookmark)"
       >
-        <div class="bookmark-icon-wrapper">
+        <div class="tile-icon-box" :style="getTileStyle(bookmark)">
           <img
+            v-if="useCustomIcon(bookmark.url)"
+            :src="getCustomIcon(bookmark.url)"
+            :alt="bookmark.name"
+            class="tile-img"
+          />
+          <img
+            v-else
             :src="getFavicon(bookmark.url)"
             :alt="bookmark.name"
-            class="bookmark-icon"
-            loading="lazy"
+            class="tile-img"
             @error="(e) => e.target.src = fallbackIcon"
           />
         </div>
-        <div class="bookmark-name">{{ bookmark.name }}</div>
       </div>
 
-      <!-- Add Button -->
-      <div class="bookmark-item add-item" @click="openAddDialog">
-        <div class="bookmark-icon-wrapper add-icon-wrapper">
-          <v-icon size="24" color="rgba(255,255,255,0.5)">mdi-plus</v-icon>
+      <!-- Add Shortcut Button Tile -->
+      <div class="bookmark-tile add-tile" @click="openAddDialog">
+        <div class="tile-icon-box add-box">
+          <v-icon size="24" color="rgba(255,255,255,0.7)">mdi-plus</v-icon>
         </div>
-        <div class="bookmark-name">Add</div>
       </div>
     </div>
 
@@ -93,10 +97,33 @@ const dialogVisible = ref(false)
 const isEditing = ref(false)
 const formData = ref({ id: null, name: '', url: '' })
 
+// Preset icon colors matching BHE image 2 tile styling
+function getTileStyle(bookmark) {
+  const url = (bookmark.url || '').toLowerCase()
+  if (url.includes('amazon')) return { background: '#ff9900' }
+  if (url.includes('espn')) return { background: '#cc0000' }
+  if (url.includes('gmail') || url.includes('mail.google')) return { background: '#ffffff' }
+  if (url.includes('maps.google') || url.includes('google.com/maps')) return { background: '#ffffff' }
+  if (url.includes('instagram')) return { background: 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)' }
+  if (url.includes('netflix')) return { background: '#000000' }
+  if (url.includes('reddit')) return { background: '#ff4500' }
+  if (url.includes('wikipedia') || url.includes('wordle')) return { background: '#ffffff' }
+  if (url.includes('youtube')) return { background: '#ff0000' }
+  return { background: 'rgba(255, 255, 255, 0.15)', backdropFilter: 'blur(10px)' }
+}
+
+function useCustomIcon(urlStr) {
+  return false
+}
+
+function getCustomIcon(urlStr) {
+  return ''
+}
+
 function getFavicon(url) {
   try {
     const domain = new URL(url).hostname
-    return `https://www.google.com/s2/favicons?domain=${domain}&sz=64`
+    return `https://www.google.com/s2/favicons?domain=${domain}&sz=128`
   } catch {
     return fallbackIcon
   }
@@ -123,7 +150,6 @@ function saveBookmark() {
   let url = formData.value.url.trim()
   if (!name || !url) return
 
-  // Auto-prepend https if missing
   if (!url.startsWith('http://') && !url.startsWith('https://')) {
     url = 'https://' + url
   }
@@ -145,10 +171,10 @@ function deleteCurrentBookmark() {
 </script>
 
 <style scoped>
-.bookmarks-wrapper {
-  max-width: 800px;
+.bookmarks-widget {
+  width: 100%;
+  max-width: 760px;
   margin: 0 auto;
-  padding: 20px 24px;
 }
 
 .bookmarks-grid {
@@ -156,63 +182,42 @@ function deleteCurrentBookmark() {
   flex-wrap: wrap;
   gap: 16px;
   justify-content: center;
-}
-
-.bookmark-item {
-  width: 72px;
-  display: flex;
-  flex-direction: column;
   align-items: center;
+}
+
+.bookmark-tile {
   cursor: pointer;
-  transition: transform 0.2s ease;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.bookmark-item:hover {
-  transform: scale(1.08);
+.bookmark-tile:hover {
+  transform: translateY(-4px) scale(1.06);
 }
 
-.bookmark-icon-wrapper {
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.08);
+.tile-icon-box {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 6px;
-  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
   overflow: hidden;
 }
 
-.bookmark-item:hover .bookmark-icon-wrapper {
-  background: rgba(255, 255, 255, 0.14);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-}
-
-.bookmark-icon {
-  width: 28px;
-  height: 28px;
+.tile-img {
+  width: 32px;
+  height: 32px;
   object-fit: contain;
 }
 
-.add-icon-wrapper {
-  border: 2px dashed rgba(255, 255, 255, 0.15);
-  background: transparent;
+.add-box {
+  background: rgba(255, 255, 255, 0.15) !important;
+  backdrop-filter: blur(12px);
+  border: 1px dashed rgba(255, 255, 255, 0.4);
 }
 
-.add-item:hover .add-icon-wrapper {
-  border-color: rgba(108, 99, 255, 0.4);
-  background: rgba(108, 99, 255, 0.08);
-}
-
-.bookmark-name {
-  font-size: 0.7rem;
-  color: rgba(255, 255, 255, 0.7);
-  text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  width: 100%;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+.add-tile:hover .add-box {
+  background: rgba(255, 255, 255, 0.25) !important;
 }
 </style>
