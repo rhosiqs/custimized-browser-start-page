@@ -1,73 +1,172 @@
 <template>
-  <div class="bottom-dock-bar">
-    <!-- Left Tool Icons with Hover Popout Flyouts -->
-    <div class="dock-left-tools">
-      <div
-        v-for="tool in tools"
-        :key="tool.id"
-        class="tool-item-wrapper"
-        @mouseenter="activeTool = tool.id"
-        @mouseleave="activeTool = null"
-      >
-        <!-- Flyout Menu Popup -->
-        <Transition name="flyout">
-          <div v-if="activeTool === tool.id" class="flyout-menu">
-            <div class="flyout-header">
-              <v-icon size="16" :color="tool.iconColor">{{ tool.icon }}</v-icon>
-              <span>{{ tool.title }}</span>
+  <div>
+    <!-- Bottom Translucent Dock Bar -->
+    <div class="bottom-dock-bar">
+      <!-- Left Tool Icons with Hover Popout Flyouts -->
+      <div class="dock-left-tools">
+        <div
+          v-for="tool in tools"
+          :key="tool.id"
+          class="tool-item-wrapper"
+          @mouseenter="activeTool = tool.id"
+          @mouseleave="activeTool = null"
+        >
+          <!-- Flyout Menu Popup -->
+          <Transition name="flyout">
+            <div v-if="activeTool === tool.id" class="flyout-menu">
+              <div class="flyout-header">
+                <v-icon size="16" :color="tool.iconColor">{{ tool.icon }}</v-icon>
+                <span>{{ tool.title }}</span>
+              </div>
+              <div class="flyout-grid">
+                <a
+                  v-for="link in tool.links"
+                  :key="link.name"
+                  :href="link.url"
+                  target="_blank"
+                  rel="noopener"
+                  class="flyout-link"
+                >
+                  <v-icon size="16" class="link-icon">{{ link.icon || 'mdi-open-in-new' }}</v-icon>
+                  <span>{{ link.name }}</span>
+                </a>
+              </div>
             </div>
-            <div class="flyout-grid">
-              <a
-                v-for="link in tool.links"
-                :key="link.name"
-                :href="link.url"
-                target="_blank"
-                rel="noopener"
-                class="flyout-link"
-              >
-                <v-icon size="16" class="link-icon">{{ link.icon || 'mdi-open-in-new' }}</v-icon>
-                <span>{{ link.name }}</span>
-              </a>
-            </div>
-          </div>
-        </Transition>
+          </Transition>
 
-        <!-- Tool Button Icon -->
-        <button class="tool-btn" :class="{ active: activeTool === tool.id }">
-          <v-icon size="18">{{ tool.icon }}</v-icon>
-        </button>
+          <!-- Tool Button Icon -->
+          <button class="tool-btn" :class="{ active: activeTool === tool.id }" @click="$emit('open-modal', tool.id)">
+            <v-icon size="18">{{ tool.icon }}</v-icon>
+          </button>
+        </div>
+      </div>
+
+      <!-- Right Feature Pills & Utility Icons -->
+      <div class="dock-right-pills">
+        <button class="dock-pill" @click="$emit('open-modal', 'notes')">SNIPPETS</button>
+        <button class="dock-pill" @click="$emit('open-modal', 'notes')">NOTES</button>
+        <button class="dock-pill" @click="$emit('open-modal', 'planner')">PLANNER</button>
+        <button class="dock-pill highlight-pill" @click="$emit('open-modal', 'dailyBrief')">DAILY BRIEF</button>
+        <button class="dock-link" @click="showDisclosures = true">DISCLOSURES</button>
+
+        <div class="util-icons">
+          <button class="tool-btn" title="Share" @click="sharePage">
+            <v-icon size="16">mdi-share-variant-outline</v-icon>
+          </button>
+          <button class="tool-btn" title="Announcements" @click="showAnnouncements = true">
+            <v-icon size="16">mdi-bullhorn-outline</v-icon>
+          </button>
+          <button class="tool-btn" title="Keyboard Shortcuts" @click="showShortcutsHelp = true">
+            <v-icon size="16">mdi-help-circle-outline</v-icon>
+          </button>
+          <button class="tool-btn" title="Settings" @click="$emit('open-settings')">
+            <v-icon size="16">mdi-dots-vertical</v-icon>
+          </button>
+        </div>
       </div>
     </div>
 
-    <!-- Right Feature Pills & Utility Icons -->
-    <div class="dock-right-pills">
-      <button class="dock-pill" @click="$emit('open-modal', 'snippets')">SNIPPETS</button>
-      <button class="dock-pill" @click="$emit('open-modal', 'notes')">NOTES</button>
-      <button class="dock-pill" @click="$emit('open-modal', 'planner')">PLANNER</button>
-      <button class="dock-pill highlight-pill" @click="$emit('open-modal', 'dailyBrief')">DAILY BRIEF</button>
-      <button class="dock-link">DISCLOSURES</button>
-
-      <div class="util-icons">
-        <button class="tool-btn"><v-icon size="16">mdi-share-variant-outline</v-icon></button>
-        <button class="tool-btn"><v-icon size="16">mdi-bullhorn-outline</v-icon></button>
-        <button class="tool-btn"><v-icon size="16">mdi-help-circle-outline</v-icon></button>
-        <button class="tool-btn"><v-icon size="16">mdi-dots-vertical</v-icon></button>
-      </div>
-    </div>
-
-    <!-- Floating FAB plus button in bottom right -->
-    <button class="fab-btn" title="Add" @click="$emit('open-modal', 'add')">
+    <!-- Floating FAB Plus Button (Positioned ABOVE the bottom dock bar to prevent overlap!) -->
+    <button class="fab-btn" title="Add Shortcut" @click="$emit('open-modal', 'add')">
       <v-icon color="white" size="24">mdi-plus</v-icon>
     </button>
+
+    <!-- Disclosures Modal -->
+    <v-dialog v-model="showDisclosures" max-width="500">
+      <v-card rounded="xl" class="dialog-card">
+        <v-card-title class="d-flex justify-space-between align-center px-5 pt-4">
+          <span class="font-weight-bold text-white text-h6">Privacy & Disclosures</span>
+          <v-btn icon variant="text" size="small" @click="showDisclosures = false">
+            <v-icon color="white">mdi-close</v-icon>
+          </v-btn>
+        </v-card-title>
+        <v-card-text class="px-5 pb-5 text-body-2 text-grey-lighten-2">
+          <p class="mb-3"><b>Best Homepage Ever</b> respects your privacy:</p>
+          <ul class="pl-4 mb-3">
+            <li class="mb-1">100% ad-free experience.</li>
+            <li class="mb-1">All settings, notes, and shortcuts are stored locally in your browser (localStorage).</li>
+            <li class="mb-1">No personal tracking or data selling.</li>
+          </ul>
+          <p class="text-caption text-grey-darken-1">Version 4.6.5 (Local Build)</p>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
+
+    <!-- Announcements Modal -->
+    <v-dialog v-model="showAnnouncements" max-width="480">
+      <v-card rounded="xl" class="dialog-card">
+        <v-card-title class="d-flex justify-space-between align-center px-5 pt-4">
+          <span class="font-weight-bold text-white text-h6">What's New</span>
+          <v-btn icon variant="text" size="small" @click="showAnnouncements = false">
+            <v-icon color="white">mdi-close</v-icon>
+          </v-btn>
+        </v-card-title>
+        <v-card-text class="px-5 pb-5 text-body-2 text-grey-lighten-2">
+          <div class="mb-3">
+            <span class="font-weight-bold text-primary">✨ Daily Brief Update</span>
+            <p class="text-caption text-grey-lighten-1">Get real-time news headlines dynamically rendered inside your dashboard.</p>
+          </div>
+          <div class="mb-3">
+            <span class="font-weight-bold text-primary">🎨 Custom Background Uploads</span>
+            <p class="text-caption text-grey-lighten-1">Upload your own images or choose from solid colors in Settings.</p>
+          </div>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
+
+    <!-- Keyboard Shortcuts Help Modal -->
+    <v-dialog v-model="showShortcutsHelp" max-width="420">
+      <v-card rounded="xl" class="dialog-card">
+        <v-card-title class="d-flex justify-space-between align-center px-5 pt-4">
+          <span class="font-weight-bold text-white text-h6">Keyboard Shortcuts</span>
+          <v-btn icon variant="text" size="small" @click="showShortcutsHelp = false">
+            <v-icon color="white">mdi-close</v-icon>
+          </v-btn>
+        </v-card-title>
+        <v-card-text class="px-5 pb-5">
+          <div class="d-flex justify-space-between align-center mb-2">
+            <span class="text-body-2 text-white">Focus Search Bar</span>
+            <code class="bg-grey-darken-3 px-2 py-1 rounded text-caption text-white">/</code>
+          </div>
+          <div class="d-flex justify-space-between align-center mb-2">
+            <span class="text-body-2 text-white">Execute Search</span>
+            <code class="bg-grey-darken-3 px-2 py-1 rounded text-caption text-white">Enter</code>
+          </div>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
+
+    <!-- Snackbar -->
+    <v-snackbar v-model="snackbar.show" :timeout="2000" color="primary" rounded="pill">
+      {{ snackbar.text }}
+    </v-snackbar>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, reactive } from 'vue'
 
-defineEmits(['open-modal'])
+defineEmits(['open-modal', 'open-settings'])
 
 const activeTool = ref(null)
+const showDisclosures = ref(false)
+const showAnnouncements = ref(false)
+const showShortcutsHelp = ref(false)
+
+const snackbar = reactive({
+  show: false,
+  text: '',
+})
+
+function sharePage() {
+  if (navigator.share) {
+    navigator.share({ title: 'Best Homepage Ever', url: window.location.href })
+  } else {
+    navigator.clipboard.writeText(window.location.href)
+    snackbar.text = 'Page URL copied to clipboard!'
+    snackbar.show = true
+  }
+}
 
 const tools = [
   {
@@ -224,7 +323,7 @@ const tools = [
   bottom: 54px;
   left: 0;
   min-width: 220px;
-  background: rgba(15, 23, 42, 0.95);
+  background: rgba(15, 23, 42, 0.96);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border: 1px solid rgba(255, 255, 255, 0.18);
@@ -348,11 +447,11 @@ const tools = [
   gap: 4px;
 }
 
-/* FAB button */
+/* Floating FAB plus button - Positioned ABOVE the bottom dock bar! */
 .fab-btn {
-  position: absolute;
+  position: fixed;
   right: 24px;
-  bottom: 24px;
+  bottom: 64px;
   width: 48px;
   height: 48px;
   border-radius: 50%;
@@ -364,11 +463,18 @@ const tools = [
   justify-content: center;
   box-shadow: 0 4px 16px rgba(59, 130, 246, 0.5);
   transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 100;
 }
 
 .fab-btn:hover {
   transform: scale(1.1);
   background: #2563eb;
   box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
+}
+
+.dialog-card {
+  background: rgba(15, 23, 42, 0.98) !important;
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
 }
 </style>

@@ -4,7 +4,7 @@
     <div class="search-bar-wrapper">
       <div class="search-bar">
         <!-- Google 'G' icon on left -->
-        <svg class="search-g-icon" width="22" height="22" viewBox="0 0 24 24">
+        <svg class="search-g-icon" width="22" height="22" viewBox="0 0 24 24" @click="performSearch" style="cursor: pointer;">
           <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
           <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
           <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
@@ -21,13 +21,15 @@
         />
 
         <div class="search-actions">
-          <!-- Voice mic icon -->
-          <button class="icon-btn" title="Voice search">
-            <v-icon size="20" color="#6b7280">mdi-microphone</v-icon>
+          <!-- Voice mic icon button -->
+          <button class="icon-btn" title="Voice search" @click="startVoiceSearch">
+            <v-icon size="20" :color="isListening ? '#ef4444' : '#6b7280'">
+              {{ isListening ? 'mdi-microphone-off' : 'mdi-microphone' }}
+            </v-icon>
           </button>
 
-          <!-- AI Engine Dropdown Chip -->
-          <v-menu location="bottom end" transition="scale-transition">
+          <!-- AI Engine Dropdown Chip with High Z-Index -->
+          <v-menu location="bottom end" transition="scale-transition" :menu-props="{ zIndex: 1000 }">
             <template #activator="{ props }">
               <div v-bind="props" class="ai-select-chip">
                 <v-icon size="16" color="#3b82f6">mdi-wand-wave</v-icon>
@@ -35,7 +37,7 @@
                 <v-icon size="16" color="#6b7280">mdi-chevron-down</v-icon>
               </div>
             </template>
-            <v-list class="ai-menu-list" rounded="xl" elevation="4">
+            <v-list class="ai-menu-list" rounded="xl" elevation="8">
               <v-list-item
                 v-for="ai in aiOptions"
                 :key="ai.name"
@@ -61,34 +63,66 @@
           :key="cat"
           class="cat-tab"
           :class="{ active: activeCategory === cat }"
-          @click="activeCategory = cat"
+          @click="selectCategory(cat)"
         >
           {{ cat }}
         </button>
       </div>
 
       <div class="cat-actions">
-        <button class="cat-action-btn" title="More options">
+        <button class="cat-action-btn" title="Category Options" @click="showCategoryMenu = true">
           <v-icon size="16">mdi-dots-vertical</v-icon>
         </button>
-        <button class="cat-action-btn" title="Reorder">
+        <button class="cat-action-btn" title="Reorder Shortcuts" @click="$emit('toggle-reorder')">
           <v-icon size="16">mdi-swap-horizontal</v-icon>
         </button>
-        <button class="cat-action-btn" title="Hide/Show">
+        <button class="cat-action-btn" title="Hide/Show Bookmarks" @click="$emit('toggle-bookmarks-visibility')">
           <v-icon size="16">mdi-eye-off-outline</v-icon>
         </button>
       </div>
     </div>
+
+    <!-- Category Options Dialog -->
+    <v-dialog v-model="showCategoryMenu" max-width="380">
+      <v-card rounded="xl" class="dialog-card">
+        <v-card-title class="d-flex justify-space-between align-center px-5 pt-4">
+          <span class="font-weight-bold text-white text-h6">Category Options</span>
+          <v-btn icon variant="text" size="small" @click="showCategoryMenu = false">
+            <v-icon color="white">mdi-close</v-icon>
+          </v-btn>
+        </v-card-title>
+        <v-card-text class="px-5">
+          <p class="text-body-2 text-grey-lighten-1 mb-3">Filter shortcuts by category:</p>
+          <div class="d-flex flex-wrap gap-2">
+            <v-chip
+              v-for="cat in categories"
+              :key="cat"
+              :color="activeCategory === cat ? 'primary' : undefined"
+              :variant="activeCategory === cat ? 'flat' : 'outlined'"
+              size="small"
+              class="ma-1"
+              @click="selectCategory(cat); showCategoryMenu = false;"
+            >
+              {{ cat }}
+            </v-chip>
+          </div>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 
+const emit = defineEmits(['filter-category', 'toggle-reorder', 'toggle-bookmarks-visibility'])
+
 const searchQuery = ref('')
 const searchInputRef = ref(null)
 const selectedAi = ref('ChatGPT')
 const activeCategory = ref('ALL')
+const isListening = ref(false)
+const showCategoryMenu = ref(false)
 
 const categories = ['ALL', 'SHOP', 'SPORTS', 'FOR ME', 'FUN', 'TOOLS']
 
@@ -104,11 +138,33 @@ function selectAiOption(ai) {
   window.open(ai.url, '_blank')
 }
 
+function selectCategory(cat) {
+  activeCategory.value = cat
+  emit('filter-category', cat)
+}
+
 function performSearch() {
   const q = searchQuery.value.trim()
   if (!q) return
   window.open('https://www.google.com/search?q=' + encodeURIComponent(q), '_blank')
   searchQuery.value = ''
+}
+
+function startVoiceSearch() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+  if (!SpeechRecognition) {
+    alert('Voice search is not supported by your browser.')
+    return
+  }
+  const recognition = new SpeechRecognition()
+  recognition.onstart = () => { isListening.value = true }
+  recognition.onend = () => { isListening.value = false }
+  recognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript
+    searchQuery.value = transcript
+    performSearch()
+  }
+  recognition.start()
 }
 
 function handleGlobalKeydown(e) {
@@ -135,6 +191,8 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
+  position: relative;
+  z-index: 50;
 }
 
 /* White Pill Search Input */
@@ -225,6 +283,7 @@ onUnmounted(() => {
 .ai-menu-list {
   background: rgba(255, 255, 255, 0.98) !important;
   backdrop-filter: blur(16px);
+  z-index: 1000 !important;
 }
 
 /* Category Floating Navigation Bar */
@@ -298,5 +357,11 @@ onUnmounted(() => {
 .cat-action-btn:hover {
   background: rgba(255, 255, 255, 0.2);
   color: #ffffff;
+}
+
+.dialog-card {
+  background: rgba(15, 23, 42, 0.98) !important;
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
 }
 </style>
