@@ -223,3 +223,137 @@ html, body {
     padding: 12px;
   }
 }
+
+/* ========================================
+   Dark Mode High Contrast Override Rules
+   ======================================== */
+
+/* Vuetify Cards & Dialogs */
+.v-card {
+  background: rgba(15, 23, 42, 0.98) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+}
+
+.v-card-title {
+  color: #ffffff !important;
+}
+
+.v-card-text {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.v-dialog .v-card {
+  background: rgba(15, 23, 42, 0.98) !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7) !important;
+}
+
+/* Vuetify Inputs (v-text-field, v-select, v-textarea) */
+.v-field {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-radius: 12px !important;
+  color: #ffffff !important;
+}
+
+.v-field__input {
+  color: #ffffff !important;
+  font-size: 0.95rem !important;
+  opacity: 1 !important;
+}
+
+.v-field__input::placeholder {
+  color: rgba(255, 255, 255, 0.5) !important;
+  opacity: 1 !important;
+}
+
+.v-label.v-field-label {
+  color: rgba(255, 255, 255, 0.85) !important;
+  opacity: 1 !important;
+  font-weight: 500 !important;
+}
+
+.v-field--focused .v-label.v-field-label {
+  color: #3b82f6 !important;
+}
+
+.v-field__outline {
+  color: rgba(255, 255, 255, 0.25) !important;
+  opacity: 1 !important;
+}
+
+.v-field--focused .v-field__outline {
+  color: #3b82f6 !important;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+}
+
+.v-field__append-inner .v-icon,
+.v-field__prepend-inner .v-icon {
+  color: rgba(255, 255, 255, 0.75) !important;
+  opacity: 1 !important;
+}
+
+/* Select Selection Text */
+.v-select__selection,
+.v-select__selection-text {
+  color: #ffffff !important;
+  opacity: 1 !important;
+}
+
+/* Dropdown Menus & Overlay Lists */
+.v-overlay-container .v-list,
+.v-menu .v-list {
+  background: rgba(15, 23, 42, 0.98) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6) !important;
+  padding: 6px !important;
+}
+
+.v-overlay-container .v-list-item,
+.v-menu .v-list-item {
+  color: #ffffff !important;
+  border-radius: 8px !important;
+  margin-bottom: 2px !important;
+}
+
+.v-overlay-container .v-list-item:hover,
+.v-menu .v-list-item:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+.v-overlay-container .v-list-item--active,
+.v-menu .v-list-item--active {
+  background: rgba(59, 130, 246, 0.3) !important;
+  color: #ffffff !important;
+}
+
+.v-list-item-title {
+  color: #ffffff !important;
+  font-size: 0.9rem !important;
+  opacity: 1 !important;
+}
+
+/* Switches */
+.v-switch .v-label {
+  color: rgba(255, 255, 255, 0.9) !important;
+  opacity: 1 !important;
+  font-size: 0.88rem !important;
+}
+
+/* Navigation Drawer (Settings Drawer) */
+.v-navigation-drawer {
+  background: rgba(15, 23, 42, 0.98) !important;
+  color: #ffffff !important;
+  border-left: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Tooltips */
+.v-tooltip .v-overlay__content {
+  background: rgba(15, 23, 42, 0.95) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  font-size: 0.75rem !important;
+  border-radius: 6px !important;
+}
+
