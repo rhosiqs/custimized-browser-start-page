@@ -9,12 +9,21 @@
     <div class="center-hero-section">
       <!-- Search Input Bar & Floating Category Tabs -->
       <div class="search-container" v-if="settings.widgetVisibility.search">
-        <SearchWidget />
+        <SearchWidget
+          @filter-category="handleCategoryFilter"
+          @toggle-reorder="reorderMode = !reorderMode"
+          @toggle-bookmarks-visibility="showBookmarks = !showBookmarks"
+        />
       </div>
 
       <!-- Floating App Bookmarks Grid -->
       <div class="bookmarks-container" v-if="settings.widgetVisibility.bookmarks">
-        <BookmarksWidget />
+        <BookmarksWidget
+          ref="bookmarksWidgetRef"
+          :activeCategory="activeCategory"
+          :showBookmarks="showBookmarks"
+          :reorderMode="reorderMode"
+        />
       </div>
     </div>
 
@@ -110,7 +119,7 @@
 </template>
 
 <script setup>
-import { reactive, watch } from 'vue'
+import { ref, reactive, watch } from 'vue'
 import { useSettings } from '../../composables/useSettings.js'
 import ClockWidget from '../widgets/ClockWidget.vue'
 import SearchWidget from '../widgets/SearchWidget.vue'
@@ -127,6 +136,11 @@ const props = defineProps({
 
 const { settings } = useSettings()
 
+const bookmarksWidgetRef = ref(null)
+const activeCategory = ref('ALL')
+const showBookmarks = ref(true)
+const reorderMode = ref(false)
+
 const activeModal = reactive({
   notes: false,
   planner: false,
@@ -136,6 +150,10 @@ const activeModal = reactive({
   maps: false,
 })
 
+function handleCategoryFilter(cat) {
+  activeCategory.value = cat
+}
+
 watch(() => props.requestedModal, (newVal) => {
   if (newVal === 'notes') activeModal.notes = true
   if (newVal === 'planner') activeModal.planner = true
@@ -143,7 +161,9 @@ watch(() => props.requestedModal, (newVal) => {
   if (newVal === 'weather') activeModal.weather = true
   if (newVal === 'news') activeModal.news = true
   if (newVal === 'maps') activeModal.maps = true
-  if (newVal === 'add') activeModal.bookmarks = true
+  if (newVal === 'add') {
+    bookmarksWidgetRef.value?.openAddDialog()
+  }
 })
 </script>
 

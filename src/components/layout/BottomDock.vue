@@ -35,7 +35,7 @@
           </Transition>
 
           <!-- Tool Button Icon -->
-          <button class="tool-btn" :class="{ active: activeTool === tool.id }" @click="$emit('open-modal', tool.id)">
+          <button class="tool-btn" :class="{ active: activeTool === tool.id }" @click.stop="toggleFlyout(tool.id)">
             <v-icon size="18">{{ tool.icon }}</v-icon>
           </button>
         </div>
@@ -152,6 +152,10 @@ const activeTool = ref(null)
 const showDisclosures = ref(false)
 const showAnnouncements = ref(false)
 const showShortcutsHelp = ref(false)
+
+function toggleFlyout(id) {
+  activeTool.value = activeTool.value === id ? null : id
+}
 
 const snackbar = reactive({
   show: false,

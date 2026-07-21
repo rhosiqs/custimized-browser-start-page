@@ -1,11 +1,12 @@
 <template>
-  <div class="bookmarks-widget">
-    <div class="bookmarks-grid">
+  <div class="bookmarks-widget" v-if="showBookmarks">
+    <div class="bookmarks-grid" :class="{ 'reorder-active': reorderMode }">
       <div
-        v-for="bookmark in bookmarks"
+        v-for="bookmark in filteredBookmarks"
         :key="bookmark.id"
         class="bookmark-tile"
-        @click="openBookmark(bookmark.url)"
+        :title="bookmark.name"
+        @click="onTileClick(bookmark)"
         @contextmenu.prevent="openEditDialog(bookmark)"
       >
         <div class="tile-icon-box" :style="getTileStyle(bookmark)">
@@ -23,10 +24,11 @@
             @error="(e) => e.target.src = fallbackIcon"
           />
         </div>
+        <div class="tile-label" v-if="reorderMode">{{ bookmark.name }}</div>
       </div>
 
       <!-- Add Shortcut Button Tile -->
-      <div class="bookmark-tile add-tile" @click="openAddDialog">
+      <div class="bookmark-tile add-tile" title="Add Shortcut" @click="openAddDialog">
         <div class="tile-icon-box add-box">
           <v-icon size="24" color="rgba(255,255,255,0.7)">mdi-plus</v-icon>
         </div>
@@ -42,7 +44,7 @@
           backdropFilter: 'blur(30px)',
         }"
       >
-        <v-card-title class="pt-5 px-5">
+        <v-card-title class="pt-5 px-5 text-white font-weight-bold">
           {{ isEditing ? 'Edit Bookmark' : 'Add Bookmark' }}
         </v-card-title>
         <v-card-text class="px-5">
@@ -63,6 +65,16 @@
             density="comfortable"
             hide-details
             placeholder="https://..."
+            class="mb-3"
+          />
+          <v-select
+            v-model="formData.category"
+            label="Category"
+            :items="['General', 'Shopping', 'Social', 'Media', 'Development', 'Sports']"
+            variant="outlined"
+            rounded="lg"
+            density="comfortable"
+            hide-details
           />
         </v-card-text>
         <v-card-actions class="px-5 pb-5">
@@ -75,7 +87,7 @@
             Delete
           </v-btn>
           <v-spacer />
-          <v-btn variant="text" @click="dialogVisible = false">Cancel</v-btn>
+          <v-btn variant="text" color="grey-lighten-1" @click="dialogVisible = false">Cancel</v-btn>
           <v-btn color="primary" variant="flat" rounded="lg" @click="saveBookmark">
             Save
           </v-btn>
@@ -86,8 +98,23 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useWidgets } from '../../composables/useWidgets.js'
+
+const props = defineProps({
+  activeCategory: {
+    type: String,
+    default: 'ALL'
+  },
+  showBookmarks: {
+    type: Boolean,
+    default: true
+  },
+  reorderMode: {
+    type: Boolean,
+    default: false
+  }
+})
 
 const { bookmarks, addBookmark, removeBookmark, updateBookmark } = useWidgets()
 
@@ -95,9 +122,44 @@ const fallbackIcon = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"
 
 const dialogVisible = ref(false)
 const isEditing = ref(false)
-const formData = ref({ id: null, name: '', url: '' })
+const formData = ref({ id: null, name: '', url: '', category: 'General' })
 
-// Preset icon colors matching BHE image 2 tile styling
+const filteredBookmarks = computed(() => {
+  const cat = (props.activeCategory || 'ALL').toUpperCase()
+  if (cat === 'ALL') return bookmarks.value
+
+  return bookmarks.value.filter(b => {
+    const bCat = (b.category || '').toUpperCase()
+    const url = (b.url || '').toLowerCase()
+    const name = (b.name || '').toLowerCase()
+
+    if (cat === 'SHOP' || cat === 'SHOPPING') {
+      return bCat === 'SHOPPING' || url.includes('amazon') || url.includes('ebay') || url.includes('shopping')
+    }
+    if (cat === 'SPORTS') {
+      return bCat === 'SPORTS' || url.includes('espn') || url.includes('sports')
+    }
+    if (cat === 'FOR ME') {
+      return bCat === 'GENERAL' || bCat === 'PERSONAL' || url.includes('gmail') || url.includes('google')
+    }
+    if (cat === 'FUN') {
+      return bCat === 'MEDIA' || bCat === 'SOCIAL' || url.includes('youtube') || url.includes('reddit') || url.includes('twitter')
+    }
+    if (cat === 'TOOLS') {
+      return bCat === 'DEVELOPMENT' || url.includes('github') || url.includes('wikipedia')
+    }
+    return bCat === cat
+  })
+})
+
+function onTileClick(bookmark) {
+  if (props.reorderMode) {
+    openEditDialog(bookmark)
+  } else {
+    openBookmark(bookmark.url)
+  }
+}
+
 function getTileStyle(bookmark) {
   const url = (bookmark.url || '').toLowerCase()
   if (url.includes('amazon')) return { background: '#ff9900' }
@@ -109,6 +171,8 @@ function getTileStyle(bookmark) {
   if (url.includes('reddit')) return { background: '#ff4500' }
   if (url.includes('wikipedia') || url.includes('wordle')) return { background: '#ffffff' }
   if (url.includes('youtube')) return { background: '#ff0000' }
+  if (url.includes('github')) return { background: '#24292e' }
+  if (url.includes('twitter') || url.includes('x.com')) return { background: '#1da1f2' }
   return { background: 'rgba(255, 255, 255, 0.15)', backdropFilter: 'blur(10px)' }
 }
 
@@ -135,19 +199,20 @@ function openBookmark(url) {
 
 function openAddDialog() {
   isEditing.value = false
-  formData.value = { id: null, name: '', url: '' }
+  formData.value = { id: null, name: '', url: '', category: 'General' }
   dialogVisible.value = true
 }
 
 function openEditDialog(bookmark) {
   isEditing.value = true
-  formData.value = { ...bookmark }
+  formData.value = { id: bookmark.id, name: bookmark.name, url: bookmark.url, category: bookmark.category || 'General' }
   dialogVisible.value = true
 }
 
 function saveBookmark() {
   const name = formData.value.name.trim()
   let url = formData.value.url.trim()
+  const category = formData.value.category || 'General'
   if (!name || !url) return
 
   if (!url.startsWith('http://') && !url.startsWith('https://')) {
@@ -155,9 +220,9 @@ function saveBookmark() {
   }
 
   if (isEditing.value && formData.value.id) {
-    updateBookmark(formData.value.id, { name, url })
+    updateBookmark(formData.value.id, { name, url, category })
   } else {
-    addBookmark({ name, url })
+    addBookmark({ name, url, icon: '', category })
   }
   dialogVisible.value = false
 }
@@ -168,6 +233,11 @@ function deleteCurrentBookmark() {
   }
   dialogVisible.value = false
 }
+
+defineExpose({
+  openAddDialog,
+  openEditDialog
+})
 </script>
 
 <style scoped>
@@ -186,12 +256,26 @@ function deleteCurrentBookmark() {
 }
 
 .bookmark-tile {
+  position: relative;
   cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
   transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .bookmark-tile:hover {
   transform: translateY(-4px) scale(1.06);
+}
+
+.reorder-active .bookmark-tile {
+  animation: jiggle 0.3s infinite ease-in-out alternate;
+}
+
+@keyframes jiggle {
+  0% { transform: rotate(-1.5deg); }
+  100% { transform: rotate(1.5deg); }
 }
 
 .tile-icon-box {
@@ -209,6 +293,15 @@ function deleteCurrentBookmark() {
   width: 32px;
   height: 32px;
   object-fit: contain;
+}
+
+.tile-label {
+  font-size: 0.68rem;
+  color: rgba(255, 255, 255, 0.8);
+  max-width: 60px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .add-box {
