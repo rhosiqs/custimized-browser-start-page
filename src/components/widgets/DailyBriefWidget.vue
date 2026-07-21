@@ -47,6 +47,9 @@ import { useNews } from '../../composables/useNews.js'
 const { news, fetchNews } = useNews()
 
 const loading = ref(false)
+const briefItems = ref([])
+const bulletColors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899']
+
 const defaultBriefItems = [
   { title: 'Global Tech & AI Innovations', description: 'Next-generation web standards and browser tools are accelerating productivity workflows worldwide.' },
   { title: 'Market Highlights & Growth Insights', description: 'Major index benchmarks maintain momentum as tech adoption surges across sectors.' },
@@ -123,15 +126,15 @@ onMounted(fetchBrief)
 
 .brief-headline {
   font-size: 0.88rem;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+  color: #ffffff;
   line-height: 1.35;
 }
 
 .brief-summary {
   font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.45);
-  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.75);
+  margin-top: 3px;
   line-height: 1.4;
 }
 
