@@ -295,9 +295,9 @@ html, body {
   color: #ffffff !important;
 }
 
-/* Dropdown Menus & Overlay Lists */
-.v-overlay-container .v-list,
-.v-menu .v-list {
+/* Dropdown Menus & Overlay Lists (Dark theme default, exclude light menus) */
+.v-overlay-container .v-list:not(.ai-menu-list),
+.v-menu .v-list:not(.ai-menu-list) {
   background: rgba(15, 23, 42, 0.98) !important;
   border: 1px solid rgba(255, 255, 255, 0.18) !important;
   border-radius: 14px !important;
@@ -305,26 +305,27 @@ html, body {
   padding: 6px !important;
 }
 
-.v-overlay-container .v-list-item,
-.v-menu .v-list-item {
+.v-overlay-container .v-list:not(.ai-menu-list) .v-list-item,
+.v-menu .v-list:not(.ai-menu-list) .v-list-item {
   color: #ffffff !important;
   border-radius: 8px !important;
   margin-bottom: 2px !important;
 }
 
-.v-overlay-container .v-list-item:hover,
-.v-menu .v-list-item:hover {
+.v-overlay-container .v-list:not(.ai-menu-list) .v-list-item:hover,
+.v-menu .v-list:not(.ai-menu-list) .v-list-item:hover {
   background: rgba(255, 255, 255, 0.12) !important;
   color: #ffffff !important;
 }
 
-.v-overlay-container .v-list-item--active,
-.v-menu .v-list-item--active {
+.v-overlay-container .v-list:not(.ai-menu-list) .v-list-item--active,
+.v-menu .v-list:not(.ai-menu-list) .v-list-item--active {
   background: rgba(59, 130, 246, 0.3) !important;
   color: #ffffff !important;
 }
 
-.v-list-item-title {
+.v-overlay-container .v-list:not(.ai-menu-list) .v-list-item-title,
+.v-menu .v-list:not(.ai-menu-list) .v-list-item-title {
   color: #ffffff !important;
   font-size: 0.9rem !important;
 }
