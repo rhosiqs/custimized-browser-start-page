@@ -258,27 +258,25 @@ html, body {
 .v-field__input {
   color: #ffffff !important;
   font-size: 0.95rem !important;
-  opacity: 1 !important;
 }
 
 .v-field__input::placeholder {
   color: rgba(255, 255, 255, 0.5) !important;
-  opacity: 1 !important;
 }
 
+/* Clean Label Styling - Let Vuetify manage floating transitions to prevent overlap */
 .v-label.v-field-label {
-  color: rgba(255, 255, 255, 0.85) !important;
-  opacity: 1 !important;
+  color: rgba(255, 255, 255, 0.8) !important;
   font-weight: 500 !important;
 }
 
-.v-field--focused .v-label.v-field-label {
+.v-field--focused .v-label.v-field-label,
+.v-field--active .v-label.v-field-label {
   color: #3b82f6 !important;
 }
 
 .v-field__outline {
   color: rgba(255, 255, 255, 0.25) !important;
-  opacity: 1 !important;
 }
 
 .v-field--focused .v-field__outline {
@@ -289,14 +287,12 @@ html, body {
 .v-field__append-inner .v-icon,
 .v-field__prepend-inner .v-icon {
   color: rgba(255, 255, 255, 0.75) !important;
-  opacity: 1 !important;
 }
 
 /* Select Selection Text */
 .v-select__selection,
 .v-select__selection-text {
   color: #ffffff !important;
-  opacity: 1 !important;
 }
 
 /* Dropdown Menus & Overlay Lists */
@@ -331,13 +327,11 @@ html, body {
 .v-list-item-title {
   color: #ffffff !important;
   font-size: 0.9rem !important;
-  opacity: 1 !important;
 }
 
 /* Switches */
 .v-switch .v-label {
   color: rgba(255, 255, 255, 0.9) !important;
-  opacity: 1 !important;
   font-size: 0.88rem !important;
 }
 
@@ -355,5 +349,14 @@ html, body {
   border: 1px solid rgba(255, 255, 255, 0.2) !important;
   font-size: 0.75rem !important;
   border-radius: 6px !important;
+}
+
+/* Flex Gap Utilities & Chip Overlap Fixes */
+.gap-1 { gap: 4px !important; }
+.gap-2 { gap: 8px !important; }
+.gap-3 { gap: 12px !important; }
+
+.v-chip {
+  flex-shrink: 0 !important;
 }
 
