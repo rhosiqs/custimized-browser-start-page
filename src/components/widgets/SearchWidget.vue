@@ -45,9 +45,9 @@
                 :active="selectedAi === ai.name"
               >
                 <template #prepend>
-                  <v-icon :icon="ai.icon" size="18" color="#3b82f6" />
+                  <v-icon :icon="ai.icon" size="18" :color="selectedAi === ai.name ? '#2563eb' : '#4b5563'" />
                 </template>
-                <v-list-item-title>{{ ai.name }}</v-list-item-title>
+                <v-list-item-title class="ai-item-title">{{ ai.name }}</v-list-item-title>
               </v-list-item>
             </v-list>
           </v-menu>
@@ -85,26 +85,24 @@
     <!-- Category Options Dialog -->
     <v-dialog v-model="showCategoryMenu" max-width="380">
       <v-card rounded="xl" class="dialog-card">
-        <v-card-title class="d-flex justify-space-between align-center px-5 pt-4">
+        <v-card-title class="d-flex justify-space-between align-center px-5 pt-5 pb-2">
           <span class="font-weight-bold text-white text-h6">Category Options</span>
           <v-btn icon variant="text" size="small" @click="showCategoryMenu = false">
             <v-icon color="white">mdi-close</v-icon>
           </v-btn>
         </v-card-title>
-        <v-card-text class="px-5 pb-5">
-          <p class="text-body-2 text-grey-lighten-1 mb-3">Filter shortcuts by category:</p>
+        <v-card-text class="px-5 pb-6 pt-2">
+          <p class="text-body-2 text-grey-lighten-2 mb-4">Filter shortcuts by category:</p>
           <div class="category-chip-group">
-            <v-chip
+            <button
               v-for="cat in categories"
               :key="cat"
-              :color="activeCategory === cat ? 'primary' : undefined"
-              :variant="activeCategory === cat ? 'flat' : 'outlined'"
-              size="small"
-              class="cat-option-chip"
+              class="cat-option-btn"
+              :class="{ active: activeCategory === cat }"
               @click="selectCategory(cat); showCategoryMenu = false;"
             >
               {{ cat }}
-            </v-chip>
+            </button>
           </div>
         </v-card-text>
       </v-card>
@@ -285,9 +283,41 @@ onUnmounted(() => {
 }
 
 .ai-menu-list {
-  background: rgba(255, 255, 255, 0.98) !important;
-  backdrop-filter: blur(16px);
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
+  padding: 6px !important;
+  border-radius: 16px !important;
   z-index: 1000 !important;
+}
+
+.ai-menu-list :deep(.v-list-item) {
+  color: #1e293b !important;
+  border-radius: 10px !important;
+  margin-bottom: 2px !important;
+  padding: 8px 12px !important;
+  transition: all 0.15s ease !important;
+}
+
+.ai-menu-list :deep(.v-list-item:hover) {
+  background: #f1f5f9 !important;
+}
+
+.ai-menu-list :deep(.v-list-item--active) {
+  background: #eff6ff !important;
+}
+
+.ai-menu-list :deep(.ai-item-title),
+.ai-menu-list :deep(.v-list-item-title) {
+  color: #1e293b !important;
+  font-size: 0.88rem !important;
+  font-weight: 500 !important;
+}
+
+.ai-menu-list :deep(.v-list-item--active .ai-item-title),
+.ai-menu-list :deep(.v-list-item--active .v-list-item-title) {
+  color: #2563eb !important;
+  font-weight: 700 !important;
 }
 
 /* Category Floating Navigation Bar */
@@ -372,13 +402,37 @@ onUnmounted(() => {
 .category-chip-group {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
 }
 
-.cat-option-chip {
-  margin: 0 !important;
+.cat-option-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 9999px;
+  padding: 6px 16px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #f3f4f6;
   cursor: pointer;
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: all 0.2s ease;
+}
+
+.cat-option-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #ffffff;
+}
+
+.cat-option-btn.active {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
 }
 </style>
