@@ -1,6 +1,6 @@
 <template>
   <div class="search-widget-container">
-    <!-- White Pill Search Input -->
+    <!-- White Pill Search Input Bar -->
     <div class="search-bar-wrapper">
       <div class="search-bar">
         <!-- Google 'G' icon on left -->
@@ -15,7 +15,7 @@
           ref="searchInputRef"
           v-model="searchQuery"
           type="text"
-          class="search-input"
+          class="search-input-field"
           placeholder="Search"
           @keydown.enter="performSearch"
         />
@@ -23,7 +23,7 @@
         <div class="search-actions">
           <!-- Voice mic icon -->
           <button class="icon-btn" title="Voice search">
-            <v-icon size="20" color="#666">mdi-microphone</v-icon>
+            <v-icon size="20" color="#6b7280">mdi-microphone</v-icon>
           </button>
 
           <!-- AI Engine Dropdown Chip -->
@@ -32,7 +32,7 @@
               <div v-bind="props" class="ai-select-chip">
                 <v-icon size="16" color="#3b82f6">mdi-wand-wave</v-icon>
                 <span>{{ selectedAi }}</span>
-                <v-icon size="16" color="#666">mdi-chevron-down</v-icon>
+                <v-icon size="16" color="#6b7280">mdi-chevron-down</v-icon>
               </div>
             </template>
             <v-list class="ai-menu-list" rounded="xl" elevation="4">
@@ -69,13 +69,13 @@
 
       <div class="cat-actions">
         <button class="cat-action-btn" title="More options">
-          <v-icon size="18">mdi-dots-vertical</v-icon>
+          <v-icon size="16">mdi-dots-vertical</v-icon>
         </button>
         <button class="cat-action-btn" title="Reorder">
-          <v-icon size="18">mdi-swap-horizontal</v-icon>
+          <v-icon size="16">mdi-swap-horizontal</v-icon>
         </button>
         <button class="cat-action-btn" title="Hide/Show">
-          <v-icon size="18">mdi-eye-off-outline</v-icon>
+          <v-icon size="16">mdi-eye-off-outline</v-icon>
         </button>
       </div>
     </div>
@@ -130,7 +130,7 @@ onUnmounted(() => {
 <style scoped>
 .search-widget-container {
   width: 100%;
-  max-width: 640px;
+  max-width: 620px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -145,17 +145,17 @@ onUnmounted(() => {
 .search-bar {
   width: 100%;
   height: 52px;
-  background: #ffffff;
+  background: #ffffff !important;
   border-radius: 9999px;
   display: flex;
   align-items: center;
   padding: 0 16px 0 20px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
   transition: all 0.2s ease;
 }
 
 .search-bar:focus-within {
-  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 6px 30px rgba(0, 0, 0, 0.4);
 }
 
 .search-g-icon {
@@ -163,17 +163,20 @@ onUnmounted(() => {
   margin-right: 12px;
 }
 
-.search-input {
+.search-input-field {
   flex: 1;
-  border: none;
-  outline: none;
-  font-size: 1rem;
-  color: #1f2937;
-  font-family: system-ui, -apple-system, sans-serif;
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  font-size: 1.05rem !important;
+  color: #1f2937 !important;
+  font-family: system-ui, -apple-system, sans-serif !important;
+  box-shadow: none !important;
+  padding: 0 !important;
 }
 
-.search-input::placeholder {
-  color: #9ca3af;
+.search-input-field::placeholder {
+  color: #6b7280 !important;
 }
 
 .search-actions {
@@ -202,21 +205,21 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 6px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #bfdbfe;
   border-radius: 9999px;
-  padding: 4px 10px;
+  padding: 4px 12px;
   cursor: pointer;
   font-size: 0.82rem;
   font-weight: 500;
-  color: #3b82f6;
-  background: #f8fafc;
+  color: #2563eb;
+  background: #ffffff;
   transition: all 0.15s ease;
   user-select: none;
 }
 
 .ai-select-chip:hover {
   background: #eff6ff;
-  border-color: #bfdbfe;
+  border-color: #93c5fd;
 }
 
 .ai-menu-list {
@@ -226,19 +229,17 @@ onUnmounted(() => {
 
 /* Category Floating Navigation Bar */
 .category-floating-bar {
-  margin-top: 20px;
-  background: rgba(255, 255, 255, 0.25);
+  margin-top: 18px;
+  background: rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 9999px;
-  padding: 4px 12px 4px 6px;
+  padding: 4px 10px 4px 6px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  width: auto;
-  max-width: 100%;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
 .cat-tabs {
@@ -253,9 +254,9 @@ onUnmounted(() => {
   outline: none;
   padding: 6px 14px;
   border-radius: 9999px;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.95);
   cursor: pointer;
   letter-spacing: 0.05em;
   transition: all 0.15s ease;
@@ -267,7 +268,7 @@ onUnmounted(() => {
 }
 
 .cat-tab.active {
-  background: rgba(255, 255, 255, 0.9);
+  background: #ffffff;
   color: #111827;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
@@ -275,9 +276,9 @@ onUnmounted(() => {
 .cat-actions {
   display: flex;
   align-items: center;
-  gap: 4px;
-  margin-left: 8px;
-  padding-left: 8px;
+  gap: 2px;
+  margin-left: 6px;
+  padding-left: 6px;
   border-left: 1px solid rgba(255, 255, 255, 0.25);
 }
 

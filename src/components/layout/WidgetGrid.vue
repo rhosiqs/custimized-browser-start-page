@@ -1,13 +1,13 @@
 <template>
   <div class="grid-layout">
-    <!-- Top Right Clock Area -->
+    <!-- Top Right Clock Display (Below Navbar) -->
     <div class="top-clock-area" v-if="settings.widgetVisibility.clock">
       <ClockWidget />
     </div>
 
-    <!-- Center Hero Section (Search & Bookmarks) -->
+    <!-- Center Hero Section -->
     <div class="center-hero-section">
-      <!-- Search Bar & Floating Categories -->
+      <!-- Search Input Bar & Category Tabs -->
       <div class="search-container" v-if="settings.widgetVisibility.search">
         <SearchWidget />
       </div>
@@ -18,7 +18,7 @@
       </div>
     </div>
 
-    <!-- Modals for Widgets (Opened via Footer Pills / Left Dock) -->
+    <!-- Modals for Features (Opened via Footer Pills / Left Dock) -->
     <v-dialog v-model="activeModal.notes" max-width="500">
       <NotesWidget />
     </v-dialog>
@@ -87,8 +87,8 @@ watch(() => props.requestedModal, (newVal) => {
 
 .top-clock-area {
   position: absolute;
-  top: 10px;
-  right: 40px;
+  top: 8px;
+  right: 24px;
   z-index: 10;
 }
 
@@ -97,8 +97,8 @@ watch(() => props.requestedModal, (newVal) => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  margin-top: 80px;
-  gap: 30px;
+  margin-top: 70px;
+  gap: 28px;
   padding: 0 20px;
 }
 

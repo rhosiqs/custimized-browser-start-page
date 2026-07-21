@@ -2,22 +2,22 @@
   <v-app-bar
     class="navbar px-4"
     flat
-    height="64"
+    height="56"
     :style="{
-      background: 'linear-gradient(180deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0) 100%)',
+      background: 'transparent',
       backdropFilter: 'none',
-      borderBottom: 'none',
+      boxShadow: 'none',
     }"
   >
     <!-- Logo & Title -->
     <template #prepend>
       <div class="navbar-brand">
-        <!-- Multicolored stack logo SVG matching BHE -->
-        <svg class="brand-logo" width="36" height="36" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- 3D Multicolored stack cube logo SVG -->
+        <svg class="brand-logo" width="32" height="32" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M20 4L4 12L20 20L36 12L20 4Z" fill="#4285F4"/>
           <path d="M4 12L20 20V36L4 28V12Z" fill="#EA4335"/>
           <path d="M36 12L20 20V36L36 28V12Z" fill="#FBBC05"/>
-          <path d="M20 20L36 12V28L20 36V20Z" fill="#34A853" opacity="0.8"/>
+          <path d="M20 20L36 12V28L20 36V20Z" fill="#34A853" opacity="0.85"/>
         </svg>
         <span class="brand-title">Best Homepage Ever</span>
       </div>
@@ -50,12 +50,12 @@
         </v-btn>
 
         <v-btn icon variant="text" size="small" class="nav-icon-btn">
-          <v-icon size="20">mdi-weather-night</v-icon>
-          <v-tooltip activator="parent" location="bottom">Toggle Theme</v-tooltip>
+          <v-icon size="18">mdi-weather-night</v-icon>
+          <v-tooltip activator="parent" location="bottom">Dark Mode</v-tooltip>
         </v-btn>
 
         <v-btn icon variant="text" size="small" class="nav-icon-btn">
-          <v-icon size="20">mdi-calendar-month-outline</v-icon>
+          <v-icon size="18">mdi-calendar-month-outline</v-icon>
           <v-tooltip activator="parent" location="bottom">Calendar</v-tooltip>
         </v-btn>
 
@@ -66,7 +66,7 @@
           class="nav-icon-btn"
           @click="$emit('open-settings')"
         >
-          <v-icon size="20">mdi-cog-outline</v-icon>
+          <v-icon size="18">mdi-cog-outline</v-icon>
           <v-tooltip activator="parent" location="bottom">Settings</v-tooltip>
         </v-btn>
       </div>
@@ -86,44 +86,45 @@ defineEmits(['open-settings'])
 .navbar-brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   cursor: pointer;
+  padding-left: 4px;
 }
 
 .brand-logo {
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
 }
 
 .brand-title {
-  font-size: 1.4rem;
+  font-size: 1.35rem;
   font-weight: 800;
   color: #ffffff;
   letter-spacing: -0.01em;
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .nav-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .btn-make-homepage {
   font-weight: 700 !important;
-  font-size: 0.75rem !important;
+  font-size: 0.72rem !important;
   letter-spacing: 0.04em !important;
-  padding: 0 16px !important;
-  height: 34px !important;
+  padding: 0 14px !important;
+  height: 32px !important;
   box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4) !important;
 }
 
 .btn-login {
   font-weight: 700 !important;
-  font-size: 0.75rem !important;
+  font-size: 0.72rem !important;
   letter-spacing: 0.04em !important;
   border-color: rgba(255, 255, 255, 0.4) !important;
-  height: 34px !important;
+  height: 32px !important;
 }
 
 .nav-icon-btn {

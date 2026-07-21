@@ -61,6 +61,7 @@ const formattedDate = computed(() => {
   text-align: right;
   user-select: none;
   color: #ffffff;
+  padding-right: 12px;
 }
 
 .time-container {
@@ -73,24 +74,24 @@ const formattedDate = computed(() => {
 .time-main {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-weight: 300;
-  font-size: 54px;
+  font-size: 48px;
   line-height: 1;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
   letter-spacing: -0.02em;
 }
 
 .time-ampm {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 400;
   opacity: 0.9;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 .date-display {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 400;
   color: rgba(255, 255, 255, 0.85);
   margin-top: 2px;
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
 }
 </style>
