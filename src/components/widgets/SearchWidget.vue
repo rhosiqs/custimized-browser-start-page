@@ -119,7 +119,7 @@ const emit = defineEmits(['filter-category', 'toggle-reorder', 'toggle-bookmarks
 
 const searchQuery = ref('')
 const searchInputRef = ref(null)
-const selectedAi = ref('ChatGPT')
+const selectedAi = ref('Google')
 const activeCategory = ref('ALL')
 const isListening = ref(false)
 const showCategoryMenu = ref(false)
@@ -127,15 +127,15 @@ const showCategoryMenu = ref(false)
 const categories = ['ALL', 'SHOP', 'SPORTS', 'FOR ME', 'FUN', 'TOOLS']
 
 const aiOptions = [
-  { name: 'ChatGPT', icon: 'mdi-robot-outline', url: 'https://chat.openai.com/' },
-  { name: 'Claude', icon: 'mdi-head-lightbulb-outline', url: 'https://claude.ai/' },
-  { name: 'Gemini', icon: 'mdi-creation', url: 'https://gemini.google.com/' },
-  { name: 'Perplexity', icon: 'mdi-brain', url: 'https://www.perplexity.ai/' },
+  { name: 'Google', icon: 'mdi-google', searchUrl: 'https://www.google.com/search?q=', homeUrl: 'https://google.com' },
+  { name: 'ChatGPT', icon: 'mdi-robot-outline', searchUrl: 'https://chatgpt.com/?q=', homeUrl: 'https://chat.openai.com/' },
+  { name: 'Claude', icon: 'mdi-head-lightbulb-outline', searchUrl: 'https://claude.ai/new?q=', homeUrl: 'https://claude.ai/' },
+  { name: 'Gemini', icon: 'mdi-creation', searchUrl: 'https://gemini.google.com/app?q=', homeUrl: 'https://gemini.google.com/' },
+  { name: 'Perplexity', icon: 'mdi-brain', searchUrl: 'https://www.perplexity.ai/search?q=', homeUrl: 'https://www.perplexity.ai/' },
 ]
 
 function selectAiOption(ai) {
   selectedAi.value = ai.name
-  window.open(ai.url, '_blank')
 }
 
 function selectCategory(cat) {
@@ -145,8 +145,12 @@ function selectCategory(cat) {
 
 function performSearch() {
   const q = searchQuery.value.trim()
-  if (!q) return
-  window.open('https://www.google.com/search?q=' + encodeURIComponent(q), '_blank')
+  const targetEngine = aiOptions.find(o => o.name === selectedAi.value) || aiOptions[0]
+  if (!q) {
+    window.open(targetEngine.homeUrl, '_blank')
+    return
+  }
+  window.open(targetEngine.searchUrl + encodeURIComponent(q), '_blank')
   searchQuery.value = ''
 }
 

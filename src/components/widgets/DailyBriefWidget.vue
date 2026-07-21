@@ -47,21 +47,28 @@ import { useNews } from '../../composables/useNews.js'
 const { news, fetchNews } = useNews()
 
 const loading = ref(false)
-const briefItems = ref([])
-
-const bulletColors = ['#6C63FF', '#00D9FF', '#FF6B9D', '#4CAF50', '#FFC107']
+const defaultBriefItems = [
+  { title: 'Global Tech & AI Innovations', description: 'Next-generation web standards and browser tools are accelerating productivity workflows worldwide.' },
+  { title: 'Market Highlights & Growth Insights', description: 'Major index benchmarks maintain momentum as tech adoption surges across sectors.' },
+  { title: 'Daily Focus & Mindfulness', description: 'Break tasks into manageable 25-minute sprints to optimize daily output and mental clarity.' },
+  { title: 'Cybersecurity Best Practices', description: 'Ensure multi-factor authentication is enabled for all primary personal and team accounts.' },
+  { title: 'Weather & Travel Trends', description: 'Favorable seasonal weather patterns continue across major business hubs.' }
+]
 
 async function fetchBrief() {
   loading.value = true
   try {
     await fetchNews('general')
-    // Take the top articles and condense them
-    briefItems.value = news.articles.slice(0, 5).map(article => ({
-      title: article.title,
-      description: article.description?.slice(0, 120) || '',
-    }))
+    if (news.articles && news.articles.length > 0) {
+      briefItems.value = news.articles.slice(0, 5).map(article => ({
+        title: article.title,
+        description: article.description?.slice(0, 120) || '',
+      }))
+    } else {
+      briefItems.value = defaultBriefItems
+    }
   } catch (e) {
-    briefItems.value = []
+    briefItems.value = defaultBriefItems
   } finally {
     loading.value = false
   }
