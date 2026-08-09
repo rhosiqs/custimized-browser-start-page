@@ -396,6 +396,35 @@ a:focus-visible {
   gap: 3px;
 }
 
+.category-tab-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.category-tab-wrap:has(.category-tab-edit) .category-tab {
+  padding-right: 27px;
+}
+
+.category-tab-edit {
+  position: absolute;
+  right: 5px;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: currentColor;
+  background: rgba(255, 255, 255, 0.12);
+  border: 0;
+  border-radius: 50%;
+  font-size: 0.62rem;
+}
+
+.category-add-tab {
+  border: 1px dashed rgba(255, 255, 255, 0.3);
+}
+
 .category-tabs {
   min-width: 0;
   overflow-x: auto;
@@ -612,6 +641,12 @@ a:focus-visible {
   background: rgba(var(--launcher-rgb, 79, 140, 255), 0.42);
 }
 
+.launcher-add-button {
+  --launcher-rgb: 148, 163, 184;
+  border-style: dashed;
+  font-size: 1.05rem;
+}
+
 .launcher-flyout {
   position: fixed;
   left: 18px;
@@ -643,6 +678,12 @@ a:focus-visible {
   display: grid;
   gap: 3px;
   padding-top: 6px;
+}
+
+.launcher-empty-message {
+  margin: 6px;
+  color: var(--muted);
+  font-size: 0.75rem;
 }
 
 .launcher-link {
@@ -1347,4 +1388,3 @@ body.density-compact .search-pill {
     transition-duration: 0.01ms !important;
   }
 }
-

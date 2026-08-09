@@ -88,6 +88,67 @@
     "grok ai"
   ]);
 
+  const DEFAULT_LAUNCHERS = Object.freeze([
+    {
+      id: "launcher-google",
+      name: "Google",
+      icon: "G",
+      color: "#4285f4",
+      order: 0,
+      links: [
+        { id: "google-search", label: "Google Search", url: "https://www.google.com", order: 0 },
+        { id: "google-gmail", label: "Gmail", url: "https://mail.google.com", order: 1 },
+        { id: "google-drive", label: "Google Drive", url: "https://drive.google.com", order: 2 },
+        { id: "google-calendar", label: "Google Calendar", url: "https://calendar.google.com", order: 3 },
+        { id: "google-maps", label: "Google Maps", url: "https://maps.google.com", order: 4 },
+        { id: "google-translate", label: "Google Translate", url: "https://translate.google.com", order: 5 }
+      ]
+    },
+    {
+      id: "launcher-microsoft",
+      name: "Microsoft",
+      icon: "M",
+      color: "#00a4ef",
+      order: 1,
+      links: [
+        { id: "microsoft-bing", label: "Bing", url: "https://www.bing.com", order: 0 },
+        { id: "microsoft-outlook", label: "Outlook", url: "https://outlook.live.com", order: 1 },
+        { id: "microsoft-onedrive", label: "OneDrive", url: "https://onedrive.live.com", order: 2 },
+        { id: "microsoft-365", label: "Microsoft 365", url: "https://www.microsoft365.com", order: 3 },
+        { id: "microsoft-teams", label: "Microsoft Teams", url: "https://teams.microsoft.com", order: 4 },
+        { id: "microsoft-copilot", label: "Microsoft Copilot", url: "https://copilot.microsoft.com", order: 5 }
+      ]
+    },
+    {
+      id: "launcher-ai",
+      name: "AI",
+      icon: "AI",
+      color: "#8b5cf6",
+      order: 2,
+      links: [
+        { id: "ai-chatgpt", label: "ChatGPT", url: "https://chatgpt.com", order: 0 },
+        { id: "ai-claude", label: "Claude", url: "https://claude.ai", order: 1 },
+        { id: "ai-gemini", label: "Gemini", url: "https://gemini.google.com", order: 2 },
+        { id: "ai-perplexity", label: "Perplexity", url: "https://www.perplexity.ai", order: 3 },
+        { id: "ai-grok", label: "Grok", url: "https://grok.com", order: 4 }
+      ]
+    },
+    {
+      id: "launcher-developer",
+      name: "Developer",
+      icon: "<>" ,
+      color: "#22c55e",
+      order: 3,
+      links: [
+        { id: "dev-github", label: "GitHub", url: "https://github.com", order: 0 },
+        { id: "dev-stackoverflow", label: "Stack Overflow", url: "https://stackoverflow.com", order: 1 },
+        { id: "dev-mdn", label: "MDN Web Docs", url: "https://developer.mozilla.org", order: 2 },
+        { id: "dev-npm", label: "npm", url: "https://www.npmjs.com", order: 3 },
+        { id: "dev-vercel", label: "Vercel", url: "https://vercel.com", order: 4 }
+      ]
+    }
+  ]);
+
   const DEFAULT_SETTINGS = Object.freeze({
     schemaVersion: 1,
     theme: "dark",
@@ -109,7 +170,7 @@
     defaultCategory: "All",
     categories: ["Work"],
     shortcuts: [],
-    launchers: [],
+    launchers: DEFAULT_LAUNCHERS,
     layout: {
       clock: { x: 0, y: 0 },
       search: { x: 0, y: 0 },
@@ -159,6 +220,51 @@
     };
   }
 
+  function normalizeShortcut(item, index, categories, accent) {
+    if (!item || typeof item !== "object") return null;
+    const url = normalizeHttpUrl(item.url);
+    if (!url) return null;
+    const requestedGroup = String(item.group || item.category || "Work").trim() || "Work";
+    if (!categories.includes(requestedGroup)) categories.push(requestedGroup);
+    return {
+      id: String(item.id || createId("shortcut")),
+      title: String(item.title || item.name || initial(url)).trim().slice(0, 64) || "Shortcut",
+      url,
+      group: requestedGroup,
+      color: normalizeHexColor(item.color, accent),
+      order: clamp(item.order, 0, 100000, index)
+    };
+  }
+
+  function normalizeLauncherLink(item, index) {
+    if (!item || typeof item !== "object") return null;
+    const url = normalizeHttpUrl(item.url);
+    if (!url) return null;
+    return {
+      id: String(item.id || createId("link")),
+      label: String(item.label || item.name || initial(url)).trim().slice(0, 48) || "Service",
+      url,
+      order: clamp(item.order, 0, 100000, index)
+    };
+  }
+
+  function normalizeLauncher(item, index) {
+    if (!item || typeof item !== "object") return null;
+    const links = (Array.isArray(item.links) ? item.links : [])
+      .map(normalizeLauncherLink)
+      .filter(Boolean)
+      .sort((a, b) => a.order - b.order)
+      .map((link, linkIndex) => ({ ...link, order: linkIndex }));
+    return {
+      id: String(item.id || createId("launcher")),
+      name: String(item.name || "Launcher").trim().slice(0, 32) || "Launcher",
+      icon: String(item.icon || initial(item.name)).trim().slice(0, 4) || "•",
+      color: normalizeHexColor(item.color, "#4f8cff"),
+      order: clamp(item.order, 0, 100000, index),
+      links
+    };
+  }
+
   function normalizeSettings(input) {
     const value = input && typeof input === "object" ? input : {};
     const defaults = clone(DEFAULT_SETTINGS);
@@ -205,8 +311,17 @@
     settings.defaultCategory = settings.defaultCategory === "All" || settings.categories.includes(settings.defaultCategory)
       ? settings.defaultCategory
       : "All";
-    settings.shortcuts = Array.isArray(settings.shortcuts) ? clone(settings.shortcuts) : [];
-    settings.launchers = Array.isArray(settings.launchers) ? clone(settings.launchers) : [];
+    settings.shortcuts = (Array.isArray(settings.shortcuts) ? settings.shortcuts : [])
+      .map((item, index) => normalizeShortcut(item, index, settings.categories, settings.accent))
+      .filter(Boolean)
+      .sort((a, b) => a.order - b.order)
+      .map((item, index) => ({ ...item, order: index }));
+    const launcherSource = Array.isArray(value.launchers) ? value.launchers : defaults.launchers;
+    settings.launchers = launcherSource
+      .map(normalizeLauncher)
+      .filter(Boolean)
+      .sort((a, b) => a.order - b.order)
+      .map((item, index) => ({ ...item, order: index }));
     settings.layout = {
       clock: normalizePosition(value.layout?.clock),
       search: normalizePosition(value.layout?.search),
@@ -375,6 +490,28 @@
     return String(value || "?").trim().charAt(0).toLocaleUpperCase() || "?";
   }
 
+  function reorderById(items, fromId, toId) {
+    const next = Array.isArray(items) ? clone(items) : [];
+    const fromIndex = next.findIndex((item) => item.id === fromId);
+    const toIndex = next.findIndex((item) => item.id === toId);
+    if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) {
+      return next.map((item, index) => ({ ...item, order: index }));
+    }
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    return next.map((item, index) => ({ ...item, order: index }));
+  }
+
+  function moveById(items, id, delta) {
+    const next = Array.isArray(items) ? clone(items) : [];
+    const index = next.findIndex((item) => item.id === id);
+    const targetIndex = Math.min(next.length - 1, Math.max(0, index + delta));
+    if (index < 0 || targetIndex === index) return next;
+    const [moved] = next.splice(index, 1);
+    next.splice(targetIndex, 0, moved);
+    return next.map((item, itemIndex) => ({ ...item, order: itemIndex }));
+  }
+
   const core = Object.freeze({
     version: 1,
     SETTINGS_STORAGE_KEY,
@@ -384,6 +521,7 @@
     WEB_ENGINES,
     AI_ENGINES,
     TIME_ZONES,
+    DEFAULT_LAUNCHERS,
     DEFAULT_SETTINGS,
     clone,
     createId,
@@ -403,7 +541,9 @@
     routeInput,
     timeZoneCity,
     faviconUrl,
-    initial
+    initial,
+    reorderById,
+    moveById
   });
 
   globalScope.StartPageCore = core;
