@@ -1,0 +1,5 @@
+(function initializeApp() {
+  "use strict";
+
+  document.documentElement.classList.add("js-ready");
+})();

@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark light" />
+    <meta
+      name="description"
+      content="A lightweight, private browser start page with smart search and customizable shortcuts."
+    />
+    <title>Start Page</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script defer src="core.js"></script>
+    <script defer src="app.js"></script>
+  </head>
+  <body>
+    <div class="background-layer" aria-hidden="true"></div>
+
+    <header class="page-header">
+      <button
+        class="round-button settings-launcher draggable-region"
+        id="settingsButton"
+        type="button"
+        aria-label="Open settings"
+        title="Settings"
+        data-layout-key="settingsButton"
+      >
+        <span aria-hidden="true">⚙</span>
+      </button>
+
+      <section
+        class="local-clock draggable-region"
+        id="localClock"
+        aria-label="Local time"
+        data-layout-key="clock"
+      >
+        <div class="clock-line">
+          <time class="local-time" id="localTime">--:--</time>
+          <span class="clock-period" id="clockPeriod"></span>
+          <span class="clock-seconds" id="clockSeconds"></span>
+        </div>
+        <p class="local-date" id="localDate">Loading date…</p>
+      </section>
+    </header>
+
+    <main class="start-page">
+      <section
+        class="search-stack draggable-region"
+        id="searchStack"
+        aria-label="Search tools"
+        data-layout-key="search"
+      >
+        <form class="search-pill" id="webSearchForm" novalidate>
+          <label class="engine-control">
+            <span class="engine-mark" aria-hidden="true">W</span>
+            <span class="sr-only">Web search engine</span>
+            <select id="webEngine" aria-label="Web search engine"></select>
+          </label>
+          <div class="query-control">
+            <input
+              id="webSearchInput"
+              type="search"
+              placeholder="Search the web"
+              autocomplete="off"
+              spellcheck="false"
+              role="combobox"
+              aria-autocomplete="list"
+              aria-controls="webSuggestions"
+              aria-expanded="false"
+            />
+            <button class="submit-button" type="submit" aria-label="Search the web">↗</button>
+          </div>
+          <div class="suggestions" id="webSuggestions" role="listbox" hidden></div>
+        </form>
+
+        <form class="search-pill" id="aiSearchForm" novalidate>
+          <label class="engine-control">
+            <span class="engine-mark ai-mark" aria-hidden="true">AI</span>
+            <span class="sr-only">AI service</span>
+            <select id="aiEngine" aria-label="AI service"></select>
+          </label>
+          <div class="query-control">
+            <input
+              id="aiSearchInput"
+              type="search"
+              placeholder="Ask AI"
+              autocomplete="off"
+              spellcheck="false"
+              role="combobox"
+              aria-autocomplete="list"
+              aria-controls="aiSuggestions"
+              aria-expanded="false"
+            />
+            <button class="submit-button" type="submit" aria-label="Ask AI">↗</button>
+          </div>
+          <div class="suggestions" id="aiSuggestions" role="listbox" hidden></div>
+        </form>
+
+        <form class="search-pill doi-pill" id="doiSearchForm" novalidate>
+          <div class="engine-control fixed-engine" aria-hidden="true">
+            <span class="engine-mark doi-mark">DOI</span>
+            <strong>Resolve</strong>
+          </div>
+          <div class="query-control">
+            <input
+              id="doiSearchInput"
+              type="text"
+              placeholder="Enter a DOI or paste a URL"
+              autocomplete="off"
+              spellcheck="false"
+              aria-describedby="doiError"
+            />
+            <button class="submit-button" type="submit" aria-label="Resolve DOI">↗</button>
+          </div>
+          <p class="field-error" id="doiError" role="alert" hidden></p>
+        </form>
+      </section>
+
+      <section
+        class="shortcut-workspace draggable-region"
+        id="shortcutWorkspace"
+        aria-label="Shortcuts"
+        data-layout-key="shortcuts"
+      >
+        <div class="category-toolbar">
+          <div class="category-tabs" id="categoryTabs" role="tablist" aria-label="Shortcut categories"></div>
+          <div class="toolbar-actions">
+            <button class="toolbar-button" id="editShortcutsButton" type="button" aria-pressed="false">
+              Edit
+            </button>
+            <button class="toolbar-button primary" id="addShortcutButton" type="button">
+              <span aria-hidden="true">＋</span> Add
+            </button>
+          </div>
+        </div>
+        <div class="shortcut-grid" id="shortcutGrid"></div>
+        <div class="empty-state" id="shortcutEmptyState">
+          <button class="empty-add-button" id="emptyAddShortcutButton" type="button" aria-label="Add your first shortcut">
+            <span aria-hidden="true">＋</span>
+          </button>
+          <p>Add your first shortcut</p>
+        </div>
+      </section>
+    </main>
+
+    <aside
+      class="launcher-dock"
+      id="launcherDock"
+      aria-label="Service launchers"
+      data-layout-key="launchers"
+    ></aside>
+
+    <aside
+      class="world-clock draggable-region"
+      id="worldClock"
+      aria-label="World clocks"
+      data-layout-key="worldClock"
+    >
+      <div id="worldClockList"></div>
+    </aside>
+
+    <div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
+    <aside class="settings-drawer" id="settingsDrawer" aria-labelledby="settingsTitle" aria-hidden="true">
+      <header class="drawer-header">
+        <div>
+          <p class="eyebrow">Personalize</p>
+          <h2 id="settingsTitle">Start Page Settings</h2>
+        </div>
+        <button class="round-button subtle" id="closeSettingsButton" type="button" aria-label="Close settings">×</button>
+      </header>
+
+      <nav class="settings-tabs" id="settingsTabs" aria-label="Settings sections">
+        <button type="button" data-settings-tab="appearance" class="active">Appearance</button>
+        <button type="button" data-settings-tab="search">Search</button>
+        <button type="button" data-settings-tab="time">Time</button>
+        <button type="button" data-settings-tab="shortcuts">Shortcuts</button>
+        <button type="button" data-settings-tab="launchers">Launchers</button>
+        <button type="button" data-settings-tab="data">Data</button>
+      </nav>
+
+      <div class="settings-content">
+        <section class="settings-panel active" data-settings-panel="appearance">
+          <h3>Appearance</h3>
+          <div class="settings-grid">
+            <label>Theme<select id="themeSetting"><option value="dark">Dark</option><option value="light">Light</option></select></label>
+            <label>Density<select id="densitySetting"><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select></label>
+            <label>Background<select id="backgroundTypeSetting"><option value="solid">Solid color</option><option value="gradient">Gradient</option><option value="image">Image URL</option></select></label>
+            <label>Background value<input id="backgroundValueSetting" type="text" spellcheck="false" /></label>
+            <label>Accent color<div class="color-field"><input id="accentSetting" type="color" /><input id="accentTextSetting" type="text" spellcheck="false" /></div></label>
+            <label class="switch-row"><span>Clock background</span><input id="clockBackgroundSetting" type="checkbox" role="switch" /></label>
+          </div>
+          <button class="secondary-button full-width" id="startLayoutEditButton" type="button">Edit desktop layout</button>
+        </section>
+
+        <section class="settings-panel" data-settings-panel="search" hidden>
+          <h3>Search</h3>
+          <div class="settings-grid">
+            <label>Default web engine<select id="defaultWebEngineSetting"></select></label>
+            <label>Default AI service<select id="defaultAiEngineSetting"></select></label>
+            <label>Focus on load<select id="defaultFocusSetting"><option value="web">Web search</option><option value="ai">AI search</option><option value="doi">DOI resolver</option><option value="none">None</option></select></label>
+            <label class="switch-row"><span>Copy queries to clipboard</span><input id="copyQuerySetting" type="checkbox" role="switch" /></label>
+          </div>
+        </section>
+
+        <section class="settings-panel" data-settings-panel="time" hidden>
+          <h3>Time</h3>
+          <div class="settings-grid">
+            <label>Clock format<select id="clockFormatSetting"><option value="12">12 hour</option><option value="24">24 hour</option></select></label>
+            <label class="switch-row"><span>Show seconds</span><input id="showSecondsSetting" type="checkbox" role="switch" /></label>
+            <label>World time zone<select id="timeZoneSelect"></select></label>
+          </div>
+          <div class="manager-list compact-list" id="timeZoneManager"></div>
+        </section>
+
+        <section class="settings-panel" data-settings-panel="shortcuts" hidden>
+          <div class="section-heading">
+            <h3>Shortcuts</h3>
+            <button class="small-button primary" id="settingsAddShortcutButton" type="button">Add shortcut</button>
+          </div>
+          <div class="settings-grid three-columns">
+            <label>Columns<input id="shortcutColumnsSetting" type="number" min="2" max="10" /></label>
+            <label>Visible slots<input id="shortcutSlotsSetting" type="number" min="4" max="80" /></label>
+            <label>Alignment<select id="shortcutAlignSetting"><option value="center">Center</option><option value="start">Left</option><option value="end">Right</option><option value="stretch">Stretch</option></select></label>
+          </div>
+          <div class="manager-block">
+            <div class="section-heading"><h4>Categories</h4><button class="small-button" id="addCategoryButton" type="button">Add category</button></div>
+            <div class="manager-list" id="categoryManager"></div>
+          </div>
+          <div class="manager-block">
+            <h4>Shortcut order</h4>
+            <div class="manager-list" id="shortcutManager"></div>
+          </div>
+        </section>
+
+        <section class="settings-panel" data-settings-panel="launchers" hidden>
+          <div class="section-heading">
+            <h3>Launcher dock</h3>
+            <button class="small-button primary" id="addLauncherButton" type="button">Add launcher</button>
+          </div>
+          <p class="settings-help">Add as many launchers as you need. Drag rows to reorder them.</p>
+          <div class="manager-list" id="launcherManager"></div>
+        </section>
+
+        <section class="settings-panel" data-settings-panel="data" hidden>
+          <h3>Data &amp; reset</h3>
+          <div class="data-actions">
+            <label>Export format<select id="exportFormat"><option value="json">JSON</option><option value="yaml">YAML</option><option value="toml">TOML</option><option value="text">Plain text</option></select></label>
+            <div class="button-pair"><button class="secondary-button" id="copyExportButton" type="button">Copy</button><button class="secondary-button" id="downloadExportButton" type="button">Save file</button></div>
+            <label>Import format<select id="importFormat"><option value="json">JSON</option><option value="yaml">YAML</option><option value="toml">TOML</option><option value="text">Plain text</option></select></label>
+            <div class="button-pair"><button class="secondary-button" id="loadImportButton" type="button">Load file</button><button class="secondary-button" id="applyImportButton" type="button">Import text</button></div>
+          </div>
+          <input id="importFileInput" type="file" hidden />
+          <textarea id="dataTextArea" rows="10" spellcheck="false" placeholder="Exported data or import text appears here"></textarea>
+          <button class="danger-button full-width" id="resetSettingsButton" type="button">Reset all settings</button>
+        </section>
+      </div>
+
+      <footer class="drawer-footer">
+        <button class="secondary-button" id="discardSettingsButton" type="button">Discard changes</button>
+        <button class="primary-button" id="saveSettingsButton" type="button">Save &amp; close</button>
+      </footer>
+    </aside>
+
+    <dialog class="editor-dialog" id="shortcutDialog">
+      <form method="dialog" id="shortcutForm">
+        <header class="dialog-header"><h2 id="shortcutDialogTitle">Add shortcut</h2><button value="cancel" class="dialog-close" aria-label="Close">×</button></header>
+        <div class="dialog-body">
+          <input id="shortcutIdInput" type="hidden" />
+          <label>Name<input id="shortcutTitleInput" type="text" required maxlength="64" /></label>
+          <label>URL<input id="shortcutUrlInput" type="text" required spellcheck="false" placeholder="https://example.com" /></label>
+          <label>Category<select id="shortcutGroupInput"></select></label>
+          <label>Tile color<div class="color-field"><input id="shortcutColorInput" type="color" /><input id="shortcutColorTextInput" type="text" spellcheck="false" /></div></label>
+          <p class="field-error" id="shortcutFormError" role="alert" hidden></p>
+        </div>
+        <footer class="dialog-footer"><button class="danger-button push-left" id="deleteShortcutButton" type="button" hidden>Delete</button><button value="cancel" class="secondary-button">Cancel</button><button class="primary-button" id="saveShortcutButton" type="submit" value="default">Save</button></footer>
+      </form>
+    </dialog>
+
+    <dialog class="editor-dialog" id="categoryDialog">
+      <form method="dialog" id="categoryForm">
+        <header class="dialog-header"><h2 id="categoryDialogTitle">Add category</h2><button value="cancel" class="dialog-close" aria-label="Close">×</button></header>
+        <div class="dialog-body">
+          <input id="categoryOriginalNameInput" type="hidden" />
+          <label>Name<input id="categoryNameInput" type="text" required maxlength="32" /></label>
+          <label class="switch-row"><span>Use as default view</span><input id="categoryDefaultInput" type="checkbox" role="switch" /></label>
+          <p class="field-error" id="categoryFormError" role="alert" hidden></p>
+        </div>
+        <footer class="dialog-footer"><button class="danger-button push-left" id="deleteCategoryButton" type="button" hidden>Delete</button><button value="cancel" class="secondary-button">Cancel</button><button class="primary-button" type="submit" value="default">Save</button></footer>
+      </form>
+    </dialog>
+
+    <dialog class="editor-dialog wide-dialog" id="launcherDialog">
+      <form method="dialog" id="launcherForm">
+        <header class="dialog-header"><h2 id="launcherDialogTitle">Add launcher</h2><button value="cancel" class="dialog-close" aria-label="Close">×</button></header>
+        <div class="dialog-body">
+          <input id="launcherIdInput" type="hidden" />
+          <div class="settings-grid three-columns">
+            <label>Name<input id="launcherNameInput" type="text" required maxlength="32" /></label>
+            <label>Short icon<input id="launcherIconInput" type="text" required maxlength="4" placeholder="G or ✦" /></label>
+            <label>Color<div class="color-field"><input id="launcherColorInput" type="color" /><input id="launcherColorTextInput" type="text" spellcheck="false" /></div></label>
+          </div>
+          <p class="field-error" id="launcherFormError" role="alert" hidden></p>
+          <div class="manager-block launcher-links-editor" id="launcherLinksEditor" hidden>
+            <div class="section-heading"><h3>Service links</h3><button class="small-button primary" id="addLauncherLinkButton" type="button">Add link</button></div>
+            <div class="manager-list" id="launcherLinkManager"></div>
+          </div>
+        </div>
+        <footer class="dialog-footer"><button class="danger-button push-left" id="deleteLauncherButton" type="button" hidden>Delete</button><button value="cancel" class="secondary-button">Cancel</button><button class="primary-button" type="submit" value="default">Save</button></footer>
+      </form>
+    </dialog>
+
+    <dialog class="editor-dialog" id="linkDialog">
+      <form method="dialog" id="linkForm">
+        <header class="dialog-header"><h2 id="linkDialogTitle">Add service link</h2><button value="cancel" class="dialog-close" aria-label="Close">×</button></header>
+        <div class="dialog-body">
+          <input id="linkIdInput" type="hidden" />
+          <label>Name<input id="linkLabelInput" type="text" required maxlength="48" /></label>
+          <label>URL<input id="linkUrlInput" type="text" required spellcheck="false" placeholder="https://example.com" /></label>
+          <p class="field-error" id="linkFormError" role="alert" hidden></p>
+        </div>
+        <footer class="dialog-footer"><button class="danger-button push-left" id="deleteLinkButton" type="button" hidden>Delete</button><button value="cancel" class="secondary-button">Cancel</button><button class="primary-button" type="submit" value="default">Save</button></footer>
+      </form>
+    </dialog>
+
+    <div class="layout-edit-bar" id="layoutEditBar" hidden>
+      <strong>Layout edit mode</strong>
+      <span>Drag highlighted desktop regions.</span>
+      <button class="secondary-button" id="discardLayoutButton" type="button">Discard</button>
+      <button class="primary-button" id="saveLayoutButton" type="button">Save layout</button>
+    </div>
+    <div class="layout-guides" id="layoutGuides" hidden aria-hidden="true"><span class="guide-v"></span><span class="guide-h"></span></div>
+
+    <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="true"></div>
+  </body>
+</html>
+

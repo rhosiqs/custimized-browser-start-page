@@ -1,0 +1,10 @@
+{
+  "name": "browser-start-page-v3",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A lightweight, local-first browser start page.",
+  "scripts": {
+    "check": "node --check core.js && node --check app.js"
+  }
+}
+
