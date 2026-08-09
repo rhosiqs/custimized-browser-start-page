@@ -512,6 +512,259 @@
     return next.map((item, itemIndex) => ({ ...item, order: itemIndex }));
   }
 
+  function migrateSettings(input) {
+    const value = input && typeof input === "object" ? clone(input) : {};
+    if (value.defaultSearch && !value.defaultWebEngine) value.defaultWebEngine = value.defaultSearch;
+    if (value.defaultAi && !value.defaultAiEngine) value.defaultAiEngine = value.defaultAi;
+    if (value.defaultFocusOnLoad && !value.defaultFocus) {
+      const focusMap = {
+        searchInput: "web",
+        aiInput: "ai",
+        addressInput: "doi",
+        none: "none"
+      };
+      value.defaultFocus = focusMap[value.defaultFocusOnLoad] || "web";
+    }
+    if (Array.isArray(value.shortcutGroups) && !Array.isArray(value.categories)) {
+      value.categories = value.shortcutGroups;
+    }
+    if (value.defaultView && !value.defaultCategory) value.defaultCategory = value.defaultView;
+    if (value.elementPositions && !value.layout) value.layout = value.elementPositions;
+    return normalizeSettings(value);
+  }
+
+  function scalarValue(text) {
+    const value = String(text || "").trim();
+    if (value === "" || value === "null" || value === "~") return null;
+    if (value === "true") return true;
+    if (value === "false") return false;
+    if (/^[-+]?\d+$/.test(value)) return Number.parseInt(value, 10);
+    if (/^[-+]?\d*\.\d+$/.test(value)) return Number.parseFloat(value);
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      try {
+        return JSON.parse(value);
+      } catch {
+        return value.slice(1, -1);
+      }
+    }
+    return value;
+  }
+
+  function findNextContentLine(lines, start) {
+    for (let index = start; index < lines.length; index += 1) {
+      if (lines[index].trim() && !lines[index].trim().startsWith("#")) return lines[index];
+    }
+    return "";
+  }
+
+  function parseLegacyYaml(text) {
+    const lines = String(text || "").split(/\r?\n/);
+    const result = {};
+    const stack = [{ value: result, indent: -1 }];
+    let activeArray = null;
+
+    for (let index = 0; index < lines.length; index += 1) {
+      const raw = lines[index];
+      const trimmed = raw.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      const indent = raw.search(/\S/);
+
+      if (trimmed.startsWith("- ") && activeArray) {
+        const content = trimmed.slice(2).trim();
+        const pair = content.match(/^([^:]+):\s*(.*)$/);
+        if (pair) {
+          const entry = { [pair[1].trim()]: scalarValue(pair[2]) };
+          const itemIndent = indent;
+          while (index + 1 < lines.length) {
+            const next = lines[index + 1];
+            if (!next.trim()) {
+              index += 1;
+              continue;
+            }
+            const nextIndent = next.search(/\S/);
+            if (nextIndent <= itemIndent || next.trim().startsWith("- ")) break;
+            const nextPair = next.trim().match(/^([^:]+):\s*(.*)$/);
+            if (!nextPair) break;
+            entry[nextPair[1].trim()] = scalarValue(nextPair[2]);
+            index += 1;
+          }
+          activeArray.push(entry);
+        } else {
+          activeArray.push(scalarValue(content));
+        }
+        continue;
+      }
+
+      const pair = trimmed.match(/^([^:]+):\s*(.*)$/);
+      if (!pair) continue;
+      const key = pair[1].trim();
+      const valueText = pair[2].trim();
+      while (stack.length > 1 && stack[stack.length - 1].indent >= indent) stack.pop();
+      const parent = stack[stack.length - 1].value;
+      if (valueText) {
+        parent[key] = scalarValue(valueText);
+        activeArray = null;
+      } else {
+        const next = findNextContentLine(lines, index + 1);
+        if (next.trim().startsWith("- ")) {
+          parent[key] = [];
+          activeArray = parent[key];
+        } else {
+          parent[key] = {};
+          stack.push({ value: parent[key], indent });
+          activeArray = null;
+        }
+      }
+    }
+    return result;
+  }
+
+  function parseTomlValue(value) {
+    const clean = String(value || "").trim();
+    if (clean.startsWith("[") && clean.endsWith("]")) {
+      const inner = clean.slice(1, -1).trim();
+      if (!inner) return [];
+      const items = [];
+      let token = "";
+      let quote = "";
+      for (let index = 0; index < inner.length; index += 1) {
+        const char = inner[index];
+        if (quote) {
+          token += char;
+          if (char === quote && inner[index - 1] !== "\\") quote = "";
+        } else if (char === '"' || char === "'") {
+          quote = char;
+          token += char;
+        } else if (char === ",") {
+          items.push(scalarValue(token));
+          token = "";
+        } else {
+          token += char;
+        }
+      }
+      if (token.trim()) items.push(scalarValue(token));
+      return items;
+    }
+    return scalarValue(clean);
+  }
+
+  function parseLegacyToml(text) {
+    const result = {};
+    let target = result;
+    for (const raw of String(text || "").split(/\r?\n/)) {
+      const line = raw.trim();
+      if (!line || line.startsWith("#")) continue;
+      const arrayTable = line.match(/^\[\[([^\]]+)\]\]$/);
+      if (arrayTable) {
+        const key = arrayTable[1].trim();
+        if (!Array.isArray(result[key])) result[key] = [];
+        target = {};
+        result[key].push(target);
+        continue;
+      }
+      const table = line.match(/^\[([^\]]+)\]$/);
+      if (table) {
+        const parts = table[1].trim().split(".");
+        target = result;
+        parts.forEach((part) => {
+          if (!target[part] || typeof target[part] !== "object") target[part] = {};
+          target = target[part];
+        });
+        continue;
+      }
+      const pair = line.match(/^([^=]+?)=(.*)$/);
+      if (pair) target[pair[1].trim()] = parseTomlValue(pair[2]);
+    }
+    return result;
+  }
+
+  function setPath(target, path, value) {
+    const parts = path.split(".");
+    let current = target;
+    for (let index = 0; index < parts.length - 1; index += 1) {
+      if (!current[parts[index]] || typeof current[parts[index]] !== "object") current[parts[index]] = {};
+      current = current[parts[index]];
+    }
+    current[parts.at(-1)] = value;
+  }
+
+  function parseLegacyText(text) {
+    const result = {};
+    const arrays = {};
+    for (const raw of String(text || "").split(/\r?\n/)) {
+      const line = raw.trim();
+      if (!line || line.startsWith("#") || line.startsWith("//")) continue;
+      const separator = line.indexOf("=");
+      if (separator < 0) continue;
+      const key = line.slice(0, separator).trim();
+      const rawValue = line.slice(separator + 1).trim();
+      const indexed = key.match(/^(.+?)\[(\d+)\]\.(.+)$/);
+      if (indexed) {
+        const [, arrayPath, rawIndex, property] = indexed;
+        const itemIndex = Number(rawIndex);
+        arrays[arrayPath] ||= [];
+        arrays[arrayPath][itemIndex] ||= {};
+        arrays[arrayPath][itemIndex][property] = scalarValue(rawValue);
+      } else {
+        const parsed = rawValue.includes(",") && !rawValue.startsWith('"')
+          ? rawValue.split(",").map((item) => scalarValue(item))
+          : scalarValue(rawValue);
+        setPath(result, key, parsed);
+      }
+    }
+    Object.entries(arrays).forEach(([path, value]) => setPath(result, path, value));
+    return result;
+  }
+
+  const FORMAT_META = Object.freeze({
+    json: { extension: "json", mime: "application/json", label: "JSON" },
+    yaml: { extension: "yaml", mime: "text/yaml", label: "YAML" },
+    toml: { extension: "toml", mime: "application/toml", label: "TOML" },
+    text: { extension: "txt", mime: "text/plain", label: "Plain text" }
+  });
+
+  function serializeSettings(settings, format = "json") {
+    const normalized = migrateSettings(settings);
+    const json = JSON.stringify(normalized, null, 2);
+    if (format === "json") return json;
+    if (format === "yaml") {
+      return ["# Browser Start Page V3", "browserStartPageV3: |-", ...json.split("\n").map((line) => `  ${line}`)].join("\n");
+    }
+    if (format === "toml") {
+      return `# Browser Start Page V3\nbrowser_start_page_v3 = ${JSON.stringify(JSON.stringify(normalized))}`;
+    }
+    if (format === "text") {
+      return `# Browser Start Page V3\nbrowser-start-page-v3 = ${JSON.stringify(normalized)}`;
+    }
+    throw new Error(`Unsupported format: ${format}`);
+  }
+
+  function deserializeSettings(text, format = "json") {
+    const source = String(text || "").trim();
+    if (!source) throw new Error("No settings data was provided.");
+    let parsed;
+    if (format === "json" || source.startsWith("{")) {
+      parsed = JSON.parse(source);
+    } else if (format === "yaml") {
+      const marker = source.match(/^browserStartPageV3:\s*\|-?\s*$/m);
+      if (marker) {
+        const payload = source.slice(marker.index + marker[0].length).replace(/^ {2}/gm, "").trim();
+        parsed = JSON.parse(payload);
+      } else {
+        parsed = parseLegacyYaml(source);
+      }
+    } else if (format === "toml") {
+      const payload = source.match(/^browser_start_page_v3\s*=\s*(.+)$/m);
+      parsed = payload ? JSON.parse(JSON.parse(payload[1].trim())) : parseLegacyToml(source);
+    } else if (format === "text") {
+      const payload = source.match(/^browser-start-page-v3\s*=\s*(.+)$/m);
+      parsed = payload ? JSON.parse(payload[1].trim()) : parseLegacyText(source);
+    } else {
+      throw new Error(`Unsupported format: ${format}`);
+    }
+    return migrateSettings(parsed);
+  }
+
   const core = Object.freeze({
     version: 1,
     SETTINGS_STORAGE_KEY,
@@ -543,7 +796,11 @@
     faviconUrl,
     initial,
     reorderById,
-    moveById
+    moveById,
+    migrateSettings,
+    FORMAT_META,
+    serializeSettings,
+    deserializeSettings
   });
 
   globalScope.StartPageCore = core;

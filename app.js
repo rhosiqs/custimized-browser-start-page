@@ -77,7 +77,46 @@
     linkLabelInput: document.getElementById("linkLabelInput"),
     linkUrlInput: document.getElementById("linkUrlInput"),
     linkFormError: document.getElementById("linkFormError"),
-    deleteLinkButton: document.getElementById("deleteLinkButton")
+    deleteLinkButton: document.getElementById("deleteLinkButton"),
+    settingsButton: document.getElementById("settingsButton"),
+    settingsDrawer: document.getElementById("settingsDrawer"),
+    drawerBackdrop: document.getElementById("drawerBackdrop"),
+    closeSettingsButton: document.getElementById("closeSettingsButton"),
+    settingsTabs: document.getElementById("settingsTabs"),
+    settingsPanels: [...document.querySelectorAll("[data-settings-panel]")],
+    saveSettingsButton: document.getElementById("saveSettingsButton"),
+    discardSettingsButton: document.getElementById("discardSettingsButton"),
+    themeSetting: document.getElementById("themeSetting"),
+    densitySetting: document.getElementById("densitySetting"),
+    backgroundTypeSetting: document.getElementById("backgroundTypeSetting"),
+    backgroundValueSetting: document.getElementById("backgroundValueSetting"),
+    accentSetting: document.getElementById("accentSetting"),
+    accentTextSetting: document.getElementById("accentTextSetting"),
+    clockBackgroundSetting: document.getElementById("clockBackgroundSetting"),
+    defaultWebEngineSetting: document.getElementById("defaultWebEngineSetting"),
+    defaultAiEngineSetting: document.getElementById("defaultAiEngineSetting"),
+    defaultFocusSetting: document.getElementById("defaultFocusSetting"),
+    copyQuerySetting: document.getElementById("copyQuerySetting"),
+    clockFormatSetting: document.getElementById("clockFormatSetting"),
+    showSecondsSetting: document.getElementById("showSecondsSetting"),
+    timeZoneManager: document.getElementById("timeZoneManager"),
+    shortcutColumnsSetting: document.getElementById("shortcutColumnsSetting"),
+    shortcutSlotsSetting: document.getElementById("shortcutSlotsSetting"),
+    shortcutAlignSetting: document.getElementById("shortcutAlignSetting"),
+    exportFormat: document.getElementById("exportFormat"),
+    importFormat: document.getElementById("importFormat"),
+    copyExportButton: document.getElementById("copyExportButton"),
+    downloadExportButton: document.getElementById("downloadExportButton"),
+    loadImportButton: document.getElementById("loadImportButton"),
+    applyImportButton: document.getElementById("applyImportButton"),
+    importFileInput: document.getElementById("importFileInput"),
+    dataTextArea: document.getElementById("dataTextArea"),
+    resetSettingsButton: document.getElementById("resetSettingsButton"),
+    startLayoutEditButton: document.getElementById("startLayoutEditButton"),
+    layoutEditBar: document.getElementById("layoutEditBar"),
+    layoutGuides: document.getElementById("layoutGuides"),
+    saveLayoutButton: document.getElementById("saveLayoutButton"),
+    discardLayoutButton: document.getElementById("discardLayoutButton")
   };
 
   const state = {
@@ -90,7 +129,9 @@
     pinnedLauncherId: null,
     layoutDraft: null,
     launcherDraft: null,
-    shortcutTouchDrag: null
+    shortcutTouchDrag: null,
+    layoutPointerDrag: null,
+    suppressLayoutClick: false
   };
 
   function safeJsonParse(value, fallback) {
@@ -102,7 +143,7 @@
   }
 
   function loadSettings() {
-    return Core.normalizeSettings(
+    return Core.migrateSettings(
       safeJsonParse(localStorage.getItem(Core.SETTINGS_STORAGE_KEY), Core.DEFAULT_SETTINGS)
     );
   }
@@ -167,11 +208,17 @@
       background = safeImageUrl
         ? `linear-gradient(rgba(4, 8, 18, .18), rgba(4, 8, 18, .36)), url("${safeImageUrl.replace(/"/g, "%22")}")`
         : Core.DEFAULT_SETTINGS.backgroundValue;
+    } else if (settings.backgroundType === "gradient") {
+      const isSafeGradient = /^(?:linear|radial|conic)-gradient\(/i.test(background)
+        && !/[;{}]/.test(background)
+        && !/url\s*\(/i.test(background);
+      if (!isSafeGradient) background = "linear-gradient(135deg, #080b18, #142446)";
     }
     document.documentElement.style.setProperty("--background-value", background);
 
     elements.webEngine.value = settings.defaultWebEngine;
     elements.aiEngine.value = settings.defaultAiEngine;
+    applyLayoutTransforms();
   }
 
   function updateClocks() {
@@ -1119,6 +1166,360 @@
     });
   }
 
+  function switchSettingsTab(name) {
+    elements.settingsTabs.querySelectorAll("[data-settings-tab]").forEach((button) => {
+      const active = button.dataset.settingsTab === name;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-selected", String(active));
+    });
+    elements.settingsPanels.forEach((panel) => {
+      const active = panel.dataset.settingsPanel === name;
+      panel.classList.toggle("active", active);
+      panel.hidden = !active;
+    });
+  }
+
+  function renderTimeZoneManager() {
+    elements.timeZoneManager.innerHTML = "";
+    state.settings.timeZones.forEach((zone) => {
+      const row = document.createElement("div");
+      row.className = "manager-row";
+      const marker = document.createElement("span");
+      marker.className = "time-zone-marker";
+      marker.textContent = "◷";
+      const main = document.createElement("div");
+      main.className = "manager-row-main";
+      const name = document.createElement("strong");
+      name.textContent = Core.timeZoneCity(zone);
+      const code = document.createElement("small");
+      code.textContent = zone;
+      main.append(name, code);
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "manager-action";
+      remove.textContent = "Remove";
+      remove.addEventListener("click", () => {
+        if (state.settings.timeZones.length <= 1) {
+          showToast("Keep at least one world clock.", "error");
+          return;
+        }
+        state.settings.timeZones = state.settings.timeZones.filter((item) => item !== zone);
+        previewSettings();
+      });
+      row.append(marker, main, remove);
+      elements.timeZoneManager.appendChild(row);
+    });
+  }
+
+  function renderSettingsControls() {
+    const { settings } = state;
+    elements.themeSetting.value = settings.theme;
+    elements.densitySetting.value = settings.density;
+    elements.backgroundTypeSetting.value = settings.backgroundType;
+    elements.backgroundValueSetting.value = settings.backgroundValue;
+    elements.backgroundValueSetting.placeholder = settings.backgroundType === "solid"
+      ? "#080b18"
+      : settings.backgroundType === "image"
+        ? "https://example.com/background.jpg"
+        : "linear-gradient(135deg, #080b18, #142446)";
+    elements.accentSetting.value = settings.accent;
+    elements.accentTextSetting.value = settings.accent;
+    elements.clockBackgroundSetting.checked = settings.clockBackground;
+    elements.defaultWebEngineSetting.value = settings.defaultWebEngine;
+    elements.defaultAiEngineSetting.value = settings.defaultAiEngine;
+    elements.defaultFocusSetting.value = settings.defaultFocus;
+    elements.copyQuerySetting.checked = settings.copyQueryToClipboard;
+    elements.clockFormatSetting.value = settings.clockFormat;
+    elements.showSecondsSetting.checked = settings.showSeconds;
+    elements.shortcutColumnsSetting.value = settings.shortcutColumns;
+    elements.shortcutSlotsSetting.value = settings.shortcutSlots;
+    elements.shortcutAlignSetting.value = settings.shortcutAlign;
+    populateTimeZoneOptions();
+    renderTimeZoneManager();
+    renderShortcutManagers();
+    renderLauncherManager();
+  }
+
+  function previewSettings() {
+    state.settings = Core.normalizeSettings(state.settings);
+    applyBaseSettings();
+    updateClocks();
+    renderCustomization();
+    renderSettingsControls();
+  }
+
+  function openSettings(tab = "appearance") {
+    if (!state.settingsSnapshot) state.settingsSnapshot = Core.clone(state.settings);
+    renderSettingsControls();
+    switchSettingsTab(tab);
+    elements.settingsDrawer.classList.add("open");
+    elements.settingsDrawer.setAttribute("aria-hidden", "false");
+    elements.drawerBackdrop.hidden = false;
+    document.body.classList.add("settings-open");
+    elements.closeSettingsButton.focus();
+  }
+
+  function closeSettings({ discard = false } = {}) {
+    if (discard && state.settingsSnapshot) {
+      state.settings = Core.migrateSettings(state.settingsSnapshot);
+      saveSettings();
+      applyBaseSettings();
+      updateClocks();
+      renderCustomization();
+    }
+    elements.settingsDrawer.classList.remove("open");
+    elements.settingsDrawer.setAttribute("aria-hidden", "true");
+    elements.drawerBackdrop.hidden = true;
+    document.body.classList.remove("settings-open");
+    state.settingsSnapshot = null;
+    elements.settingsButton.focus();
+  }
+
+  function saveAndCloseSettings() {
+    state.settings = Core.normalizeSettings(state.settings);
+    saveSettings();
+    closeSettings();
+    showToast("Settings saved.");
+  }
+
+  function downloadData(content, filename, mime) {
+    const blob = new Blob([content], { type: `${mime};charset=utf-8` });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function exportSettings() {
+    const format = elements.exportFormat.value;
+    const content = Core.serializeSettings(state.settings, format);
+    elements.dataTextArea.value = content;
+    return { format, content, meta: Core.FORMAT_META[format] };
+  }
+
+  function importSettingsText() {
+    const text = elements.dataTextArea.value.trim();
+    if (!text) {
+      showToast("Paste or load settings data first.", "error");
+      return;
+    }
+    try {
+      state.settings = Core.deserializeSettings(text, elements.importFormat.value);
+      saveSettings();
+      state.activeCategory = state.settings.defaultCategory;
+      applyBaseSettings();
+      updateClocks();
+      renderCustomization();
+      renderSettingsControls();
+      showToast("Settings imported.");
+    } catch (error) {
+      showToast(`Import failed: ${error.message}`, "error");
+    }
+  }
+
+  function updateImportAccept() {
+    const meta = Core.FORMAT_META[elements.importFormat.value];
+    elements.importFileInput.accept = `.${meta.extension},${meta.mime}`;
+  }
+
+  function applyLayoutTransforms(layout = state.layoutDraft || state.settings.layout) {
+    const desktop = window.innerWidth > 760;
+    document.querySelectorAll("[data-layout-key]").forEach((element) => {
+      const position = layout?.[element.dataset.layoutKey] || { x: 0, y: 0 };
+      element.style.transform = desktop ? `translate(${position.x}px, ${position.y}px)` : "";
+    });
+  }
+
+  function startLayoutEdit() {
+    if (window.innerWidth <= 760) {
+      showToast("Desktop layout editing is available above 760px.", "error");
+      return;
+    }
+    saveSettings();
+    closeSettings();
+    state.layoutDraft = Core.clone(state.settings.layout);
+    document.body.classList.add("layout-editing");
+    elements.layoutEditBar.hidden = false;
+  }
+
+  function finishLayoutEdit(save) {
+    if (save && state.layoutDraft) {
+      state.settings.layout = Core.clone(state.layoutDraft);
+      saveSettings();
+      showToast("Desktop layout saved.");
+    }
+    state.layoutDraft = null;
+    state.layoutPointerDrag = null;
+    document.body.classList.remove("layout-editing");
+    elements.layoutEditBar.hidden = true;
+    elements.layoutGuides.hidden = true;
+    applyLayoutTransforms();
+  }
+
+  function wireLayoutEditing() {
+    document.querySelectorAll("[data-layout-key]").forEach((region) => {
+      region.addEventListener("pointerdown", (event) => {
+        if (!state.layoutDraft || event.button !== 0) return;
+        const interactive = event.target.closest("input, select, a, button");
+        if (interactive && region.dataset.layoutKey !== "settingsButton") return;
+        event.preventDefault();
+        const key = region.dataset.layoutKey;
+        const position = state.layoutDraft[key] || { x: 0, y: 0 };
+        state.layoutPointerDrag = {
+          pointerId: event.pointerId,
+          region,
+          key,
+          startX: event.clientX,
+          startY: event.clientY,
+          originX: position.x,
+          originY: position.y,
+          moved: false
+        };
+        region.setPointerCapture(event.pointerId);
+      });
+      region.addEventListener("pointermove", (event) => {
+        const drag = state.layoutPointerDrag;
+        if (!drag || drag.region !== region || drag.pointerId !== event.pointerId) return;
+        const x = drag.originX + event.clientX - drag.startX;
+        const y = drag.originY + event.clientY - drag.startY;
+        drag.moved = drag.moved || Math.hypot(x - drag.originX, y - drag.originY) > 4;
+        state.layoutDraft[drag.key] = { x: Math.round(x), y: Math.round(y) };
+        elements.layoutGuides.hidden = false;
+        applyLayoutTransforms(state.layoutDraft);
+      });
+      region.addEventListener("pointerup", (event) => {
+        const drag = state.layoutPointerDrag;
+        if (!drag || drag.region !== region || drag.pointerId !== event.pointerId) return;
+        state.layoutPointerDrag = null;
+        elements.layoutGuides.hidden = true;
+        if (drag.moved) {
+          state.suppressLayoutClick = true;
+          window.setTimeout(() => { state.suppressLayoutClick = false; }, 0);
+        }
+      });
+      region.addEventListener("pointercancel", () => {
+        state.layoutPointerDrag = null;
+        elements.layoutGuides.hidden = true;
+      });
+    });
+  }
+
+  function wireSettingsEvents() {
+    elements.settingsButton.addEventListener("click", () => {
+      if (!state.suppressLayoutClick && !state.layoutDraft) openSettings();
+    });
+    elements.closeSettingsButton.addEventListener("click", () => closeSettings({ discard: true }));
+    elements.drawerBackdrop.addEventListener("click", () => closeSettings({ discard: true }));
+    elements.saveSettingsButton.addEventListener("click", saveAndCloseSettings);
+    elements.discardSettingsButton.addEventListener("click", () => closeSettings({ discard: true }));
+    elements.settingsTabs.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-settings-tab]");
+      if (button) switchSettingsTab(button.dataset.settingsTab);
+    });
+
+    const bindSelect = (element, key) => {
+      element.addEventListener("change", () => {
+        state.settings[key] = element.value;
+        previewSettings();
+      });
+    };
+    const bindCheckbox = (element, key) => {
+      element.addEventListener("change", () => {
+        state.settings[key] = element.checked;
+        previewSettings();
+      });
+    };
+    bindSelect(elements.themeSetting, "theme");
+    bindSelect(elements.densitySetting, "density");
+    bindSelect(elements.backgroundTypeSetting, "backgroundType");
+    bindSelect(elements.defaultWebEngineSetting, "defaultWebEngine");
+    bindSelect(elements.defaultAiEngineSetting, "defaultAiEngine");
+    bindSelect(elements.defaultFocusSetting, "defaultFocus");
+    bindSelect(elements.clockFormatSetting, "clockFormat");
+    bindSelect(elements.shortcutAlignSetting, "shortcutAlign");
+    bindCheckbox(elements.clockBackgroundSetting, "clockBackground");
+    bindCheckbox(elements.copyQuerySetting, "copyQueryToClipboard");
+    bindCheckbox(elements.showSecondsSetting, "showSeconds");
+
+    elements.backgroundValueSetting.addEventListener("change", () => {
+      state.settings.backgroundValue = elements.backgroundValueSetting.value.trim();
+      previewSettings();
+    });
+    elements.accentSetting.addEventListener("input", () => {
+      state.settings.accent = elements.accentSetting.value;
+      previewSettings();
+    });
+    elements.accentTextSetting.addEventListener("change", () => {
+      state.settings.accent = Core.normalizeHexColor(elements.accentTextSetting.value, state.settings.accent);
+      previewSettings();
+    });
+    [elements.shortcutColumnsSetting, elements.shortcutSlotsSetting].forEach((input) => {
+      input.addEventListener("change", () => {
+        const key = input === elements.shortcutColumnsSetting ? "shortcutColumns" : "shortcutSlots";
+        state.settings[key] = Number(input.value);
+        previewSettings();
+      });
+    });
+    elements.timeZoneSelect.addEventListener("change", () => {
+      const zone = elements.timeZoneSelect.value;
+      if (zone && !state.settings.timeZones.includes(zone)) {
+        state.settings.timeZones.push(zone);
+        previewSettings();
+      }
+    });
+
+    elements.copyExportButton.addEventListener("click", async () => {
+      const { content } = exportSettings();
+      try {
+        await navigator.clipboard.writeText(content);
+        showToast("Export copied to clipboard.");
+      } catch {
+        elements.dataTextArea.focus();
+        elements.dataTextArea.select();
+        showToast("Select and copy the export text manually.");
+      }
+    });
+    elements.downloadExportButton.addEventListener("click", () => {
+      const { content, meta } = exportSettings();
+      downloadData(content, `browser-start-page-v3.${meta.extension}`, meta.mime);
+      showToast(`${meta.label} export saved.`);
+    });
+    elements.loadImportButton.addEventListener("click", () => elements.importFileInput.click());
+    elements.importFileInput.addEventListener("change", () => {
+      const file = elements.importFileInput.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.addEventListener("load", () => {
+        elements.dataTextArea.value = String(reader.result || "");
+        showToast("Import file loaded. Review it, then choose Import text.");
+      });
+      reader.addEventListener("error", () => showToast("Could not read the selected file.", "error"));
+      reader.readAsText(file);
+      elements.importFileInput.value = "";
+    });
+    elements.applyImportButton.addEventListener("click", importSettingsText);
+    elements.importFormat.addEventListener("change", updateImportAccept);
+    updateImportAccept();
+    elements.resetSettingsButton.addEventListener("click", () => {
+      if (!window.confirm("Reset shortcuts, launchers, appearance, and all settings?")) return;
+      state.settings = Core.migrateSettings(Core.DEFAULT_SETTINGS);
+      state.activeCategory = state.settings.defaultCategory;
+      saveSettings();
+      previewSettings();
+      showToast("Settings reset.");
+    });
+
+    elements.startLayoutEditButton.addEventListener("click", startLayoutEdit);
+    elements.saveLayoutButton.addEventListener("click", () => finishLayoutEdit(true));
+    elements.discardLayoutButton.addEventListener("click", () => finishLayoutEdit(false));
+    window.addEventListener("resize", () => applyLayoutTransforms());
+    wireLayoutEditing();
+  }
+
   function populateTimeZoneOptions() {
     if (!elements.timeZoneSelect) return;
     elements.timeZoneSelect.innerHTML = "";
@@ -1147,6 +1548,16 @@
 
   function wireGlobalKeys() {
     document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !document.querySelector("dialog[open]")) {
+        if (state.layoutDraft) {
+          finishLayoutEdit(false);
+          return;
+        }
+        if (elements.settingsDrawer.classList.contains("open")) {
+          closeSettings({ discard: true });
+          return;
+        }
+      }
       const isTyping = ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName);
       if (event.key === "/" && !isTyping) {
         event.preventDefault();
@@ -1159,6 +1570,9 @@
     document.documentElement.classList.add("js-ready");
     populateSelect(elements.webEngine, Core.WEB_ENGINES);
     populateSelect(elements.aiEngine, Core.AI_ENGINES);
+    populateSelect(elements.defaultWebEngineSetting, Core.WEB_ENGINES);
+    populateSelect(elements.defaultAiEngineSetting, Core.AI_ENGINES);
+    state.activeCategory = state.settings.defaultCategory;
     applyBaseSettings();
     populateTimeZoneOptions();
     updateClocks();
@@ -1171,6 +1585,8 @@
     wireSuggestions(elements.aiInput, elements.aiSuggestions, "ai");
     renderCustomization();
     wireCustomizationEvents();
+    renderSettingsControls();
+    wireSettingsEvents();
     wireGlobalKeys();
     window.requestAnimationFrame(applyDefaultFocus);
   }

@@ -39,6 +39,10 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+body.settings-open {
+  overflow: hidden;
+}
+
 button,
 input,
 select,
@@ -982,6 +986,11 @@ input[type="color"] {
   color: var(--muted);
   cursor: grab;
   user-select: none;
+}
+
+.time-zone-marker {
+  color: var(--accent);
+  font-size: 1rem;
 }
 
 .manager-actions,
