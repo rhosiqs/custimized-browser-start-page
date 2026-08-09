@@ -555,8 +555,16 @@ a:focus-visible {
 }
 
 .shortcut-grid.editing .shortcut-tile {
-  animation: shortcut-jiggle 340ms ease-in-out infinite alternate;
   cursor: grab;
+}
+
+.shortcut-grid.editing .shortcut-icon-box {
+  animation: shortcut-jiggle 340ms ease-in-out infinite alternate;
+}
+
+.shortcut-grid.editing .shortcut-tile:hover .shortcut-icon-box,
+.shortcut-grid.editing .shortcut-tile:focus-visible .shortcut-icon-box {
+  animation-play-state: paused;
 }
 
 .shortcut-tile.dragging,
