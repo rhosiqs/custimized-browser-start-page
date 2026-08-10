@@ -4,6 +4,87 @@
   const grid = document.getElementById("shortcutGrid");
   if (!grid) return;
 
+  const style = document.createElement("style");
+  style.textContent = `
+    .shortcut-grid.editing { gap: 18px 14px; }
+    .shortcut-grid.editing .shortcut-tile {
+      min-height: 92px;
+      padding: 9px 7px 8px;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 16px;
+      background: rgba(255,255,255,.025);
+      cursor: default;
+      transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+    }
+    .shortcut-grid.editing .shortcut-tile:hover {
+      background: rgba(255,255,255,.05);
+      border-color: rgba(255,255,255,.13);
+    }
+    .shortcut-grid.editing .shortcut-icon-box {
+      animation: none !important;
+      transform: none !important;
+    }
+    .shortcut-grid.editing .shortcut-edit-button,
+    .shortcut-grid.editing .shortcut-drag-handle {
+      position: absolute;
+      top: -8px;
+      width: 25px;
+      height: 25px;
+      display: grid;
+      place-items: center;
+      color: rgba(245,248,255,.92);
+      background: rgba(17,25,43,.98);
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 8px;
+      box-shadow: 0 7px 18px rgba(0,0,0,.28);
+      font-size: .7rem;
+      line-height: 1;
+      z-index: 3;
+    }
+    .shortcut-grid.editing .shortcut-edit-button {
+      right: -5px;
+      cursor: pointer;
+    }
+    .shortcut-grid.editing .shortcut-drag-handle {
+      left: -5px;
+      cursor: grab;
+      letter-spacing: -2px;
+      touch-action: none;
+      user-select: none;
+    }
+    .shortcut-grid.editing .shortcut-drag-handle:active { cursor: grabbing; }
+    .shortcut-grid.editing .shortcut-edit-button:hover,
+    .shortcut-grid.editing .shortcut-edit-button:focus-visible,
+    .shortcut-grid.editing .shortcut-drag-handle:hover {
+      color: #fff;
+      border-color: rgba(var(--accent-rgb),.48);
+      background: rgba(var(--accent-rgb),.22);
+    }
+    .shortcut-grid.editing .shortcut-tile.dragging {
+      opacity: .48;
+      transform: scale(.96);
+    }
+    .shortcut-grid.editing .shortcut-tile.drop-target {
+      background: rgba(var(--accent-rgb),.10);
+      border-color: rgba(var(--accent-rgb),.58);
+      box-shadow: 0 0 0 3px rgba(var(--accent-rgb),.09);
+    }
+    .shortcut-grid.editing .shortcut-tile.drop-target .shortcut-icon-box {
+      box-shadow: none;
+    }
+    body.theme-light .shortcut-grid.editing .shortcut-tile {
+      background: rgba(15,23,42,.025);
+      border-color: rgba(15,23,42,.09);
+    }
+    body.theme-light .shortcut-grid.editing .shortcut-edit-button,
+    body.theme-light .shortcut-grid.editing .shortcut-drag-handle {
+      color: #25324a;
+      background: rgba(255,255,255,.98);
+      border-color: rgba(15,23,42,.12);
+    }
+  `;
+  document.head.appendChild(style);
+
   let activePointerId = null;
   let activeTile = null;
 
@@ -92,9 +173,7 @@
     if (!isEditing()) return;
     const tile = event.target.closest(".shortcut-tile");
     if (!tile) return;
-
     if (event.target.closest(".shortcut-edit-button")) return;
-
     event.preventDefault();
     event.stopImmediatePropagation();
   }, true);
