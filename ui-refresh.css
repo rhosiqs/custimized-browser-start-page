@@ -1,0 +1,532 @@
+/*
+ * Minimal UI refresh for the browser start page.
+ * This file intentionally sits on top of styles.css so the existing
+ * functionality, themes, persistence, and layout editor remain unchanged.
+ */
+
+:root {
+  --content-width: min(760px, calc(100vw - 48px));
+  --surface: rgba(15, 23, 42, 0.58);
+  --surface-strong: rgba(10, 16, 30, 0.94);
+  --border: rgba(255, 255, 255, 0.11);
+  --shadow: 0 24px 64px rgba(0, 0, 0, 0.28);
+  --shortcut-track: 72px;
+}
+
+body {
+  letter-spacing: -0.006em;
+}
+
+.background-layer::after {
+  background:
+    radial-gradient(circle at 50% 34%, rgba(var(--accent-rgb), 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(4, 7, 15, 0.06), rgba(4, 7, 15, 0.34));
+}
+
+.page-header {
+  top: 24px;
+  right: 28px;
+  left: 28px;
+  align-items: flex-start;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.page-header > * {
+  pointer-events: auto;
+}
+
+.settings-launcher {
+  order: 2;
+}
+
+.local-clock {
+  order: 1;
+  min-width: 0;
+  padding: 4px 0;
+  text-align: left;
+  border-radius: 14px;
+}
+
+.local-clock.with-background {
+  padding: 10px 13px;
+}
+
+.clock-line {
+  justify-content: flex-start;
+}
+
+.local-time {
+  font-size: clamp(2rem, 3.6vw, 2.8rem);
+  font-weight: 350;
+  letter-spacing: -0.06em;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.35);
+}
+
+.local-date {
+  margin-top: 5px;
+  color: rgba(255, 255, 255, 0.66);
+  font-size: 0.76rem;
+  font-weight: 560;
+}
+
+.round-button {
+  width: 38px;
+  height: 38px;
+  background: rgba(15, 23, 42, 0.42);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+  backdrop-filter: blur(16px) saturate(130%);
+}
+
+.round-button:hover {
+  transform: none;
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.start-page {
+  justify-content: flex-start;
+  gap: 28px;
+  padding: clamp(150px, 21vh, 210px) 24px 120px;
+}
+
+.search-stack {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.search-pill {
+  min-height: 50px;
+  grid-template-columns: minmax(116px, 138px) 1fr;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.46);
+  border-radius: 18px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+  transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
+}
+
+#webSearchForm {
+  min-height: 62px;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(132px, 158px) 1fr;
+  background: rgba(255, 255, 255, 0.98);
+  border-radius: 20px;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.24);
+}
+
+.search-pill:focus-within {
+  transform: none;
+  border-color: rgba(var(--accent-rgb), 0.48);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.2), 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+}
+
+#webSearchForm:focus-within {
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.26), 0 0 0 3px rgba(var(--accent-rgb), 0.14);
+}
+
+.doi-pill {
+  min-height: 50px;
+  margin-inline: 0;
+}
+
+.engine-control {
+  gap: 8px;
+  padding-left: 13px;
+  border-right-color: rgba(24, 33, 52, 0.09);
+}
+
+.engine-control select,
+.engine-control.fixed-engine {
+  font-size: 0.74rem;
+  font-weight: 720;
+}
+
+.engine-mark {
+  width: 25px;
+  height: 25px;
+  flex-basis: 25px;
+  border-radius: 8px;
+  font-size: 0.65rem;
+}
+
+#webSearchForm .engine-mark {
+  width: 29px;
+  height: 29px;
+  flex-basis: 29px;
+}
+
+.query-control input {
+  padding-left: 14px;
+  font-size: 0.92rem;
+}
+
+#webSearchForm .query-control input {
+  font-size: 1.02rem;
+}
+
+.submit-button {
+  width: 34px;
+  height: 34px;
+  flex-basis: 34px;
+  margin-right: 7px;
+  color: #657085;
+  background: rgba(31, 41, 55, 0.065);
+  font-size: 0.98rem;
+}
+
+#webSearchForm .submit-button {
+  width: 40px;
+  height: 40px;
+  flex-basis: 40px;
+  margin-right: 10px;
+}
+
+.submit-button:hover {
+  transform: none;
+  color: #fff;
+  background: var(--accent);
+}
+
+.suggestions {
+  top: calc(100% + 7px);
+  padding: 5px;
+  border-radius: 14px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.26);
+}
+
+.suggestion-item {
+  padding: 9px 11px;
+  border-radius: 10px;
+  font-size: 0.86rem;
+}
+
+.shortcut-workspace {
+  min-height: 148px;
+  padding: 0;
+}
+
+.category-toolbar {
+  width: 100%;
+  min-height: 34px;
+  margin-bottom: 20px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.category-tabs {
+  gap: 4px;
+}
+
+.category-tab,
+.toolbar-button {
+  min-height: 30px;
+  padding: 0 10px;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.7rem;
+  font-weight: 680;
+  letter-spacing: 0.01em;
+}
+
+.category-tab:hover,
+.toolbar-button:hover,
+.toolbar-button[aria-pressed="true"] {
+  color: rgba(255, 255, 255, 0.94);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.category-tab.active {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: none;
+}
+
+.toolbar-actions {
+  padding-left: 8px;
+  border-left-color: rgba(255, 255, 255, 0.1);
+  opacity: 0.58;
+  transition: opacity 150ms ease;
+}
+
+.category-toolbar:hover .toolbar-actions,
+.toolbar-actions:focus-within {
+  opacity: 1;
+}
+
+.toolbar-button.primary {
+  background: rgba(var(--accent-rgb), 0.45);
+}
+
+.shortcut-grid {
+  gap: 18px 12px;
+}
+
+.shortcut-tile {
+  gap: 7px;
+}
+
+.shortcut-icon-box,
+.empty-add-button {
+  width: 50px;
+  height: 50px;
+  border-radius: 15px;
+  border-color: rgba(255, 255, 255, 0.13);
+  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(10px);
+}
+
+.shortcut-tile:hover .shortcut-icon-box,
+.shortcut-tile:focus-visible .shortcut-icon-box {
+  transform: translateY(-3px);
+  box-shadow: 0 9px 22px rgba(0, 0, 0, 0.25);
+}
+
+.shortcut-icon-box img {
+  width: 28px;
+  height: 28px;
+}
+
+.shortcut-label {
+  width: 70px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.66rem;
+  font-weight: 590;
+}
+
+.launcher-dock {
+  left: 50%;
+  bottom: 18px;
+  max-width: min(76vw, 620px);
+  gap: 4px;
+  padding: 5px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.48);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+  transform: translateX(-50%);
+  backdrop-filter: blur(18px) saturate(130%);
+}
+
+.launcher-button {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+}
+
+.launcher-button:hover,
+.launcher-button[aria-expanded="true"] {
+  transform: translateY(-2px);
+}
+
+.launcher-flyout {
+  left: 50%;
+  bottom: 70px;
+  transform: translateX(-50%);
+}
+
+.world-clock {
+  right: 22px;
+  bottom: 20px;
+  min-width: 168px;
+  padding: 9px 10px;
+  background: rgba(15, 23, 42, 0.22);
+  border-color: transparent;
+  border-radius: 12px;
+  box-shadow: none;
+  opacity: 0.68;
+  backdrop-filter: blur(10px);
+  transition: opacity 150ms ease, background 150ms ease, border-color 150ms ease;
+}
+
+.world-clock:hover {
+  opacity: 1;
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+.world-time-row {
+  gap: 14px;
+  font-size: 0.67rem;
+}
+
+.world-time-row strong {
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.settings-drawer {
+  width: min(500px, 100vw);
+  background: rgba(9, 14, 27, 0.97);
+  box-shadow: -20px 0 56px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(24px);
+}
+
+.drawer-header {
+  padding: 22px 22px 15px;
+}
+
+.settings-tabs {
+  padding-inline: 18px;
+}
+
+.settings-tabs button {
+  padding: 7px 10px;
+  font-size: 0.71rem;
+}
+
+.settings-content {
+  padding: 20px 22px 30px;
+}
+
+input,
+select,
+textarea,
+.manager-row {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.primary-button,
+.secondary-button,
+.danger-button,
+.small-button,
+.manager-action {
+  border-radius: 10px;
+}
+
+.editor-dialog {
+  border-radius: 16px;
+}
+
+body.theme-light {
+  --surface: rgba(255, 255, 255, 0.62);
+  --surface-strong: rgba(250, 252, 255, 0.96);
+  --border: rgba(15, 23, 42, 0.12);
+}
+
+body.theme-light .local-date,
+body.theme-light .category-tab,
+body.theme-light .toolbar-button,
+body.theme-light .shortcut-label {
+  color: rgba(23, 32, 51, 0.68);
+}
+
+body.theme-light .category-tab.active {
+  color: var(--text);
+  background: rgba(15, 23, 42, 0.08);
+}
+
+body.theme-light .toolbar-button.primary {
+  color: var(--text);
+}
+
+body.theme-light .world-clock {
+  background: rgba(255, 255, 255, 0.26);
+}
+
+@media (max-width: 900px) {
+  .world-clock {
+    opacity: 0.8;
+  }
+}
+
+@media (max-width: 760px) {
+  :root {
+    --content-width: min(620px, calc(100vw - 28px));
+  }
+
+  .page-header {
+    position: relative;
+    top: auto;
+    right: auto;
+    left: auto;
+    padding: 16px 16px 0;
+  }
+
+  .start-page {
+    padding: 34px 14px 148px;
+    gap: 24px;
+  }
+
+  .search-stack {
+    grid-template-columns: 1fr;
+  }
+
+  #webSearchForm {
+    grid-column: auto;
+  }
+
+  .world-clock {
+    width: var(--content-width);
+    margin: -118px auto 92px;
+    opacity: 0.78;
+  }
+
+  .launcher-dock {
+    right: 14px;
+    left: 14px;
+    max-width: none;
+    transform: none;
+  }
+
+  .launcher-flyout {
+    left: 14px;
+    right: 14px;
+    width: auto;
+    transform: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .local-time {
+    font-size: 2.15rem;
+  }
+
+  .search-pill,
+  #webSearchForm,
+  .doi-pill {
+    min-height: 52px;
+    grid-template-columns: 108px 1fr;
+    border-radius: 16px;
+  }
+
+  .engine-control {
+    padding-left: 10px;
+  }
+
+  #webSearchForm .engine-mark,
+  .engine-mark {
+    width: 24px;
+    height: 24px;
+    flex-basis: 24px;
+  }
+
+  .query-control input,
+  #webSearchForm .query-control input {
+    padding-left: 11px;
+    font-size: 0.88rem;
+  }
+
+  #webSearchForm .submit-button,
+  .submit-button {
+    width: 34px;
+    height: 34px;
+    flex-basis: 34px;
+    margin-right: 7px;
+  }
+
+  .category-toolbar {
+    align-items: flex-start;
+  }
+
+  .toolbar-actions {
+    flex: 0 0 auto;
+  }
+
+  .settings-drawer {
+    width: 100vw;
+  }
+}
