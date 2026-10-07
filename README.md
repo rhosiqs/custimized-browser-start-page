@@ -7,7 +7,7 @@ A Chrome extension (Manifest V3) that replaces the new tab page with a calm, loc
 - **Clocks** — local time and date plus configurable world clocks with day and offset (“Tomorrow · +1h”).
 - **Three search boxes** — Web, AI and Academic, each with its own engine list and default. Any box opens `http(s)` links directly and sends DOIs (`10.x/…`, `doi:…`, `doi.org/…`) to doi.org; other schemes such as `javascript:` are blocked.
 - **Suggestions** — recent queries from local history, plus web suggestions (Datamuse) in the Web box. ↑ ↓ to move, Enter to choose, Esc to close.
-- **Shortcuts** — category filter chips, paging (rows × per row), a quick-edit popover on each tile, a full editor (website icon, letter, or uploaded image), and an Edit mode with drag or arrow-key reordering.
+- **Shortcuts** — category filter chips, paging (rows × per row), drag any tile to reorder, a quick-edit popover on each tile (with delete), a full editor (website icon, letter, or uploaded image), and an Edit mode with remove buttons and arrow-key reordering.
 - **Launcher dock** — groups of links that preview on hover or focus and pin open on click.
 - **Appearance** — light, dark or system theme; green, brown or ink accent; solid, gradient or image background.
 - **Data** — export to JSON, YAML, TOML or text; imports are reviewed (fixed, skipped, merge or replace) before anything changes.
@@ -32,9 +32,9 @@ npm run pack   # writes dist/start-page.zip
 Settings and search history are stored in `chrome.storage.local` on this device and leave it only when you export them. Permissions:
 
 - `storage` — save settings and history.
-- `favicon` — show website icons from Chrome’s local favicon cache (no request to Google).
+- `favicon` — show website icons from Chrome’s local favicon cache (no request to Google). When Chrome has no icon for a site yet, the page tries that site’s own `/favicon.ico` and `/apple-touch-icon.png`, then shows a letter.
 
-Network requests happen only for Datamuse suggestions in the Web box, the Google Fonts stylesheet (Nunito, Noto Sans TC), and the destinations you open.
+Network requests happen only for Datamuse suggestions in the Web box, the Google Fonts stylesheet (Nunito, Noto Sans TC), icon files from your shortcut sites (as above), and the destinations you open.
 
 ## Development
 
