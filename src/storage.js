@@ -57,11 +57,28 @@ export function onSettingsChanged(callback) {
   }
 }
 
-// Website icons come from Chrome's local favicon cache (needs the "favicon" permission).
+// Chrome's local favicon cache (needs the "favicon" permission). For pages it has no icon for,
+// Chrome returns a generic globe rather than an error, so callers compare against that globe.
 export function faviconUrl(pageUrl, size = 64) {
   if (typeof chrome === 'undefined' || !chrome.runtime?.getURL) return '';
   const url = new URL(chrome.runtime.getURL('/_favicon/'));
   url.searchParams.set('pageUrl', pageUrl);
   url.searchParams.set('size', String(size));
   return url.href;
+}
+
+// Where to look for a website icon, in order: Chrome's cache, then the site's own well-known icon files.
+export function siteIconSources(pageUrl) {
+  let origin = '';
+  try {
+    const parsed = new URL(pageUrl);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') origin = parsed.origin;
+  } catch {
+    return [];
+  }
+  const sources = [];
+  const cached = faviconUrl(pageUrl, 64);
+  if (cached) sources.push({ src: cached, chromeCache: true });
+  if (origin) sources.push({ src: `${origin}/favicon.ico` }, { src: `${origin}/apple-touch-icon.png` });
+  return sources;
 }

@@ -1,4 +1,4 @@
-// Shortcut grid: category filter, paging, quick-edit popover, and edit mode with drag or keyboard reordering.
+// Shortcut grid: category filter, paging, quick-edit popover, drag reordering, and edit mode with keyboard reordering.
 import { categoriesOf, moveItem, normalizeHttpUrl } from './core.js';
 import { grip, h, icon } from './dom.js';
 import { store, update } from './state.js';
@@ -80,7 +80,7 @@ function render() {
 
 function viewTile(item, alignRight) {
   const open = view.popoverId === item.id;
-  const link = h('a.tile', { href: item.url, title: item.url }, badge(item), h('span.tile-name', {}, item.name));
+  const link = h('a.tile', { href: item.url, title: item.url, draggable: 'false' }, badge(item), h('span.tile-name', {}, item.name));
   const edit = h('button.tile-edit', {
     type: 'button',
     'aria-label': `Edit ${item.name}`,
@@ -92,7 +92,87 @@ function viewTile(item, alignRight) {
       if (!open) section.querySelector('.popover input')?.focus();
     }
   }, icon('pencil', 14));
-  return h('div.tile-wrap', { dataset: { keep: `tile-${item.id}` } }, link, edit, open ? popover(item, alignRight) : null);
+  const wrap = h('div.tile-wrap', { dataset: { keep: `tile-${item.id}`, id: item.id } }, link, edit, open ? popover(item, alignRight) : null);
+  makeDraggable(wrap, item);
+  return wrap;
+}
+
+function removeShortcut(item) {
+  update((settings) => { settings.shortcuts = settings.shortcuts.filter((s) => s.id !== item.id); });
+  toast(`Removed ${item.name}`);
+}
+
+// Moves one shortcut before or after another in the full list (so hidden categories keep their order).
+function reorder(draggedId, targetId, after) {
+  if (draggedId === targetId) return;
+  update((settings) => {
+    const list = settings.shortcuts;
+    const from = list.findIndex((s) => s.id === draggedId);
+    if (from < 0) return;
+    const [dragged] = list.splice(from, 1);
+    const target = list.findIndex((s) => s.id === targetId);
+    list.splice(target < 0 ? from : target + (after ? 1 : 0), 0, dragged);
+  });
+}
+
+// Pointer dragging (mouse, pen or touch) reorders tiles in both view and edit mode.
+// A press that moves less than a few pixels stays an ordinary click.
+const DRAG_THRESHOLD = 6;
+function makeDraggable(wrap, item) {
+  wrap.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0 || !event.isPrimary) return;
+    if (event.target.closest('.tile-edit, .remove, .popover')) return;
+    const startX = event.clientX;
+    const startY = event.clientY;
+    // The stage is scaled to the window; convert screen pixels back to design pixels for the ghost.
+    const scale = wrap.getBoundingClientRect().width / wrap.offsetWidth || 1;
+    let dragging = false;
+    let target = null;
+    let after = false;
+
+    const clearTarget = () => target?.classList.remove('drop-before', 'drop-after');
+    const onMove = (e) => {
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      if (!dragging) {
+        if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+        dragging = true;
+        wrap.classList.add('dragging');
+      }
+      e.preventDefault();
+      wrap.style.transform = `translate(${dx / scale}px, ${dy / scale}px)`;
+      const under = document.elementFromPoint(e.clientX, e.clientY)?.closest('.tile-wrap[data-id]');
+      clearTarget();
+      target = under && under !== wrap && section.contains(under) ? under : null;
+      if (target) {
+        const rect = target.getBoundingClientRect();
+        after = e.clientX > rect.left + rect.width / 2;
+        target.classList.add(after ? 'drop-after' : 'drop-before');
+      }
+    };
+    const finish = (commit) => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onCancel);
+      if (!dragging) return;
+      // Swallow the click that follows a drop so the tile doesn't open.
+      const swallow = (e) => { e.preventDefault(); e.stopPropagation(); };
+      window.addEventListener('click', swallow, { capture: true, once: true });
+      setTimeout(() => window.removeEventListener('click', swallow, { capture: true }), 0);
+      wrap.classList.remove('dragging');
+      wrap.style.transform = '';
+      clearTarget();
+      if (commit && target) {
+        if (view.editing) view.focusAfter = `[data-move="${item.id}"]`;
+        reorder(item.id, target.dataset.id, after);
+      }
+    };
+    const onUp = () => finish(true);
+    const onCancel = () => finish(false);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onCancel);
+  });
 }
 
 // Quick edit: name, URL, category and color without leaving the grid.
@@ -154,6 +234,7 @@ function popover(item, alignRight) {
     h('div', { style: { display: 'flex', flexDirection: 'column', gap: '4px' } }, h('span.field-label', { id: categoryLabel, style: { fontSize: '13px' } }, 'Category'), category.el),
     swatchPicker({ value: draft.color, size: 'small', onChange: (color) => { draft.color = color; refreshPreview(); } }),
     h('div.actions', {},
+      h('button.icon-btn.small', { type: 'button', 'aria-label': `Delete ${item.name}`, title: 'Delete', onclick: () => { view.popoverId = null; removeShortcut(item); } }, icon('trash', 16)),
       h('button.btn.small', { type: 'button', style: { marginRight: 'auto' }, onclick: () => { view.popoverId = null; render(); openShortcutEditor(item.id); } }, 'More…'),
       h('button.btn.round.small', { type: 'button', onclick: cancel }, 'Cancel'),
       save)
@@ -179,7 +260,6 @@ function editTile(item, visible) {
     type: 'button',
     'aria-label': `Reorder ${item.name}: drag, or use arrow keys`,
     dataset: { move: item.id },
-    onmousedown: () => { wrap.draggable = true; },
     onkeydown: (event) => {
       if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') { event.preventDefault(); move(-1); }
       if (event.key === 'ArrowRight' || event.key === 'ArrowDown') { event.preventDefault(); move(1); }
@@ -188,10 +268,7 @@ function editTile(item, visible) {
   const remove = h('button.remove', {
     type: 'button',
     'aria-label': `Remove ${item.name}`,
-    onclick: () => {
-      update((settings) => { settings.shortcuts = settings.shortcuts.filter((s) => s.id !== item.id); });
-      toast(`Removed ${item.name}`);
-    }
+    onclick: () => removeShortcut(item)
   }, icon('close'));
 
   wrap.append(
@@ -199,36 +276,6 @@ function editTile(item, visible) {
     h('button.tile', { type: 'button', 'aria-label': `Edit ${item.name}`, onclick: () => openShortcutEditor(item.id) }, badge(item), h('span.tile-name', {}, item.name))
   );
 
-  // Drag starts only from the handle; dropping before/after another tile reorders the full list.
-  wrap.addEventListener('dragstart', (event) => {
-    event.dataTransfer.effectAllowed = 'move';
-    event.dataTransfer.setData('text/plain', item.id);
-    wrap.classList.add('dragging');
-  });
-  wrap.addEventListener('dragend', () => { wrap.draggable = false; wrap.classList.remove('dragging'); });
-  wrap.addEventListener('mouseup', () => { wrap.draggable = false; });
-  wrap.addEventListener('dragover', (event) => {
-    event.preventDefault();
-    const rect = wrap.getBoundingClientRect();
-    const after = event.clientX > rect.left + rect.width / 2;
-    wrap.classList.toggle('drop-after', after);
-    wrap.classList.toggle('drop-before', !after);
-  });
-  wrap.addEventListener('dragleave', () => wrap.classList.remove('drop-before', 'drop-after'));
-  wrap.addEventListener('drop', (event) => {
-    event.preventDefault();
-    const after = wrap.classList.contains('drop-after');
-    wrap.classList.remove('drop-before', 'drop-after');
-    const draggedId = event.dataTransfer.getData('text/plain');
-    if (!draggedId || draggedId === item.id) return;
-    update((settings) => {
-      const list = settings.shortcuts;
-      const from = list.findIndex((s) => s.id === draggedId);
-      if (from < 0) return;
-      const [dragged] = list.splice(from, 1);
-      const target = list.findIndex((s) => s.id === item.id);
-      list.splice(target + (after ? 1 : 0), 0, dragged);
-    });
-  });
+  makeDraggable(wrap, item);
   return wrap;
 }

@@ -129,3 +129,14 @@ test('mergeSettings adds new items and keeps existing ones', () => {
 test('countItems summarises an import', () => {
   assert.deepEqual(countItems({ shortcuts: [1, 2], launchers: [1], clocks: { world: [] }, theme: 'dark' }), { shortcuts: 2, launchers: 1, clocks: 0, settings: 1 });
 });
+
+test('version 1 starter shortcuts move from letters to website icons', () => {
+  const v1 = defaultSettings();
+  v1.version = 1;
+  v1.shortcuts.forEach((s) => { s.icon = 'letter'; });
+  v1.shortcuts.push({ id: 'sc-lx2k-1', name: 'Mine', url: 'https://example.com/', category: 'General', color: 'green', icon: 'letter', image: '' });
+  const { settings } = normalizeSettings(v1);
+  assert.ok(settings.shortcuts.slice(0, -1).every((s) => s.icon === 'site'));
+  assert.equal(settings.shortcuts.at(-1).icon, 'letter');
+  assert.equal(normalizeSettings({ ...settings, shortcuts: [{ ...settings.shortcuts[0], icon: 'letter' }] }).settings.shortcuts[0].icon, 'letter');
+});

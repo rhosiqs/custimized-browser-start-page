@@ -327,7 +327,8 @@ input:focus-visible { outline-offset: 2px; }
 .pill[aria-pressed='true'] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
 
 .grid { display: grid; gap: 8px; }
-.tile-wrap { position: relative; }
+.tile-wrap { position: relative; touch-action: none; user-select: none; }
+.tile-wrap[data-id] .tile { cursor: grab; }
 .tile {
   display: flex;
   flex-direction: column;
@@ -393,7 +394,8 @@ input:focus-visible { outline-offset: 2px; }
 .tile-tools .drag { cursor: grab; }
 .tile-tools .remove { color: var(--ink); }
 .tile-tools button:hover { background: var(--surface); }
-.tile-wrap.dragging { opacity: 0.4; }
+.tile-wrap.dragging { z-index: 5; opacity: 0.75; pointer-events: none; }
+.tile-wrap.dragging .tile { background: var(--surface); }
 .tile-wrap.drop-before { box-shadow: -3px 0 0 var(--acc); }
 .tile-wrap.drop-after { box-shadow: 3px 0 0 var(--acc); }
 

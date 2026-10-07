@@ -1,6 +1,6 @@
 // Pure logic shared by the new tab page and the Node tests: no DOM, no chrome.* calls.
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 export const HISTORY_LIMIT = 30;
 export const SHORTCUT_IMAGE_LIMIT = 512 * 1024;
 export const BACKGROUND_IMAGE_LIMIT = 3 * 1024 * 1024;
@@ -112,7 +112,7 @@ export function defaultSettings() {
     },
     layout: { blocks: ['clocks', 'search', 'shortcuts'], rows: 2, perRow: 8 },
     shortcuts: DEFAULT_SHORTCUTS.map(([name, url, category, color], index) => ({
-      id: `sc-${index + 1}`, name, url: new URL(url).href, category, color, icon: 'letter', image: ''
+      id: `sc-${index + 1}`, name, url: new URL(url).href, category, color, icon: 'site', image: ''
     })),
     launchers: DEFAULT_LAUNCHERS.map(([name, icon, color, links], index) => ({
       id: `ln-${index + 1}`, name, icon, color,
@@ -304,6 +304,7 @@ export function normalizeSettings(input, { fallback = defaultSettings() } = {}) 
   const report = { fixed: [], skipped: [] };
   const src = input && typeof input === 'object' ? input : {};
   const out = clone(fallback);
+  const legacyStarters = Number(src.version) === 1;
 
   out.theme = pick(src.theme, THEMES, out.theme);
   out.accent = pick(src.accent, Object.keys(ACCENTS), out.accent);
@@ -392,7 +393,9 @@ export function normalizeSettings(input, { fallback = defaultSettings() } = {}) 
         return;
       }
       seenUrls.set(key, true);
-      const icon = pick(item.icon, ICON_MODES, 'site');
+      let icon = pick(item.icon, ICON_MODES, 'site');
+      // Version 1 shipped the starter shortcuts (ids sc-1, sc-2, …) as letters; they now use website icons.
+      if (legacyStarters && icon === 'letter' && /^sc-\d+$/.test(String(item.id))) icon = 'site';
       const image = icon === 'upload' && isImageDataUrl(item.image, SHORTCUT_IMAGE_LIMIT) ? item.image : '';
       out.shortcuts.push({
         id: text(item.id, 60) || createId('sc'),
