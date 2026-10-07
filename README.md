@@ -8,7 +8,7 @@ A Chrome extension (Manifest V3) that replaces the new tab page with a calm, loc
 - **Three search boxes** — Web, AI and Academic, each with its own engine list and default. Any box opens `http(s)` links directly and sends DOIs (`10.x/…`, `doi:…`, `doi.org/…`) to doi.org; other schemes such as `javascript:` are blocked.
 - **Suggestions** — recent queries from local history, plus web suggestions (Datamuse) in the Web box. ↑ ↓ to move, Enter to choose, Esc to close.
 - **Shortcuts** — category filter chips, paging (rows × per row), drag any tile to reorder, a quick-edit popover on each tile (with delete), a full editor (website icon, letter, or uploaded image), and an Edit mode with remove buttons and arrow-key reordering.
-- **Launcher dock** — groups of links that preview on hover or focus and pin open on click.
+- **Launcher dock** — groups of links, shown with website icons, that preview on hover or focus and pin open on click.
 - **Appearance** — light, dark or system theme; green, brown or ink accent; solid, gradient or image background.
 - **Data** — export to JSON, YAML, TOML or text; imports are reviewed (fixed, skipped, merge or replace) before anything changes.
 - Keyboard: `/` focuses web search; `Esc` closes menus and dialogs; Ctrl/⌘ + Enter or click opens in a new tab.
@@ -34,7 +34,7 @@ Settings and search history are stored in `chrome.storage.local` on this device 
 - `storage` — save settings and history.
 - `favicon` — show website icons from Chrome’s local favicon cache (no request to Google). When Chrome has no icon for a site yet, the page tries that site’s own `/favicon.ico` and `/apple-touch-icon.png`, then shows a letter.
 
-Network requests happen only for Datamuse suggestions in the Web box, the Google Fonts stylesheet (Nunito, Noto Sans TC), icon files from your shortcut sites (as above), and the destinations you open.
+Network requests happen only for Datamuse suggestions in the Web box, the Google Fonts stylesheet (Nunito, Noto Sans TC), icon files from your shortcut and launcher sites (as above), and the destinations you open.
 
 ## Development
 

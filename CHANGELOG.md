@@ -2,6 +2,12 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.1.1 — 2026-10-08
+
+### Fixed
+- A new tab showed the extension's address (`chrome-extension://…/newtab.html?focus`) in the address bar. The cursor stays in the address bar again, as Chrome intends for new tabs; click the Web box to search there.
+- Launcher flyout links showed only a letter. They now show the website's icon, like shortcuts.
+
 ## v1.1.0 — 2026-10-08
 
 ### Added

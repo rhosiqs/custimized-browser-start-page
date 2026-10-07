@@ -4,6 +4,7 @@ import { h, icon } from './dom.js';
 import { store, update } from './state.js';
 import { openSettings } from './settings.js';
 import { isDark } from './appearance.js';
+import { badge } from './widgets.js';
 
 const view = { open: null, pinned: false };
 
@@ -54,7 +55,7 @@ function launcher(group) {
 
   const links = group.links.length
     ? group.links.map((link) => h('a.flyout-link', { href: link.url },
-      h('span.badge', { 'aria-hidden': 'true' }, link.name.charAt(0).toUpperCase()),
+      badge({ name: link.name, url: link.url, color: null }),
       h('span.name', {}, link.name),
       h('span.host', {}, hostOf(link.url))))
     : [h('p.flyout-empty', {}, 'No links yet.')];

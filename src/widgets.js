@@ -4,12 +4,15 @@ import { h, icon } from './dom.js';
 import { faviconUrl, siteIconSources } from './storage.js';
 
 // Round icon for a shortcut or launcher link: uploaded image, site favicon, or colored initial.
+// color: null leaves the letter's colors to the stylesheet (launcher links).
 export function badge({ name, url, color = 'green', icon: mode = 'site', image = '' }, className = '') {
-  const swatch = SWATCHES[color] || SWATCHES.green;
+  const swatch = color === null ? null : SWATCHES[color] || SWATCHES.green;
   const letter = () => {
     el.className = `badge${className ? ` ${className}` : ''}`;
-    el.style.background = swatch.fill;
-    el.style.color = swatch.fg;
+    if (swatch) {
+      el.style.background = swatch.fill;
+      el.style.color = swatch.fg;
+    }
     el.replaceChildren(initialOf(name));
   };
   const el = h('span.badge', { 'aria-hidden': 'true', class: className });
