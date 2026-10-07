@@ -1,5 +1,5 @@
 // Entry point for the new tab page: loads settings, renders the blocks, and wires page-wide keys and sync.
-import { formatTime, relativeZone } from './core.js';
+import { clockParts, relativeZone } from './core.js';
 import { applyAppearance } from './appearance.js';
 import { closeDockPopups, renderDock } from './dock.js';
 import { h, isModalOpen } from './dom.js';
@@ -13,7 +13,7 @@ import { onSettingsChanged } from './storage.js';
 const DESIGN_WIDTH = 1440;
 const DESIGN_HEIGHT = 810;
 const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-const clockEls = { section: null, local: null, seconds: null, date: null, world: [] };
+const clockEls = { section: null, local: null, seconds: null, am: null, pm: null, date: null, world: [] };
 
 // Scale the 1440-wide design to the window so the page never scrolls (same rule as the design canvas).
 function fitStage() {
@@ -30,13 +30,17 @@ function clocksBlock() {
   const { clocks } = store.settings;
   clockEls.local = h('span.time');
   clockEls.seconds = h('span.seconds');
+  clockEls.am = h('span', {}, 'AM');
+  clockEls.pm = h('span', {}, 'PM');
   clockEls.date = h('span.date');
   clockEls.world = clocks.world.map((clock) => ({ tz: clock.tz, time: h('span.time'), rel: h('span.rel') }));
   clockEls.section ||= h('section.clocks', { 'aria-label': 'Clocks' });
   clockEls.section.replaceChildren(
     h('div.clock-local', {},
       h('span.kicker', {}, `${localTz.split('/').pop().replace(/_/g, ' ').toUpperCase()} · LOCAL`),
-      h('span.time-row', {}, clockEls.local, clockEls.seconds),
+      h('span.time-row', {},
+        clocks.hour12 ? h('span.period', {}, clockEls.am, clockEls.pm) : null,
+        clockEls.local, clockEls.seconds),
       clockEls.date),
     h('div.world', {}, ...clocks.world.map((clock, i) => h('div.world-clock', {},
       h('span.kicker', {}, clock.city.toUpperCase()),
@@ -49,13 +53,17 @@ function clocksBlock() {
 function tick() {
   if (!clockEls.local) return;
   const now = new Date();
-  // Hours and minutes large; seconds (when on) set smaller beside them.
-  const [hm, sec] = [formatTime(now, localTz), formatTime(now, localTz, true).slice(-3)];
-  clockEls.local.textContent = hm;
-  clockEls.seconds.textContent = store.settings.clocks.showSeconds ? sec : '';
+  const { showSeconds, hour12 } = store.settings.clocks;
+  // Hours and minutes large; seconds (when on) set smaller beside them; in 12-hour mode AM over PM on the left.
+  const local = clockParts(now, localTz, hour12);
+  clockEls.local.textContent = local.hm;
+  clockEls.seconds.textContent = showSeconds ? `:${local.ss}` : '';
+  clockEls.am.className = local.period === 'AM' ? 'on' : '';
+  clockEls.pm.className = local.period === 'PM' ? 'on' : '';
   clockEls.date.textContent = new Intl.DateTimeFormat('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: localTz }).format(now);
   for (const clock of clockEls.world) {
-    clock.time.textContent = formatTime(now, clock.tz);
+    const parts = clockParts(now, clock.tz, hour12);
+    clock.time.textContent = parts.period ? `${parts.hm} ${parts.period}` : parts.hm;
     clock.rel.textContent = relativeZone(now, clock.tz, localTz);
   }
 }

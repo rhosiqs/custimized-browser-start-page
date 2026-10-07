@@ -143,6 +143,8 @@ input:focus-visible { outline-offset: 2px; }
 .clock-local { display: flex; flex-direction: column; gap: 6px; }
 .clock-local .time { font-size: 72px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
 .time-row { display: flex; align-items: baseline; }
+.clock-local .period { align-self: stretch; display: flex; flex-direction: column; justify-content: space-between; margin-right: 10px; padding: 6px 0 4px; font-size: 15px; font-weight: 700; line-height: 1; letter-spacing: 0.06em; color: var(--control); }
+.clock-local .period .on { color: var(--ink); }
 .clock-local .seconds { font-size: 32px; font-weight: 700; line-height: 1; color: var(--muted); font-variant-numeric: tabular-nums; }
 .clock-local .date { font-size: 18px; color: var(--sub); }
 .world { display: flex; align-items: flex-end; }

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  FORMATS, countItems, defaultSettings, detectFormat, historyMatches, isValidEngineUrl, mergeSettings, moveItem,
+  FORMATS, clockParts, countItems, defaultSettings, detectFormat, historyMatches, isValidEngineUrl, mergeSettings, moveItem,
   normalizeDoi, normalizeHex, normalizeHttpUrl, normalizeSettings, parseBackup, recordHistory, relativeZone, routeQuery, serialize
 } from '../src/core.js';
 
@@ -149,4 +149,12 @@ test('seconds are on by default and older saves turn them on once', () => {
   assert.equal(normalizeSettings(v2).settings.clocks.showSeconds, true);
   const v3 = { ...defaultSettings(), clocks: { ...defaultSettings().clocks, showSeconds: false } };
   assert.equal(normalizeSettings(v3).settings.clocks.showSeconds, false);
+});
+
+test('clockParts splits 24- and 12-hour times', () => {
+  const date = new Date('2026-10-07T15:04:09Z');
+  assert.deepEqual(clockParts(date, 'UTC'), { hm: '15:04', ss: '09', period: '' });
+  assert.deepEqual(clockParts(date, 'UTC', true), { hm: '3:04', ss: '09', period: 'PM' });
+  assert.equal(clockParts(new Date('2026-10-07T00:30:00Z'), 'UTC').hm, '00:30');
+  assert.deepEqual(clockParts(new Date('2026-10-07T00:30:00Z'), 'UTC', true), { hm: '12:30', ss: '00', period: 'AM' });
 });

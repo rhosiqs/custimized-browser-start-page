@@ -104,6 +104,7 @@ export function defaultSettings() {
     engines: clone(DEFAULT_ENGINES),
     clocks: {
       showSeconds: true,
+      hour12: false,
       world: [
         { city: 'Tokyo', tz: 'Asia/Tokyo' },
         { city: 'London', tz: 'Europe/London' },
@@ -241,10 +242,13 @@ function ymd(date, tz) {
   return new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: tz }).format(date);
 }
 
-export function formatTime(date, tz, withSeconds = false) {
-  return new Intl.DateTimeFormat('en-GB', {
-    hour: '2-digit', minute: '2-digit', second: withSeconds ? '2-digit' : undefined, hour12: false, timeZone: tz
-  }).format(date);
+// Hours:minutes, seconds and (in 12-hour mode) "AM"/"PM", for clocks that style each part separately.
+export function clockParts(date, tz, hour12 = false) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    hour: hour12 ? 'numeric' : '2-digit', minute: '2-digit', second: '2-digit', hourCycle: hour12 ? 'h12' : 'h23', timeZone: tz
+  }).formatToParts(date);
+  const get = (type) => parts.find((p) => p.type === type)?.value || '';
+  return { hm: `${get('hour')}:${get('minute')}`, ss: get('second'), period: hour12 ? get('dayPeriod').toUpperCase() : '' };
 }
 
 // "Tomorrow · +8h" relative to the local zone.
@@ -359,6 +363,7 @@ export function normalizeSettings(input, { fallback = defaultSettings() } = {}) 
   if (src.clocks && typeof src.clocks === 'object') {
     // Before version 3 seconds were off by default; they are now on, so older saves turn them on once.
     out.clocks.showSeconds = version >= 1 && version < 3 ? true : Boolean(src.clocks.showSeconds);
+    out.clocks.hour12 = Boolean(src.clocks.hour12);
     if (Array.isArray(src.clocks.world)) {
       out.clocks.world = [];
       src.clocks.world.forEach((clock) => {

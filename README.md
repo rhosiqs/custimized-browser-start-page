@@ -4,7 +4,7 @@ A Chrome extension (Manifest V3) that replaces the new tab page with a calm, loc
 
 ## Features
 
-- **Clocks** — local time (seconds shown smaller, on by default) and date plus configurable world clocks with day and offset (“Tomorrow · +1h”).
+- **Clocks** — local time (12- or 24-hour; seconds shown smaller, on by default) and date plus configurable world clocks with day and offset (“Tomorrow · +1h”).
 - **Three search boxes** — Web, AI and Academic, each with its own engine list and default. Any box opens `http(s)` links directly and sends DOIs (`10.x/…`, `doi:…`, `doi.org/…`) to doi.org; other schemes such as `javascript:` are blocked.
 - **Suggestions** — recent queries from local history, plus web suggestions (Datamuse) in the Web box. ↑ ↓ to move, Enter to choose, Esc to close.
 - **Shortcuts** — category filter chips, paging (rows × per row), drag any tile to reorder, a quick-edit popover on each tile (with delete), a full editor (website icon, letter, or uploaded image), and an Edit mode with remove buttons and arrow-key reordering.

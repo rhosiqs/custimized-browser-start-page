@@ -270,6 +270,13 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
               type: 'button', role: 'switch', 'aria-checked': String(draft.clocks.showSeconds),
               onclick: () => change(() => { draft.clocks.showSeconds = !draft.clocks.showSeconds; })
             }, h('span.track', { 'aria-hidden': 'true' }, h('span.knob')), 'Show seconds on the main clock')),
+          h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', paddingBottom: '14px', borderBottom: '1px solid var(--divider)' } },
+            h('span.field-label', { id: 'hour-format' }, 'Time format'),
+            segmented({
+              labelledBy: 'hour-format', value: draft.clocks.hour12 ? '12' : '24',
+              options: [{ value: '24', label: '24-hour' }, { value: '12', label: '12-hour' }],
+              onChange: (value) => change(() => { draft.clocks.hour12 = value === '12'; })
+            })),
           h('span.field-label', {}, 'World clocks'),
           world.length ? h('ul.list', {}, ...world.map((clock, i) => {
             const city = h('input.input.tight', {
