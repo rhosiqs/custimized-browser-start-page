@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  FORMATS, clockParts, countItems, zoneAbbreviation, defaultSettings, detectFormat, historyMatches, isValidEngineUrl, mergeSettings, moveItem,
+  FORMATS, clockLabel, clockParts, countItems, zoneAbbreviation, zoneFromAbbreviation, defaultSettings, detectFormat, historyMatches, isValidEngineUrl, mergeSettings, moveItem,
   normalizeDoi, normalizeHex, normalizeHttpUrl, normalizeSettings, parseBackup, recordHistory, relativeZone, routeQuery, serialize
 } from '../src/core.js';
 
@@ -85,7 +85,7 @@ test('normalizeSettings repairs and reports bad imports', () => {
   assert.equal(settings.background.solid, '#b68235');
   assert.deepEqual(settings.shortcuts.map((s) => s.url), ['https://arxiv.org/', 'https://github.com/']);
   assert.equal(settings.shortcuts[1].category, 'General');
-  assert.deepEqual(settings.clocks.world, [{ city: 'Taipei', tz: 'Asia/Taipei' }]);
+  assert.deepEqual(settings.clocks.world, [{ city: '', tz: 'Asia/Taipei' }]);
   assert.ok(report.fixed.some((f) => f.item.includes('had no scheme')));
   assert.ok(report.fixed.some((f) => f.item.includes('listed twice')));
   assert.ok(report.skipped.some((s) => s.reason.startsWith('javascript:')));
@@ -172,5 +172,45 @@ test('zoneAbbreviation follows daylight saving and skips GMT offsets', () => {
   assert.equal(zoneAbbreviation(new Date('2026-12-01T12:00:00Z'), 'America/Los_Angeles'), 'PST');
   assert.equal(zoneAbbreviation(new Date('2026-12-01T12:00:00Z'), 'America/New_York'), 'EST');
   assert.equal(zoneAbbreviation(new Date(), 'UTC'), 'UTC');
-  assert.equal(zoneAbbreviation(new Date(), 'Asia/Tokyo'), '');
+  assert.equal(zoneAbbreviation(new Date(), 'Asia/Tokyo'), 'JST');
+  assert.equal(zoneAbbreviation(new Date(), 'Asia/Taipei'), '');
+});
+
+test('zoneAbbreviation fills in names Intl lacks, with daylight saving both sides of the equator', () => {
+  const july = new Date('2026-07-01T12:00:00Z');
+  const december = new Date('2026-12-01T12:00:00Z');
+  assert.equal(zoneAbbreviation(july, 'Europe/Paris'), 'CEST');
+  assert.equal(zoneAbbreviation(december, 'Europe/Paris'), 'CET');
+  assert.equal(zoneAbbreviation(july, 'Europe/London'), 'BST');
+  assert.equal(zoneAbbreviation(december, 'Europe/London'), 'GMT');
+  assert.equal(zoneAbbreviation(july, 'Australia/Sydney'), 'AEST');
+  assert.equal(zoneAbbreviation(december, 'Australia/Sydney'), 'AEDT');
+});
+
+test('zoneFromAbbreviation finds a zone by abbreviation, either season', () => {
+  assert.equal(zoneFromAbbreviation('pdt'), 'America/Los_Angeles');
+  assert.equal(zoneFromAbbreviation('PST'), 'America/Los_Angeles');
+  assert.equal(zoneFromAbbreviation(' EDT '), 'America/New_York');
+  assert.equal(zoneFromAbbreviation('CST'), 'America/Chicago');
+  assert.equal(zoneFromAbbreviation('UTC'), 'UTC');
+  assert.equal(zoneFromAbbreviation('GMT'), 'UTC');
+  assert.equal(zoneFromAbbreviation('CEST'), 'Europe/Paris');
+  assert.equal(zoneFromAbbreviation('Paris'), '');
+  assert.equal(zoneFromAbbreviation(''), '');
+});
+
+test('clockLabel shows the label, else the live abbreviation, else the city', () => {
+  const july = new Date('2026-07-01T12:00:00Z');
+  assert.equal(clockLabel({ city: 'Home', tz: 'America/Los_Angeles' }, july), 'Home');
+  assert.equal(clockLabel({ city: '', tz: 'America/Los_Angeles' }, july), 'PDT');
+  assert.equal(clockLabel({ city: '', tz: 'Asia/Taipei' }, july), 'Taipei');
+});
+
+test('untouched v4 default clocks drop their labels; renamed ones keep them', () => {
+  assert.ok(defaultSettings().clocks.world.every((c) => c.city === ''));
+  const v4 = [{ city: 'UTC', tz: 'UTC' }, { city: 'Pacific', tz: 'America/Los_Angeles' }, { city: 'Eastern', tz: 'America/New_York' }];
+  assert.ok(normalizeSettings({ version: 4, clocks: { world: v4 } }).settings.clocks.world.every((c) => c.city === ''));
+  assert.equal(normalizeSettings({ version: 5, clocks: { world: v4 } }).settings.clocks.world[1].city, 'Pacific');
+  const renamed = [v4[0], { city: 'West coast', tz: 'America/Los_Angeles' }, v4[2]];
+  assert.equal(normalizeSettings({ version: 4, clocks: { world: renamed } }).settings.clocks.world[1].city, 'West coast');
 });

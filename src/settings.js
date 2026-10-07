@@ -1,7 +1,7 @@
 // Settings dialog. Edits stay in a draft until Save; appearance changes preview live and revert on Discard or close.
 import {
   ACCENTS, BACKGROUND_IMAGE_LIMIT, BLOCKS, FORMATS, SEARCH_BOXES, SWATCHES,
-  cityFromTimeZone, clone, createId, isValidEngineUrl, isValidTimeZone, moveItem, normalizeHex, normalizeHttpUrl, serialize
+  ZONE_ABBREVIATION_LIST, clockLabel, clone, createId, isValidEngineUrl, isValidTimeZone, moveItem, normalizeHex, normalizeHttpUrl, serialize, zoneFromAbbreviation
 } from './core.js';
 import { applyAppearance } from './appearance.js';
 import { h, icon, readImageFile, segmented, showModal } from './dom.js';
@@ -247,18 +247,19 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
       // ---------- Clocks ----------
       const clocksTab = () => {
         const zones = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : [];
-        const add = h('input.input.compact', { id: 'add-tz', type: 'text', placeholder: 'Add a city or time zone, e.g. Paris or Europe/Paris', list: 'tz-list', style: { flex: 1, minWidth: 0, height: '44px' } });
+        const add = h('input.input.compact', { id: 'add-tz', type: 'text', placeholder: 'Add a time zone or city, e.g. PDT, CET or Paris', list: 'tz-list', style: { flex: 1, minWidth: 0, height: '44px' } });
         const addMsg = h('span.msg.bad', { 'aria-live': 'polite' });
         const addClock = () => {
           const query = add.value.trim();
           if (!query) return;
           const needle = query.toLowerCase().replace(/\s+/g, '_');
-          const tz = isValidTimeZone(query) && query.includes('/') ? query
-            : zones.find((z) => z.toLowerCase() === needle) || zones.find((z) => z.toLowerCase().split('/').pop() === needle);
-          if (!tz) { addMsg.textContent = `No time zone found for “${query}”. Try a capital city or a zone like Asia/Taipei.`; return; }
-          if (draft.clocks.world.some((c) => c.tz === tz)) { addMsg.textContent = `${cityFromTimeZone(tz)} is already listed.`; return; }
-          const city = query.includes('/') || cityFromTimeZone(tz).toLowerCase() === query.toLowerCase() ? cityFromTimeZone(tz) : query;
-          change(() => { draft.clocks.world.push({ city, tz }); });
+          const tz = zoneFromAbbreviation(query) || (isValidTimeZone(query) && query.includes('/') ? query
+            : zones.find((z) => z.toLowerCase() === needle) || zones.find((z) => z.toLowerCase().split('/').pop() === needle));
+          if (!tz) { addMsg.textContent = `No time zone found for “${query}”. Try an abbreviation like PDT, a capital city, or a zone like Asia/Taipei.`; return; }
+          const listed = draft.clocks.world.find((c) => c.tz === tz);
+          if (listed) { addMsg.textContent = `${clockLabel(listed, new Date())} (${tz}) is already listed.`; return; }
+          // No label: the clock shows its live abbreviation (or city), which the user can rename in the list.
+          change(() => { draft.clocks.world.push({ city: '', tz }); });
           panel.querySelector('#add-tz')?.focus();
         };
         add.addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); addClock(); } });
@@ -279,23 +280,27 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
             })),
           h('span.field-label', {}, 'World clocks'),
           world.length ? h('ul.list', {}, ...world.map((clock, i) => {
+            const shown = clockLabel(clock, new Date());
             const city = h('input.input.tight', {
-              type: 'text', value: clock.city, 'aria-label': `Label for ${clock.tz}`, style: { width: '180px', fontWeight: 700 },
+              type: 'text', value: clock.city, placeholder: clockLabel({ ...clock, city: '' }, new Date()),
+              'aria-label': `Label for ${clock.tz}; leave empty to show the zone name`, style: { width: '180px', fontWeight: 700 },
               oninput: () => { clock.city = city.value; touch(); }
             });
             return h('li', {},
-              h('button.icon-btn.small', { type: 'button', 'aria-label': `Move ${clock.city} up`, disabled: i === 0, onclick: () => change(() => { draft.clocks.world = moveItem(world, i, i - 1); }) }, icon('chevronUp', 14, 2.2)),
-              h('button.icon-btn.small', { type: 'button', 'aria-label': `Move ${clock.city} down`, disabled: i === world.length - 1, onclick: () => change(() => { draft.clocks.world = moveItem(world, i, i + 1); }) }, icon('chevronDown', 14, 2.2)),
+              h('button.icon-btn.small', { type: 'button', 'aria-label': `Move ${shown} up`, disabled: i === 0, onclick: () => change(() => { draft.clocks.world = moveItem(world, i, i - 1); }) }, icon('chevronUp', 14, 2.2)),
+              h('button.icon-btn.small', { type: 'button', 'aria-label': `Move ${shown} down`, disabled: i === world.length - 1, onclick: () => change(() => { draft.clocks.world = moveItem(world, i, i + 1); }) }, icon('chevronDown', 14, 2.2)),
               city,
               h('span.sub', { style: { flex: 1, fontSize: '13px', color: 'var(--muted)' } }, clock.tz),
-              h('button.icon-btn', { type: 'button', 'aria-label': `Remove ${clock.city}`, onclick: () => change(() => { draft.clocks.world = world.filter((c) => c !== clock); }) }, icon('close')));
+              h('button.icon-btn', { type: 'button', 'aria-label': `Remove ${shown}`, onclick: () => change(() => { draft.clocks.world = world.filter((c) => c !== clock); }) }, icon('close')));
           })) : h('p.note', {}, 'No world clocks. Only the local clock is shown.'),
           h('div', { style: { display: 'flex', gap: '8px' } },
             h('label.sr-only', { for: 'add-tz' }, 'Add a time zone'),
             add,
             h('button.btn.outline', { type: 'button', onclick: addClock }, 'Add')),
           addMsg,
-          h('datalist', { id: 'tz-list' }, ...zones.map((z) => h('option', { value: z })))
+          h('datalist', { id: 'tz-list' },
+            ...ZONE_ABBREVIATION_LIST.map(([name, tz]) => h('option', { value: name, label: tz })),
+            ...zones.map((z) => h('option', { value: z })))
         ];
       };
 

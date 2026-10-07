@@ -15,7 +15,7 @@ newtab.html ─ main.js ─┬─ state.js ── storage.js ── chrome.stora
 
 ## Layers
 
-- **`core.js`** — pure functions with no DOM or `chrome.*` access, so Node can test them. Owns the settings schema (`defaultSettings`), validation and repair (`normalizeSettings` returns `{ settings, report }`, which doubles as the import report), query routing, history, clock math, merge and serialization.
+- **`core.js`** — pure functions with no DOM or `chrome.*` access, so Node can test them. Owns the settings schema (`defaultSettings`), validation and repair (`normalizeSettings` returns `{ settings, report }`, which doubles as the import report), query routing, history, clock math (including the zone abbreviation table used for clock names and for adding clocks), merge and serialization.
 - **`storage.js`** — reads/writes `startPage:settings` and `startPage:history` in `chrome.storage.local`, falling back to `localStorage` outside the extension. Loaded settings always pass through `normalizeSettings`.
 - **`state.js`** — the single in-memory copy. Every mutation goes through `update()`, which clones, saves and notifies subscribers. `main.js` subscribes and re-renders.
 - **UI modules** — build DOM with the `h()` helper. Blocks (clocks, search, shortcuts) are long-lived elements that re-render their own contents; the search block is built once so typed text and focus survive settings changes.

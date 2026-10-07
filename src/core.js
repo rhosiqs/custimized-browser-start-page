@@ -1,6 +1,6 @@
 // Pure logic shared by the new tab page and the Node tests: no DOM, no chrome.* calls.
 
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 export const HISTORY_LIMIT = 30;
 export const SHORTCUT_IMAGE_LIMIT = 512 * 1024;
 export const BACKGROUND_IMAGE_LIMIT = 3 * 1024 * 1024;
@@ -106,9 +106,9 @@ export function defaultSettings() {
       showSeconds: true,
       hour12: false,
       world: [
-        { city: 'UTC', tz: 'UTC' },
-        { city: 'Pacific', tz: 'America/Los_Angeles' },
-        { city: 'Eastern', tz: 'America/New_York' }
+        { city: '', tz: 'UTC' },
+        { city: '', tz: 'America/Los_Angeles' },
+        { city: '', tz: 'America/New_York' }
       ]
     },
     layout: { blocks: ['clocks', 'search', 'shortcuts'], rows: 2, perRow: 8 },
@@ -251,14 +251,85 @@ export function clockParts(date, tz, hour12 = false) {
   return { hm: `${get('hour')}:${get('minute')}`, ss: get('second'), period: hour12 ? get('dayPeriod').toUpperCase() : '' };
 }
 
-// Short zone name such as "PDT", "EST" or "UTC" (follows daylight saving); empty when Intl only has "GMT+9".
+// Zone abbreviations, standard then daylight. Intl's en-US names only cover US zones and UTC (it says
+// "GMT+9" for Tokyo), so this table fills in the rest and lets people add a clock by typing "CET".
+// Where an abbreviation is shared, the first zone listed wins (CST is US Central, IST is India).
+const ZONE_ABBREVIATIONS = Object.freeze({
+  UTC: ['UTC'],
+  'America/New_York': ['EST', 'EDT'],
+  'America/Chicago': ['CST', 'CDT'],
+  'America/Denver': ['MST', 'MDT'],
+  'America/Phoenix': ['MST'],
+  'America/Los_Angeles': ['PST', 'PDT'],
+  'America/Anchorage': ['AKST', 'AKDT'],
+  'Pacific/Honolulu': ['HST'],
+  'America/Halifax': ['AST', 'ADT'],
+  'America/St_Johns': ['NST', 'NDT'],
+  'America/Sao_Paulo': ['BRT'],
+  'America/Argentina/Buenos_Aires': ['ART'],
+  'Europe/London': ['GMT', 'BST'],
+  'Europe/Lisbon': ['WET', 'WEST'],
+  'Europe/Paris': ['CET', 'CEST'],
+  'Europe/Athens': ['EET', 'EEST'],
+  'Europe/Moscow': ['MSK'],
+  'Africa/Lagos': ['WAT'],
+  'Africa/Johannesburg': ['SAST'],
+  'Africa/Nairobi': ['EAT'],
+  'Asia/Dubai': ['GST'],
+  'Asia/Karachi': ['PKT'],
+  'Asia/Kolkata': ['IST'],
+  'Asia/Bangkok': ['ICT'],
+  'Asia/Jakarta': ['WIB'],
+  'Asia/Singapore': ['SGT'],
+  'Asia/Hong_Kong': ['HKT'],
+  'Asia/Manila': ['PHT'],
+  'Asia/Seoul': ['KST'],
+  'Asia/Tokyo': ['JST'],
+  'Australia/Perth': ['AWST'],
+  'Australia/Adelaide': ['ACST', 'ACDT'],
+  'Australia/Sydney': ['AEST', 'AEDT'],
+  'Pacific/Auckland': ['NZST', 'NZDT']
+});
+const ZONE_ALIASES = Object.freeze({
+  GMT: 'UTC', Z: 'UTC', ET: 'America/New_York', CT: 'America/Chicago', MT: 'America/Denver', PT: 'America/Los_Angeles'
+});
+
+// [abbreviation, zone] pairs for the add-clock suggestions.
+export const ZONE_ABBREVIATION_LIST = Object.freeze(Object.entries(ZONE_ABBREVIATIONS)
+  .flatMap(([tz, names]) => names.map((name) => [name, tz]))
+  .filter(([name], index, list) => list.findIndex(([other]) => other === name) === index && !(name in ZONE_ALIASES)));
+
+// "pdt" → "America/Los_Angeles"; empty when the text is not a known abbreviation.
+export function zoneFromAbbreviation(query) {
+  const key = String(query ?? '').trim().toUpperCase();
+  if (!key) return '';
+  return ZONE_ALIASES[key] || ZONE_ABBREVIATION_LIST.find(([name]) => name === key)?.[1] || '';
+}
+
+function utcOffsetMinutes(date, tz) {
+  return Math.round((wallClock(date, tz) - wallClock(date, 'UTC')) / 6e4);
+}
+
+// Short zone name such as "PDT", "CEST" or "UTC" (follows daylight saving); empty when neither Intl nor the table has one.
 export function zoneAbbreviation(date, tz) {
   try {
     const name = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'short' }).formatToParts(date).find((p) => p.type === 'timeZoneName')?.value || '';
-    return /^[A-Z]{2,5}$/.test(name) ? name : '';
+    if (/^[A-Z]{2,5}$/.test(name)) return name;
+    const names = ZONE_ABBREVIATIONS[tz];
+    if (!names) return '';
+    if (names.length === 1) return names[0];
+    // Daylight time is whichever offset is ahead of the year's standard (smaller) one; this also holds south of the equator.
+    const year = date.getUTCFullYear();
+    const standard = Math.min(utcOffsetMinutes(new Date(Date.UTC(year, 0, 1)), tz), utcOffsetMinutes(new Date(Date.UTC(year, 6, 1)), tz));
+    return utcOffsetMinutes(date, tz) > standard ? names[1] : names[0];
   } catch {
     return '';
   }
+}
+
+// What a world clock shows: its label, else the live abbreviation, else the city from the zone name.
+export function clockLabel(clock, date) {
+  return clock.city || zoneAbbreviation(date, clock.tz) || cityFromTimeZone(clock.tz);
 }
 
 // "Tomorrow · +8h" relative to the local zone.
@@ -378,12 +449,17 @@ export function normalizeSettings(input, { fallback = defaultSettings() } = {}) 
     const oldDefault = JSON.stringify([['Tokyo', 'Asia/Tokyo'], ['London', 'Europe/London'], ['New York', 'America/New_York']]);
     const keptOldDefault = version >= 1 && version < 4 && Array.isArray(src.clocks.world)
       && JSON.stringify(src.clocks.world.map((c) => [c?.city, c?.tz])) === oldDefault;
-    if (Array.isArray(src.clocks.world) && !keptOldDefault) {
+    // Before version 5 every clock had a label, and the defaults were UTC, Pacific and Eastern. Labels are now
+    // optional (an empty one shows the live abbreviation), so untouched defaults drop theirs to read UTC, PDT, EDT.
+    const v4Default = JSON.stringify([['UTC', 'UTC'], ['Pacific', 'America/Los_Angeles'], ['Eastern', 'America/New_York']]);
+    const keptV4Default = version >= 1 && version < 5 && Array.isArray(src.clocks.world)
+      && JSON.stringify(src.clocks.world.map((c) => [c?.city, c?.tz])) === v4Default;
+    if (Array.isArray(src.clocks.world) && !keptOldDefault && !keptV4Default) {
       out.clocks.world = [];
       src.clocks.world.forEach((clock) => {
         const tz = text(clock?.tz, 64);
         if (!isValidTimeZone(tz) || !tz) return report.skipped.push({ item: `Clock “${text(clock?.city || tz, 40)}”`, reason: 'unknown time zone' });
-        out.clocks.world.push({ city: text(clock.city, 40) || cityFromTimeZone(tz), tz });
+        out.clocks.world.push({ city: text(clock.city, 40), tz });
       });
     }
   }

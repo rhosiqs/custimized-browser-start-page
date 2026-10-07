@@ -1,5 +1,5 @@
 // Entry point for the new tab page: loads settings, renders the blocks, and wires page-wide keys and sync.
-import { clockParts, relativeZone, zoneAbbreviation } from './core.js';
+import { clockLabel, clockParts, relativeZone } from './core.js';
 import { applyAppearance } from './appearance.js';
 import { closeDockPopups, renderDock } from './dock.js';
 import { h, isModalOpen } from './dom.js';
@@ -31,7 +31,7 @@ function clocksBlock() {
   clockEls.am = h('span', {}, 'AM');
   clockEls.pm = h('span', {}, 'PM');
   clockEls.date = h('span.date');
-  clockEls.world = clocks.world.map((clock) => ({ tz: clock.tz, city: clock.city.toUpperCase(), kicker: h('span.kicker'), time: h('span.time'), rel: h('span.rel') }));
+  clockEls.world = clocks.world.map((clock) => ({ clock, kicker: h('span.kicker'), time: h('span.time'), rel: h('span.rel') }));
   clockEls.section ||= h('section.clocks', { 'aria-label': 'Clocks' });
   clockEls.section.replaceChildren(
     h('div.clock-local', {},
@@ -60,9 +60,8 @@ function tick() {
   clockEls.pm.className = local.period === 'PM' ? 'on' : '';
   clockEls.date.textContent = new Intl.DateTimeFormat('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: localTz }).format(now);
   for (const clock of clockEls.world) {
-    // The kicker adds the live zone name (PDT ↔ PST) unless the label already is it.
-    const zone = zoneAbbreviation(now, clock.tz);
-    clock.kicker.textContent = zone && zone !== clock.city ? `${clock.city} · ${zone}` : clock.city;
+    // Unlabeled clocks show the live zone name, which follows daylight saving (PDT ↔ PST).
+    clock.kicker.textContent = clockLabel(clock.clock, now).toUpperCase();
     const parts = clockParts(now, clock.tz, hour12);
     clock.time.textContent = parts.period ? `${parts.hm} ${parts.period}` : parts.hm;
     clock.rel.textContent = relativeZone(now, clock.tz, localTz);

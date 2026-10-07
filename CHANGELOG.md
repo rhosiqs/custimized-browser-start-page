@@ -2,6 +2,15 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.2.0 — 2026-10-08
+
+### Added
+- Add a world clock by its abbreviation (PDT, EDT, CST, UTC, CET, JST…) in Settings → Clocks, without picking a city. The suggestions list the abbreviations too.
+
+### Changed
+- World clocks show just the zone abbreviation, such as "PDT" instead of "PACIFIC · PDT". It follows daylight saving (PDT ↔ PST), and now covers zones Intl leaves as "GMT+x", such as CEST, JST and AEDT.
+- A clock's label is optional: type one to show it instead of the abbreviation, or clear it to go back. Untouched default clocks (UTC, Pacific, Eastern) drop their labels once.
+
 ## v1.1.1 — 2026-10-08
 
 ### Fixed
