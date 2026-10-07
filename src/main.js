@@ -59,12 +59,12 @@ function tick() {
   clockEls.am.className = local.period === 'AM' ? 'on' : '';
   clockEls.pm.className = local.period === 'PM' ? 'on' : '';
   clockEls.date.textContent = new Intl.DateTimeFormat('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: localTz }).format(now);
-  for (const clock of clockEls.world) {
+  for (const { clock, kicker, time, rel } of clockEls.world) {
     // Unlabeled clocks show the live zone name, which follows daylight saving (PDT ↔ PST).
-    clock.kicker.textContent = clockLabel(clock.clock, now).toUpperCase();
+    kicker.textContent = clockLabel(clock, now).toUpperCase();
     const parts = clockParts(now, clock.tz, hour12);
-    clock.time.textContent = parts.period ? `${parts.hm} ${parts.period}` : parts.hm;
-    clock.rel.textContent = relativeZone(now, clock.tz, localTz);
+    time.textContent = parts.period ? `${parts.hm} ${parts.period}` : parts.hm;
+    rel.textContent = relativeZone(now, clock.tz, localTz);
   }
 }
 

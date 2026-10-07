@@ -2,6 +2,11 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.3.2 — 2026-10-08
+
+### Fixed
+- World clocks all showed local time ("same time") since v1.2.0. Each clock shows its own zone's time again.
+
 ## v1.3.1 — 2026-10-08
 
 ### Fixed
