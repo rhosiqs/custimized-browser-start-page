@@ -1,6 +1,6 @@
 // Pure logic shared by the new tab page and the Node tests: no DOM, no chrome.* calls.
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 export const HISTORY_LIMIT = 30;
 export const SHORTCUT_IMAGE_LIMIT = 512 * 1024;
 export const BACKGROUND_IMAGE_LIMIT = 3 * 1024 * 1024;
@@ -103,7 +103,7 @@ export function defaultSettings() {
     background: { type: 'solid', solid: '', from: '#f3f2f2', to: '#e8f3ea', image: '' },
     engines: clone(DEFAULT_ENGINES),
     clocks: {
-      showSeconds: false,
+      showSeconds: true,
       world: [
         { city: 'Tokyo', tz: 'Asia/Tokyo' },
         { city: 'London', tz: 'Europe/London' },
@@ -304,7 +304,8 @@ export function normalizeSettings(input, { fallback = defaultSettings() } = {}) 
   const report = { fixed: [], skipped: [] };
   const src = input && typeof input === 'object' ? input : {};
   const out = clone(fallback);
-  const legacyStarters = Number(src.version) === 1;
+  const version = Number(src.version) || 0;
+  const legacyStarters = version === 1;
 
   out.theme = pick(src.theme, THEMES, out.theme);
   out.accent = pick(src.accent, Object.keys(ACCENTS), out.accent);
@@ -356,7 +357,8 @@ export function normalizeSettings(input, { fallback = defaultSettings() } = {}) 
   }
 
   if (src.clocks && typeof src.clocks === 'object') {
-    out.clocks.showSeconds = Boolean(src.clocks.showSeconds);
+    // Before version 3 seconds were off by default; they are now on, so older saves turn them on once.
+    out.clocks.showSeconds = version >= 1 && version < 3 ? true : Boolean(src.clocks.showSeconds);
     if (Array.isArray(src.clocks.world)) {
       out.clocks.world = [];
       src.clocks.world.forEach((clock) => {

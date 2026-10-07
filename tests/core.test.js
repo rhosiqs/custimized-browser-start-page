@@ -140,3 +140,13 @@ test('version 1 starter shortcuts move from letters to website icons', () => {
   assert.equal(settings.shortcuts.at(-1).icon, 'letter');
   assert.equal(normalizeSettings({ ...settings, shortcuts: [{ ...settings.shortcuts[0], icon: 'letter' }] }).settings.shortcuts[0].icon, 'letter');
 });
+
+test('seconds are on by default and older saves turn them on once', () => {
+  assert.equal(defaultSettings().clocks.showSeconds, true);
+  const v2 = defaultSettings();
+  v2.version = 2;
+  v2.clocks.showSeconds = false;
+  assert.equal(normalizeSettings(v2).settings.clocks.showSeconds, true);
+  const v3 = { ...defaultSettings(), clocks: { ...defaultSettings().clocks, showSeconds: false } };
+  assert.equal(normalizeSettings(v3).settings.clocks.showSeconds, false);
+});
