@@ -14,7 +14,7 @@ npm run pack                                               # dist/start-page.zip
 python3 -m http.server                                     # quick UI work: open /newtab.html (localStorage, letter icons)
 ```
 
-To see real behavior (favicons, `chrome.storage`, new-tab focus), load the folder unpacked at `chrome://extensions`. Headless checks work with Playwright and `--load-extension`; open `chrome://newtab/` and then find the tab whose URL contains `newtab.html?focus`, because the first tab closes itself (see below).
+To see real behavior (favicons, `chrome.storage`), load the folder unpacked at `chrome://extensions`. Headless checks work with Playwright and `--load-extension`; open `chrome://newtab/`.
 
 ## Architecture
 
@@ -23,7 +23,7 @@ To see real behavior (favicons, `chrome.storage`, new-tab focus), load the folde
 - **Schema migrations:** `SCHEMA_VERSION` in `core.js` is separate from the release version. When a default changes and existing saves should follow it, bump `SCHEMA_VERSION` and add a version-gated migration in `normalizeSettings`, plus a test. Past examples are starter shortcut icons (v2), seconds on (v3) and default world clocks (v4).
 - `state.js`: every mutation goes through `update()` (clone → save → notify). `main.js` re-renders on notify. The search block is built once, so typed text and focus survive re-renders.
 - The page is a 1440×810 design scaled with `transform: scale()`, so it never scrolls. Dialogs render inside the stage. Pointer math must divide screen deltas by the scale (see `makeDraggable` in `shortcuts.js`).
-- **New-tab focus:** Chrome keeps focus in the address bar on overridden new tabs. `main.js` reopens the page as `newtab.html?focus` and closes the original so the Web box gets the cursor.
+- **New-tab focus:** Chrome keeps the cursor in the address bar on overridden new tabs, and that is intended. v1.1.0 reopened the page as an ordinary tab to move the cursor into web search, but Chrome then shows the extension URL in the address bar, so v1.1.1 removed it. Don't bring it back.
 - **Website icons** (`widgets.js` `badge`): tried in order, Chrome's `_favicon` cache (its generic globe is detected by pixel comparison and skipped), then the site's `/favicon.ico` and `/apple-touch-icon.png`, then the letter.
 - Extension CSP forbids inline scripts. Insert user text as text nodes only; `innerHTML` is reserved for the static SVG icon table in `dom.js`.
 
