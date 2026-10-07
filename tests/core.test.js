@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  FORMATS, clockParts, countItems, defaultSettings, detectFormat, historyMatches, isValidEngineUrl, mergeSettings, moveItem,
+  FORMATS, clockParts, countItems, zoneAbbreviation, defaultSettings, detectFormat, historyMatches, isValidEngineUrl, mergeSettings, moveItem,
   normalizeDoi, normalizeHex, normalizeHttpUrl, normalizeSettings, parseBackup, recordHistory, relativeZone, routeQuery, serialize
 } from '../src/core.js';
 
@@ -118,7 +118,7 @@ test('mergeSettings adds new items and keeps existing ones', () => {
   const current = defaultSettings();
   const incoming = normalizeSettings({
     shortcuts: [{ name: 'GitHub', url: 'https://github.com' }, { name: 'Lobsters', url: 'https://lobste.rs' }],
-    clocks: { world: [{ city: 'Taipei', tz: 'Asia/Taipei' }, { city: 'Tokyo', tz: 'Asia/Tokyo' }] }
+    clocks: { world: [{ city: 'Taipei', tz: 'Asia/Taipei' }, { city: 'Eastern', tz: 'America/New_York' }] }
   }).settings;
   const merged = mergeSettings(current, incoming);
   assert.equal(merged.shortcuts.length, current.shortcuts.length + 1);
@@ -157,4 +157,20 @@ test('clockParts splits 24- and 12-hour times', () => {
   assert.deepEqual(clockParts(date, 'UTC', true), { hm: '3:04', ss: '09', period: 'PM' });
   assert.equal(clockParts(new Date('2026-10-07T00:30:00Z'), 'UTC').hm, '00:30');
   assert.deepEqual(clockParts(new Date('2026-10-07T00:30:00Z'), 'UTC', true), { hm: '12:30', ss: '00', period: 'AM' });
+});
+
+test('world clocks default to UTC, Pacific and Eastern; untouched old defaults move over', () => {
+  assert.deepEqual(defaultSettings().clocks.world.map((c) => c.tz), ['UTC', 'America/Los_Angeles', 'America/New_York']);
+  const old = [{ city: 'Tokyo', tz: 'Asia/Tokyo' }, { city: 'London', tz: 'Europe/London' }, { city: 'New York', tz: 'America/New_York' }];
+  assert.equal(normalizeSettings({ version: 3, clocks: { world: old } }).settings.clocks.world[0].tz, 'UTC');
+  assert.equal(normalizeSettings({ version: 3, clocks: { world: old.slice(0, 2) } }).settings.clocks.world[0].tz, 'Asia/Tokyo');
+  assert.equal(normalizeSettings({ version: 4, clocks: { world: old } }).settings.clocks.world[0].tz, 'Asia/Tokyo');
+});
+
+test('zoneAbbreviation follows daylight saving and skips GMT offsets', () => {
+  assert.equal(zoneAbbreviation(new Date('2026-07-01T12:00:00Z'), 'America/Los_Angeles'), 'PDT');
+  assert.equal(zoneAbbreviation(new Date('2026-12-01T12:00:00Z'), 'America/Los_Angeles'), 'PST');
+  assert.equal(zoneAbbreviation(new Date('2026-12-01T12:00:00Z'), 'America/New_York'), 'EST');
+  assert.equal(zoneAbbreviation(new Date(), 'UTC'), 'UTC');
+  assert.equal(zoneAbbreviation(new Date(), 'Asia/Tokyo'), '');
 });

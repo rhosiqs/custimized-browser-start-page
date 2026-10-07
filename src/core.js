@@ -1,6 +1,6 @@
 // Pure logic shared by the new tab page and the Node tests: no DOM, no chrome.* calls.
 
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 export const HISTORY_LIMIT = 30;
 export const SHORTCUT_IMAGE_LIMIT = 512 * 1024;
 export const BACKGROUND_IMAGE_LIMIT = 3 * 1024 * 1024;
@@ -106,9 +106,9 @@ export function defaultSettings() {
       showSeconds: true,
       hour12: false,
       world: [
-        { city: 'Tokyo', tz: 'Asia/Tokyo' },
-        { city: 'London', tz: 'Europe/London' },
-        { city: 'New York', tz: 'America/New_York' }
+        { city: 'UTC', tz: 'UTC' },
+        { city: 'Pacific', tz: 'America/Los_Angeles' },
+        { city: 'Eastern', tz: 'America/New_York' }
       ]
     },
     layout: { blocks: ['clocks', 'search', 'shortcuts'], rows: 2, perRow: 8 },
@@ -251,6 +251,16 @@ export function clockParts(date, tz, hour12 = false) {
   return { hm: `${get('hour')}:${get('minute')}`, ss: get('second'), period: hour12 ? get('dayPeriod').toUpperCase() : '' };
 }
 
+// Short zone name such as "PDT", "EST" or "UTC" (follows daylight saving); empty when Intl only has "GMT+9".
+export function zoneAbbreviation(date, tz) {
+  try {
+    const name = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'short' }).formatToParts(date).find((p) => p.type === 'timeZoneName')?.value || '';
+    return /^[A-Z]{2,5}$/.test(name) ? name : '';
+  } catch {
+    return '';
+  }
+}
+
 // "Tomorrow · +8h" relative to the local zone.
 export function relativeZone(date, tz, localTz) {
   const diff = Math.round(((wallClock(date, tz) - wallClock(date, localTz)) / 36e5) * 2) / 2;
@@ -364,7 +374,11 @@ export function normalizeSettings(input, { fallback = defaultSettings() } = {}) 
     // Before version 3 seconds were off by default; they are now on, so older saves turn them on once.
     out.clocks.showSeconds = version >= 1 && version < 3 ? true : Boolean(src.clocks.showSeconds);
     out.clocks.hour12 = Boolean(src.clocks.hour12);
-    if (Array.isArray(src.clocks.world)) {
+    // Before version 4 the default world clocks were Tokyo, London and New York; untouched lists move to the new default.
+    const oldDefault = JSON.stringify([['Tokyo', 'Asia/Tokyo'], ['London', 'Europe/London'], ['New York', 'America/New_York']]);
+    const keptOldDefault = version >= 1 && version < 4 && Array.isArray(src.clocks.world)
+      && JSON.stringify(src.clocks.world.map((c) => [c?.city, c?.tz])) === oldDefault;
+    if (Array.isArray(src.clocks.world) && !keptOldDefault) {
       out.clocks.world = [];
       src.clocks.world.forEach((clock) => {
         const tz = text(clock?.tz, 64);

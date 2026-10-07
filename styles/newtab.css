@@ -286,12 +286,12 @@ input:focus-visible { outline-offset: 2px; }
 .shortcuts-head h2 { margin: 0 12px 0 0; font-size: 20px; font-weight: 700; letter-spacing: 0.08em; }
 .chips { flex: 1; display: flex; flex-wrap: wrap; gap: 6px; }
 .chip {
-  min-height: 36px;
-  padding: 0 14px;
+  min-height: 28px;
+  padding: 0 10px;
   border-radius: 999px;
   border: 1px solid var(--divider);
   background: transparent;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 700;
 }
 .chip[aria-pressed='true'] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
