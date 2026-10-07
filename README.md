@@ -72,7 +72,9 @@ The tests cover URL and DOI routing, query history, settings normalization, coll
 | `index.html` | Semantic page structure, settings panels, and editor dialogs. |
 | `styles.css` | Theme tokens, responsive layout, components, and interaction states. |
 | `core.js` | Pure routing, validation, normalization, migration, and serialization logic. |
+| `ui-refresh.css` | Presentation layer loaded after `styles.css`: left launcher rail, focused content column, and refreshed component styling. |
 | `app.js` | Browser state, rendering, persistence, events, and UI behavior. |
+| `shortcut-editor.js` | Shortcut edit-mode enhancements: per-tile edit buttons and drag handles, with drag restricted to the handle. |
 | `tests/core.test.js` | Node.js tests for the framework-independent core. |
 | `package.json` | Syntax-check and test commands; no dependencies. |
 
