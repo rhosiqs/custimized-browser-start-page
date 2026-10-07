@@ -1,6 +1,6 @@
 // Pure logic shared by the new tab page and the Node tests: no DOM, no chrome.* calls.
 
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 export const HISTORY_LIMIT = 30;
 export const SHORTCUT_IMAGE_LIMIT = 512 * 1024;
 export const BACKGROUND_IMAGE_LIMIT = 3 * 1024 * 1024;
@@ -32,6 +32,8 @@ export const SEARCH_BOXES = Object.freeze({
   acad: { kicker: 'ACADEMIC', placeholder: 'Search papers and journals, or enter a DOI' }
 });
 
+const OLD_MJL_URL = 'https://mjl.clarivate.com/search-results?search=%s';
+
 const DEFAULT_ENGINES = {
   web: {
     default: 'google',
@@ -58,7 +60,7 @@ const DEFAULT_ENGINES = {
       { id: 'scholar', name: 'Google Scholar', url: 'https://scholar.google.com/scholar?q=%s' },
       { id: 'pubmed', name: 'PubMed', url: 'https://pubmed.ncbi.nlm.nih.gov/?term=%s' },
       { id: 'pmc', name: 'PMC', url: 'https://pmc.ncbi.nlm.nih.gov/search/?term=%s' },
-      { id: 'mjl', name: 'Master Journal List', url: 'https://mjl.clarivate.com/search-results?search=%s' }
+      { id: 'mjl', name: 'Master Journal List', url: 'https://mjl.clarivate.com/search-results?issn=%s' }
     ]
   }
 };
@@ -433,7 +435,9 @@ export function normalizeSettings(input, { fallback = defaultSettings() } = {}) 
       const seen = new Set();
       group.list.forEach((engine, index) => {
         const name = text(engine?.name, 40);
-        const url = String(engine?.url ?? '').trim();
+        let url = String(engine?.url ?? '').trim();
+        // Before version 6 the Master Journal List engine used ?search=, which the site ignores; it reads ?issn=.
+        if (version >= 1 && version < 6 && url === OLD_MJL_URL) url = DEFAULT_ENGINES.acad.list.find((e) => e.id === 'mjl').url;
         if (!name) return report.skipped.push({ item: `${SEARCH_BOXES[box].kicker} engine #${index + 1}`, reason: 'missing a name' });
         if (!isValidEngineUrl(url)) return report.skipped.push({ item: `Engine “${name}”`, reason: 'URL must be http(s) and contain %s' });
         let id = text(engine.id, 40) || createId('en');

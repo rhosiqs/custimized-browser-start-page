@@ -215,6 +215,13 @@ test('untouched v4 default clocks drop their labels; renamed ones keep them', ()
   assert.equal(normalizeSettings({ version: 4, clocks: { world: renamed } }).settings.clocks.world[1].city, 'West coast');
 });
 
+test('v5 Master Journal List engine moves from ?search= to ?issn=', () => {
+  const old = 'https://mjl.clarivate.com/search-results?search=%s';
+  const engines = { acad: { default: 'mjl', list: [{ id: 'mjl', name: 'Master Journal List', url: old }] } };
+  assert.equal(normalizeSettings({ version: 5, engines }).settings.engines.acad.list[0].url, 'https://mjl.clarivate.com/search-results?issn=%s');
+  assert.equal(normalizeSettings({ version: 6, engines }).settings.engines.acad.list[0].url, old);
+});
+
 test('firstGraphemes keeps emoji whole', () => {
   assert.equal(firstGraphemes('🧑‍🔬', 3), '🧑‍🔬');
   assert.equal(firstGraphemes('🇹🇼📚✨🎵', 3), '🇹🇼📚✨');

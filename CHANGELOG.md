@@ -2,6 +2,11 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.3.1 — 2026-10-08
+
+### Fixed
+- Searching the Master Journal List from the Academic box showed every journal instead of the matches. The site ignores `?search=`; the engine now uses `?issn=`, and saved settings with the old address switch over once.
+
 ## v1.3.0 — 2026-10-08
 
 ### Added
