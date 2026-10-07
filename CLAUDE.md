@@ -36,6 +36,7 @@ The UI is designed in the claude.ai Design canvas "Browser Start Page" (https://
 ## Versioning and releases
 
 - Version format is `vX.Y.Z`, tracked with annotated git tags on the release commit. Claude chooses and bumps the version.
+- Release tags go only on commits in `plugin`: merge the release branch into `plugin` first, then tag (the old `v0.1.0` stays on the archived web line).
 - The `version` in `manifest.json` (the extension version) and in `package.json` must equal the tag without the `v`.
 - Every version gets release notes: a section in `CHANGELOG.md`, with the same notes in the annotated tag message.
 - One bug → one patch bump. Don't spread a single fix over several patch versions. New features or behavior changes bump the minor version.
