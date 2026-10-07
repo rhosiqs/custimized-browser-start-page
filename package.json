@@ -1,0 +1,13 @@
+{
+  "name": "start-page-new-tab",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Chrome extension that replaces the new tab page with a local-first start page.",
+  "scripts": {
+    "check": "for f in src/*.js tests/*.js; do node --check \"$f\" || exit 1; done && node -e \"JSON.parse(require('fs').readFileSync('manifest.json','utf8'))\"",
+    "test": "node --test tests/*.test.js",
+    "verify": "npm run check && npm test",
+    "pack": "mkdir -p dist && rm -f dist/start-page.zip && zip -r dist/start-page.zip manifest.json newtab.html src styles icons"
+  }
+}
