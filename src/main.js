@@ -3,9 +3,7 @@ import { clockParts, relativeZone, zoneAbbreviation } from './core.js';
 import { applyAppearance } from './appearance.js';
 import { closeDockPopups, renderDock } from './dock.js';
 import { h, isModalOpen } from './dom.js';
-import { pickImportFile } from './import-review.js';
 import { closeSearchPopups, focusWebSearch, searchBlock } from './search.js';
-import { openSettings } from './settings.js';
 import { closeShortcutPopover, shortcutsBlock } from './shortcuts.js';
 import { initStore, replaceFromOtherTab, store, subscribe } from './state.js';
 import { onSettingsChanged } from './storage.js';
@@ -71,14 +69,6 @@ function tick() {
   }
 }
 
-function renderFooter() {
-  document.getElementById('footer').replaceChildren(
-    h('span', {}, 'Saved locally'),
-    h('button.linkish', { type: 'button', onclick: pickImportFile }, 'Import'),
-    h('button.linkish', { type: 'button', onclick: () => openSettings({ tab: 'Data' }) }, 'Export')
-  );
-}
-
 function render() {
   applyAppearance(store.settings);
   const builders = { clocks: clocksBlock, search: searchBlock, shortcuts: shortcutsBlock };
@@ -87,7 +77,6 @@ function render() {
   // Blocks are long-lived elements; only re-order them when the layout changed, so focus and typed text survive.
   if (blocks.some((block, i) => page.children[i] !== block) || page.children.length !== blocks.length) page.replaceChildren(...blocks);
   renderDock(document.getElementById('dock'));
-  renderFooter();
 }
 
 function wireGlobalEvents() {

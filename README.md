@@ -53,7 +53,7 @@ For quick UI work outside the extension, serve the folder (`python3 -m http.serv
 | Path | Purpose |
 | --- | --- |
 | `manifest.json` | Extension manifest: new tab override, permissions, icons. |
-| `newtab.html` | Page shell: stage, main column, footer, dock. |
+| `newtab.html` | Page shell: stage, main column, dock. |
 | `styles/newtab.css` | Design tokens (light/dark, accents) and all component styles. |
 | `src/main.js` | Entry: loads settings, renders blocks, stage scaling, page-wide keys, cross-tab sync. |
 | `src/core.js` | Pure logic: routing, validation, normalization, merge, import/export. |

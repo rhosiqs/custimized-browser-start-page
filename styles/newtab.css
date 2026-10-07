@@ -438,26 +438,7 @@ input:focus-visible { outline-offset: 2px; }
 .popover label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 700; }
 .popover .actions { display: flex; justify-content: flex-end; gap: 6px; padding-top: 4px; }
 
-/* ---------- Footer & dock ---------- */
-
-.footer {
-  position: absolute;
-  right: 80px;
-  bottom: 34px;
-  display: flex;
-  gap: 14px;
-  font-size: 13px;
-  color: var(--muted);
-}
-.linkish {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--brown);
-  font-weight: 700;
-  text-decoration: underline;
-}
-.linkish:hover { color: var(--ink); }
+/* ---------- Dock ---------- */
 
 .dock {
   position: absolute;
