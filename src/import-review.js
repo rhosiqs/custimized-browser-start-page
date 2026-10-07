@@ -68,7 +68,7 @@ export function reviewImport({ name, size, source }) {
           reportList('skipped', 'Skipped', 'skip', report.skipped),
           h('fieldset.plain', { style: { gap: '8px' } },
             h('legend', {}, 'How to apply'),
-            modeOption('merge', 'Merge', 'Add new shortcuts, launchers and clocks and keep what you already have. Appearance and search settings come from the file.'),
+            modeOption('merge', 'Merge', 'Add what is new and restore matching shortcuts and launchers from the file; nothing is removed. Appearance and search settings come from the file.'),
             modeOption('replace', 'Replace', 'Clear the page first. Export a backup before you do this.'))
         ];
 

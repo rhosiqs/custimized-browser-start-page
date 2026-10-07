@@ -16,7 +16,7 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
   const ui = { tab, engineBox: 'web', format: 'json', expanded: launcherId, saved: clone(store.settings) };
   let draft = clone(store.settings);
   if (addLauncher) {
-    const fresh = { id: createId('ln'), name: 'New launcher', icon: 'N', color: 'green', image: '', links: [] };
+    const fresh = { id: createId('ln'), name: 'New launcher', icon: 'N', color: 'green', iconMode: 'label', iconUrl: '', image: '', links: [] };
     draft.launchers.push(fresh);
     ui.expanded = fresh.id;
   }
@@ -328,7 +328,7 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
           h('button.btn.primary', {
             type: 'button', style: { alignSelf: 'flex-start' },
             onclick: () => change(() => {
-              const fresh = { id: createId('ln'), name: 'New launcher', icon: 'N', color: 'green', image: '', links: [] };
+              const fresh = { id: createId('ln'), name: 'New launcher', icon: 'N', color: 'green', iconMode: 'label', iconUrl: '', image: '', links: [] };
               draft.launchers.push(fresh);
               ui.expanded = fresh.id;
             })
@@ -345,9 +345,26 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
           oninput: () => { group.icon = firstGraphemes(mark.value.trim(), 3) || group.name.charAt(0).toUpperCase(); touch(); },
           onchange: () => { mark.value = group.icon; }
         });
-        const imageMsg = h('span.note', { id: `${idBase}-icon-note`, 'aria-live': 'polite' },
-          group.image ? 'The image fills the launcher in place of the label.' : 'Letters or an emoji, up to 3. Or choose an image (up to 512 KB).');
-        const imageControls = h('div.inline', { style: { gap: '8px' } },
+        const mode = group.iconMode || (group.image ? 'upload' : 'label');
+        const notes = {
+          label: 'Letters or an emoji, up to 3.',
+          site: 'Shows the website\'s icon. Leave the address empty to use the first link. The label shows if no icon is found.',
+          url: 'Paste the address of an image online (PNG, SVG, ICO…). It fills the launcher; the label shows if it fails to load.',
+          upload: group.image ? 'The image fills the launcher in place of the label.' : 'Choose an image (up to 512 KB). It fills the launcher in place of the label.'
+        };
+        const imageMsg = h('span.note', { id: `${idBase}-icon-note`, 'aria-live': 'polite' }, notes[mode]);
+        // The address field is shared by Website and Image link; a valid address is stored in full form on leaving it.
+        const iconAddress = (placeholder, labelText) => {
+          const input = h('input.input.compact', {
+            id: `${idBase}-icon-url`, type: 'url', value: group.iconUrl, placeholder, spellcheck: 'false', 'aria-label': labelText,
+            'aria-describedby': `${idBase}-icon-note`, style: { width: '300px' },
+            'aria-invalid': String(Boolean(group.iconUrl) && !normalizeHttpUrl(group.iconUrl).ok),
+            oninput: () => { group.iconUrl = input.value.trim(); input.setAttribute('aria-invalid', String(Boolean(group.iconUrl) && !normalizeHttpUrl(group.iconUrl).ok)); touch(); },
+            onchange: () => { const check = normalizeHttpUrl(group.iconUrl); if (check.ok) change(() => { group.iconUrl = check.url; }); }
+          });
+          return input;
+        };
+        const uploadControls = () => h('div.inline', { style: { gap: '8px' } },
           h('label.btn.file-btn.round.small', {}, icon('upload', 14, 2.2), group.image ? 'Change image' : 'Choose image',
             h('input', {
               type: 'file', accept: 'image/png,image/jpeg,image/webp,image/svg+xml,image/gif', 'aria-describedby': `${idBase}-icon-note`,
@@ -356,13 +373,19 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
                 if (!file) return;
                 try {
                   const image = await readImageFile(file, SHORTCUT_IMAGE_LIMIT);
-                  change(() => { group.image = image; });
+                  change(() => { group.image = image; group.iconMode = 'upload'; });
                 } catch (error) {
                   imageMsg.textContent = error.message;
                 }
               }
             })),
           group.image ? h('button.btn.small', { type: 'button', onclick: () => change(() => { group.image = ''; }) }, icon('trash', 14), 'Remove image') : null);
+        const iconSource = {
+          label: () => null,
+          site: () => iconAddress(group.links[0]?.url || 'example.com', `${group.name} website for the icon`),
+          url: () => iconAddress('https://example.com/logo.png', `${group.name} image address`),
+          upload: uploadControls
+        }[mode]();
         const links = group.links.map((link, i) => {
           const linkName = h('input.input.tight', { type: 'text', value: link.name, 'aria-label': 'Link name', oninput: () => { link.name = linkName.value; touch(); } });
           const linkUrl = h('input.input.tight', {
@@ -381,8 +404,16 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
           h('div.inline', { style: { gap: '16px' } },
             h('div.field-group', {}, h('label.field-label', { for: `${idBase}-name` }, 'Name'), name),
             h('div.field-group', {}, h('label.field-label', { for: `${idBase}-icon` }, 'Label'), mark),
-            h('div.field-group', {}, h('span.field-label', {}, 'Image'), imageControls),
             h('div.field-group', {}, h('span.field-label', {}, 'Color'), swatchPicker({ value: group.color, size: 'small', label: `${group.name} color`, onChange: (color) => change(() => { group.color = color; }) }))),
+          h('div.inline', { style: { gap: '16px', alignItems: 'flex-end' } },
+            h('div.field-group', {},
+              h('span.field-label', { id: `${idBase}-icon-mode` }, 'Icon'),
+              segmented({
+                labelledBy: `${idBase}-icon-mode`, value: mode,
+                options: [{ value: 'label', label: 'Label' }, { value: 'site', label: 'Website' }, { value: 'url', label: 'Image link' }, { value: 'upload', label: 'Upload' }],
+                onChange: (value) => change(() => { group.iconMode = value; })
+              })),
+            iconSource),
           imageMsg,
           h('span.field-label', {}, 'Links'),
           ...(links.length ? links : [h('p.note', {}, 'No links yet.')]),

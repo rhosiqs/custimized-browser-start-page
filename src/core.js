@@ -25,6 +25,8 @@ export const THEMES = ['light', 'dark', 'system'];
 export const BACKGROUNDS = ['solid', 'gradient', 'image'];
 export const BLOCKS = Object.freeze({ clocks: 'Clocks', search: 'Search', shortcuts: 'Shortcuts' });
 export const ICON_MODES = ['site', 'letter', 'upload'];
+// Launcher button faces: its label, a website's icon, an online image, or an uploaded image.
+export const LAUNCHER_ICON_MODES = ['label', 'site', 'url', 'upload'];
 
 export const SEARCH_BOXES = Object.freeze({
   web: { kicker: 'WEB', placeholder: 'Search the web or paste a link' },
@@ -118,7 +120,7 @@ export function defaultSettings() {
       id: `sc-${index + 1}`, name, url: new URL(url).href, category, color, icon: 'site', image: ''
     })),
     launchers: DEFAULT_LAUNCHERS.map(([name, icon, color, links], index) => ({
-      id: `ln-${index + 1}`, name, icon, color, image: '',
+      id: `ln-${index + 1}`, name, icon, color, iconMode: 'label', iconUrl: '', image: '',
       links: links.map(([linkName, host]) => ({ name: linkName, url: `https://${host}/` }))
     }))
   };
@@ -537,11 +539,20 @@ export function normalizeSettings(input, { fallback = defaultSettings() } = {}) 
       // An uploaded image fills the launcher button in place of its label.
       const image = isImageDataUrl(group.image, SHORTCUT_IMAGE_LIMIT) ? group.image : '';
       if (group.image && !image) report.skipped.push({ item: `${name} launcher image`, reason: 'not an embedded image under 512 KB' });
+      // Saves from before icon modes show their image when they have one, else the label.
+      let iconMode = pick(group.iconMode, LAUNCHER_ICON_MODES, image ? 'upload' : 'label');
+      const rawIconUrl = String(group.iconUrl ?? '').trim();
+      const iconUrl = rawIconUrl && normalizeHttpUrl(rawIconUrl).ok ? normalizeHttpUrl(rawIconUrl).url : '';
+      if (rawIconUrl && !iconUrl) report.skipped.push({ item: `${name} launcher icon address`, reason: 'not an http(s) address' });
+      // An image link needs an address and an upload needs its image; a website icon falls back to the first link.
+      if ((iconMode === 'upload' && !image) || (iconMode === 'url' && !iconUrl)) iconMode = 'label';
       out.launchers.push({
         id: text(group.id, 60) || createId('ln'),
         name,
         icon: firstGraphemes(text(group.icon, 40), 3) || initialOf(name),
         color: pick(group.color, Object.keys(SWATCHES), 'green'),
+        iconMode,
+        iconUrl,
         image,
         links
       });
@@ -552,14 +563,25 @@ export function normalizeSettings(input, { fallback = defaultSettings() } = {}) 
   return { settings: out, report };
 }
 
-// Merge: keep everything the user has, add new shortcuts/launchers/clocks, take imported appearance.
+// Merge: keep everything the user has and add what is new; a shortcut or launcher in both takes the file's
+// version (its icon, image, color and links), so a backup restores fully. Appearance and search come from the file.
 export function mergeSettings(current, incoming) {
   const merged = clone(incoming);
   const urlKey = (s) => `${s.name.toLowerCase()}|${s.url}`;
+  const fileShortcuts = new Map(incoming.shortcuts.map((s) => [urlKey(s), s]));
   const have = new Set(current.shortcuts.map(urlKey));
-  merged.shortcuts = current.shortcuts.concat(incoming.shortcuts.filter((s) => !have.has(urlKey(s))).map((s) => ({ ...s, id: createId('sc') })));
-  const launcherNames = new Set(current.launchers.map((l) => l.name.toLowerCase()));
-  merged.launchers = current.launchers.concat(incoming.launchers.filter((l) => !launcherNames.has(l.name.toLowerCase())).map((l) => ({ ...l, id: createId('ln') })));
+  merged.shortcuts = current.shortcuts.map((s) => (fileShortcuts.has(urlKey(s)) ? { ...clone(fileShortcuts.get(urlKey(s))), id: s.id } : s))
+    .concat(incoming.shortcuts.filter((s) => !have.has(urlKey(s))).map((s) => ({ ...s, id: createId('sc') })));
+  const nameKey = (l) => l.name.toLowerCase();
+  const fileLaunchers = new Map(incoming.launchers.map((l) => [nameKey(l), l]));
+  const launcherNames = new Set(current.launchers.map(nameKey));
+  merged.launchers = current.launchers.map((l) => {
+    const file = fileLaunchers.get(nameKey(l));
+    if (!file) return l;
+    // Links only on this device stay, after the file's links.
+    const fileUrls = new Set(file.links.map((link) => link.url));
+    return { ...clone(file), id: l.id, links: clone(file.links).concat(l.links.filter((link) => !fileUrls.has(link.url))) };
+  }).concat(incoming.launchers.filter((l) => !launcherNames.has(nameKey(l))).map((l) => ({ ...l, id: createId('ln') })));
   const zones = new Set(current.clocks.world.map((c) => c.tz));
   merged.clocks.world = current.clocks.world.concat(incoming.clocks.world.filter((c) => !zones.has(c.tz)));
   return merged;

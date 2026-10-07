@@ -1,6 +1,6 @@
 {
   "name": "start-page-new-tab",
-  "version": "1.3.2",
+  "version": "1.4.0",
   "private": true,
   "type": "module",
   "description": "Chrome extension that replaces the new tab page with a local-first start page.",

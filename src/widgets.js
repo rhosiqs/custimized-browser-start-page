@@ -41,12 +41,37 @@ export function badge({ name, url, color = 'green', icon: mode = 'site', image =
   return el;
 }
 
-// What a launcher button shows: its uploaded image, filling the circle, or its label (letters or emoji).
+// What a launcher button shows: an image filling the circle (uploaded or linked), a website's icon on a
+// light disc, or its label (letters or emoji). A web icon that fails to load shows the label instead.
 export function launcherMark(group) {
-  if (group.image) return h('img.launcher-img', { src: group.image, alt: '', draggable: 'false' });
   // Emoji are wider than letters: three in a row only fit the 40px circle at a smaller size.
   const tight = firstGraphemes(group.icon, 2) !== group.icon && /\p{Extended_Pictographic}/u.test(group.icon);
-  return h(`span.launcher-label${tight ? '.tight' : ''}`, {}, group.icon);
+  const label = () => h(`span.launcher-label${tight ? '.tight' : ''}`, {}, group.icon);
+  const mode = group.iconMode || (group.image ? 'upload' : 'label');
+  if (mode === 'upload' && group.image) return h('img.launcher-img', { src: group.image, alt: '', draggable: 'false' });
+  if (mode === 'url' && group.iconUrl) {
+    const img = h('img.launcher-img', { alt: '', draggable: 'false', referrerpolicy: 'no-referrer' });
+    img.onerror = () => img.replaceWith(label());
+    img.src = group.iconUrl;
+    return img;
+  }
+  const sources = mode === 'site' ? siteIconSources(group.iconUrl || group.links[0]?.url || '') : [];
+  if (!sources.length) return label();
+  const disc = h('span.launcher-site');
+  const img = h('img', { alt: '', draggable: 'false' });
+  const tryNext = (index) => {
+    const source = sources[index];
+    if (!source) { disc.replaceWith(label()); return; }
+    img.onerror = () => tryNext(index + 1);
+    img.onload = async () => {
+      if (img.naturalWidth < 2) tryNext(index + 1);
+      else if (source.chromeCache && await isChromeDefaultIcon(img)) tryNext(index + 1);
+    };
+    img.src = source.src;
+  };
+  disc.append(img);
+  tryNext(0);
+  return disc;
 }
 
 // Chrome's favicon cache answers unknown pages with a generic globe; detect it by comparing pixels.

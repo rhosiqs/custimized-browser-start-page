@@ -2,6 +2,14 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.4.0 — 2026-10-08
+
+### Added
+- Launcher icons can be a website's icon or an image link from the web, besides the label or an uploaded image (Settings → Launchers → Edit → Icon). A website icon uses the first link when no address is given; if a web icon fails to load, the label shows.
+
+### Changed
+- Importing a backup with Merge now restores shortcuts and launchers you already have from the file (icons, images, colors and links), instead of keeping the current copy. Links only on this device stay. Replace still starts from a clean page.
+
 ## v1.3.2 — 2026-10-08
 
 ### Fixed

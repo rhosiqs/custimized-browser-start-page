@@ -114,7 +114,7 @@ test('parseBackup reports unreadable files', () => {
   assert.throws(() => parseBackup('just words', 'text'), /could not be read/);
 });
 
-test('mergeSettings adds new items and keeps existing ones', () => {
+test('mergeSettings adds new items and keeps items only on this device', () => {
   const current = defaultSettings();
   const incoming = normalizeSettings({
     shortcuts: [{ name: 'GitHub', url: 'https://github.com' }, { name: 'Lobsters', url: 'https://lobste.rs' }],
@@ -241,4 +241,49 @@ test('launchers keep emoji labels and valid images, and drop bad images', () => 
   assert.equal(settings.launchers[1].image, '');
   assert.ok(report.skipped.some((s) => s.item === 'Web launcher image'));
   assert.ok(defaultSettings().launchers.every((l) => l.image === ''));
+});
+
+test('launcher icon modes: old saves pick upload or label, and bad choices fall back to the label', () => {
+  const png = 'data:image/png;base64,iVBORw0KGgo=';
+  const { settings, report } = normalizeSettings({
+    launchers: [
+      { name: 'Old image', icon: 'O', image: png, links: [] },
+      { name: 'Old label', icon: 'L', links: [] },
+      { name: 'Site', icon: 'S', iconMode: 'site', iconUrl: 'github.com', links: [] },
+      { name: 'Link', icon: 'K', iconMode: 'url', iconUrl: 'https://example.com/logo.png', links: [] },
+      { name: 'Empty link', icon: 'E', iconMode: 'url', iconUrl: '', links: [] },
+      { name: 'Bad link', icon: 'B', iconMode: 'url', iconUrl: 'javascript:alert(1)', links: [] }
+    ]
+  });
+  assert.deepEqual(settings.launchers.map((l) => l.iconMode), ['upload', 'label', 'site', 'url', 'label', 'label']);
+  assert.equal(settings.launchers[2].iconUrl, 'https://github.com/');
+  assert.equal(settings.launchers[3].iconUrl, 'https://example.com/logo.png');
+  assert.ok(report.skipped.some((s) => s.item === 'Bad link launcher icon address'));
+  assert.ok(defaultSettings().launchers.every((l) => l.iconMode === 'label' && l.iconUrl === ''));
+});
+
+test('every format restores launcher icons exactly', () => {
+  const settings = defaultSettings();
+  settings.launchers[0] = { ...settings.launchers[0], iconMode: 'upload', image: 'data:image/png;base64,iVBORw0KGgo=' };
+  settings.launchers[1] = { ...settings.launchers[1], icon: '🧑‍🔬📚', iconMode: 'site', iconUrl: 'https://github.com/' };
+  settings.launchers[2] = { ...settings.launchers[2], iconMode: 'url', iconUrl: 'https://example.com/logo.png' };
+  for (const format of Object.keys(FORMATS)) {
+    const text = serialize(settings, format);
+    assert.deepEqual(normalizeSettings(parseBackup(text, detectFormat(`x.${FORMATS[format].ext}`, text))).settings, settings, format);
+  }
+});
+
+test('merging a backup restores matching launchers and shortcuts from the file', () => {
+  const current = defaultSettings();
+  current.launchers[0].links.push({ name: 'Local only', url: 'https://local.example/' });
+  const backup = defaultSettings();
+  backup.launchers[0] = { ...backup.launchers[0], icon: '🔍', color: 'ink', iconMode: 'site', iconUrl: 'https://google.com/' };
+  backup.shortcuts[0] = { ...backup.shortcuts[0], icon: 'letter', color: 'gold' };
+  const merged = mergeSettings(current, normalizeSettings(backup).settings);
+  assert.equal(merged.launchers.length, current.launchers.length);
+  assert.equal(merged.launchers[0].id, current.launchers[0].id);
+  assert.deepEqual([merged.launchers[0].icon, merged.launchers[0].color, merged.launchers[0].iconMode], ['🔍', 'ink', 'site']);
+  assert.equal(merged.launchers[0].links.at(-1).name, 'Local only');
+  assert.deepEqual([merged.shortcuts[0].icon, merged.shortcuts[0].color], ['letter', 'gold']);
+  assert.equal(merged.shortcuts.length, current.shortcuts.length);
 });

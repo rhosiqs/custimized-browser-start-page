@@ -27,9 +27,9 @@ The page reproduces the design canvas’s stage rule: the 1440×810 design is sc
 ## Settings flow
 
 - Quick edits (engine menu, shortcut popover, reorder, theme toggle) call `update()` directly.
-- Shortcuts reorder by pointer drag (any mode; a press under 6 px stays a click) or arrow keys on the Edit-mode handle. Website icons try Chrome's favicon cache first (its generic globe is detected by pixel comparison and skipped), then the site's own `/favicon.ico` and `/apple-touch-icon.png`, then the letter. Launcher flyout links use the same `badge()`.
+- Shortcuts reorder by pointer drag (any mode; a press under 6 px stays a click) or arrow keys on the Edit-mode handle. Website icons try Chrome's favicon cache first (its generic globe is detected by pixel comparison and skipped), then the site's own `/favicon.ico` and `/apple-touch-icon.png`, then the letter. Launcher flyout links use the same `badge()`. A launcher button (`launcherMark`) shows by `iconMode`: `label`, `site` (the same icon walk for `iconUrl`, else the first link, on a light disc), `url` (an online image) or `upload`; a web icon that fails shows the label.
 - The Settings dialog edits a draft; appearance previews live via `applyAppearance(draft)` and reverts on close. Save validates engines and launcher links, then commits once.
-- Imports parse the file (`parseBackup`), normalize it into a report, and apply as **merge** (`mergeSettings`, starting from current settings) or **replace** (starting from defaults).
+- Imports parse the file (`parseBackup`), normalize it into a report, and apply as **merge** (`mergeSettings`, starting from current settings; a shortcut or launcher in both takes the file's version, keeping its id and any links only on this device) or **replace** (starting from defaults). Export writes the saved settings object whole, so every format round-trips exactly.
 - Other open new tabs pick up saved changes through `chrome.storage.onChanged`.
 
 ## Export format
