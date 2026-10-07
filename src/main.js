@@ -53,7 +53,7 @@ function tick() {
   const [hm, sec] = [formatTime(now, localTz), formatTime(now, localTz, true).slice(-3)];
   clockEls.local.textContent = hm;
   clockEls.seconds.textContent = store.settings.clocks.showSeconds ? sec : '';
-  clockEls.date.textContent = new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: localTz }).format(now);
+  clockEls.date.textContent = new Intl.DateTimeFormat('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: localTz }).format(now);
   for (const clock of clockEls.world) {
     clock.time.textContent = formatTime(now, clock.tz);
     clock.rel.textContent = relativeZone(now, clock.tz, localTz);

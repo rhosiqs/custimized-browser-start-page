@@ -49,15 +49,15 @@ function render() {
     h('h2', { id: 'shortcuts-h' }, 'Shortcuts'),
     chips,
     pager,
-    h('button.pill', {
+    h('button.pill.small', {
       type: 'button',
       'aria-pressed': String(view.editing),
       onclick: () => { view.editing = !view.editing; view.popoverId = null; render(); }
     }, view.editing ? 'Done' : 'Edit'),
-    h('button.pill.primary', {
+    h('button.pill.primary.small', {
       type: 'button',
       onclick: () => openShortcutEditor(null, { category: view.category === 'All' ? '' : view.category })
-    }, icon('plus'), 'Add')
+    }, icon('plus', 14), 'Add')
   );
 
   const grid = h('div.grid', { style: { gridTemplateColumns: `repeat(${perRow}, minmax(0, 1fr))` } });
