@@ -2,6 +2,14 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.3.0 — 2026-10-08
+
+### Added
+- Launcher icons can be an emoji (up to 3, kept whole) or an uploaded image that fills the button (Settings → Launchers → Edit → Image).
+
+### Changed
+- The shortcuts "Add" button is sand with dark text, so it stands apart from the accent-colored Search buttons and reads clearly.
+
 ## v1.2.0 — 2026-10-08
 
 ### Added

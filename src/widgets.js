@@ -1,5 +1,5 @@
 // Reusable pieces built on dom.js: shortcut badges, swatch pickers, listbox dropdowns, toasts.
-import { SWATCHES, initialOf } from './core.js';
+import { SWATCHES, firstGraphemes, initialOf } from './core.js';
 import { h, icon } from './dom.js';
 import { faviconUrl, siteIconSources } from './storage.js';
 
@@ -39,6 +39,14 @@ export function badge({ name, url, color = 'green', icon: mode = 'site', image =
     letter();
   }
   return el;
+}
+
+// What a launcher button shows: its uploaded image, filling the circle, or its label (letters or emoji).
+export function launcherMark(group) {
+  if (group.image) return h('img.launcher-img', { src: group.image, alt: '', draggable: 'false' });
+  // Emoji are wider than letters: three in a row only fit the 40px circle at a smaller size.
+  const tight = firstGraphemes(group.icon, 2) !== group.icon && /\p{Extended_Pictographic}/u.test(group.icon);
+  return h(`span.launcher-label${tight ? '.tight' : ''}`, {}, group.icon);
 }
 
 // Chrome's favicon cache answers unknown pages with a generic globe; detect it by comparing pixels.

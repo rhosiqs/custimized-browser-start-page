@@ -40,4 +40,4 @@ JSON is canonical. YAML, TOML and text wrap the same JSON payload under a single
 
 - User-entered destinations are normalized by `normalizeHttpUrl`; only `http:`/`https:` are stored or opened.
 - User text is always inserted with text nodes; `innerHTML` is used only for the static SVG icon table in `dom.js`.
-- Uploaded images are type- and size-checked and stored as data URLs (512 KB per shortcut icon, 3 MB background).
+- Uploaded images are type- and size-checked and stored as data URLs (512 KB per shortcut or launcher icon, 3 MB background).

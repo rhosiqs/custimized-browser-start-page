@@ -4,7 +4,7 @@ import { h, icon } from './dom.js';
 import { store, update } from './state.js';
 import { openSettings } from './settings.js';
 import { isDark } from './appearance.js';
-import { badge } from './widgets.js';
+import { badge, launcherMark } from './widgets.js';
 
 const view = { open: null, pinned: false };
 
@@ -51,7 +51,7 @@ function launcher(group) {
     onmouseenter: () => { if (!view.pinned) setOpen(group.id, false); },
     onfocus: () => { if (!view.pinned) setOpen(group.id, false); },
     onclick: () => (view.open === group.id && view.pinned ? setOpen(null, false) : setOpen(group.id, true))
-  }, group.icon);
+  }, launcherMark(group));
 
   const links = group.links.length
     ? group.links.map((link) => h('a.flyout-link', { href: link.url },

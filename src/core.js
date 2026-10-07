@@ -116,7 +116,7 @@ export function defaultSettings() {
       id: `sc-${index + 1}`, name, url: new URL(url).href, category, color, icon: 'site', image: ''
     })),
     launchers: DEFAULT_LAUNCHERS.map(([name, icon, color, links], index) => ({
-      id: `ln-${index + 1}`, name, icon, color,
+      id: `ln-${index + 1}`, name, icon, color, image: '',
       links: links.map(([linkName, host]) => ({ name: linkName, url: `https://${host}/` }))
     }))
   };
@@ -182,6 +182,13 @@ export function routeQuery(raw, engine) {
   }
   if (!engine) return { kind: 'blocked', hint: 'No engine', action: 'Search' };
   return { kind: 'search', hint: engine.name, action: 'Search', dest: buildSearchUrl(engine.url, query) };
+}
+
+// The first `max` characters as people see them, so an emoji such as 🧑‍🔬 or 🇹🇼 stays whole.
+export function firstGraphemes(value, max) {
+  const str = String(value ?? '');
+  const parts = typeof Intl.Segmenter === 'function' ? Array.from(new Intl.Segmenter().segment(str), (s) => s.segment) : Array.from(str);
+  return parts.slice(0, max).join('');
 }
 
 export function initialOf(name) {
@@ -523,11 +530,15 @@ export function normalizeSettings(input, { fallback = defaultSettings() } = {}) 
         }
         links.push({ name: linkName, url: url.url });
       });
+      // An uploaded image fills the launcher button in place of its label.
+      const image = isImageDataUrl(group.image, SHORTCUT_IMAGE_LIMIT) ? group.image : '';
+      if (group.image && !image) report.skipped.push({ item: `${name} launcher image`, reason: 'not an embedded image under 512 KB' });
       out.launchers.push({
         id: text(group.id, 60) || createId('ln'),
         name,
-        icon: text(group.icon, 3) || initialOf(name),
+        icon: firstGraphemes(text(group.icon, 40), 3) || initialOf(name),
         color: pick(group.color, Object.keys(SWATCHES), 'green'),
+        image,
         links
       });
     });

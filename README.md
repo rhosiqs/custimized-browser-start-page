@@ -8,7 +8,7 @@ A Chrome extension (Manifest V3) that replaces the new tab page with a calm, loc
 - **Three search boxes** — Web, AI and Academic, each with its own engine list and default. Any box opens `http(s)` links directly and sends DOIs (`10.x/…`, `doi:…`, `doi.org/…`) to doi.org; other schemes such as `javascript:` are blocked.
 - **Suggestions** — recent queries from local history, plus web suggestions (Datamuse) in the Web box. ↑ ↓ to move, Enter to choose, Esc to close.
 - **Shortcuts** — category filter chips, paging (rows × per row), drag any tile to reorder, a quick-edit popover on each tile (with delete), a full editor (website icon, letter, or uploaded image), and an Edit mode with remove buttons and arrow-key reordering.
-- **Launcher dock** — groups of links, shown with website icons, that preview on hover or focus and pin open on click.
+- **Launcher dock** — groups of links, shown with website icons, that preview on hover or focus and pin open on click. Each launcher shows up to 3 letters or emoji, or an uploaded image that fills the button.
 - **Appearance** — light, dark or system theme; green, brown or ink accent; solid, gradient or image background.
 - **Data** — export to JSON, YAML, TOML or text; imports are reviewed (fixed, skipped, merge or replace) before anything changes.
 - Keyboard: `/` focuses web search; `Esc` closes menus and dialogs; Ctrl/⌘ + Enter or click opens in a new tab.

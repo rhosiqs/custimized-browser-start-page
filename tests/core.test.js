@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  FORMATS, clockLabel, clockParts, countItems, zoneAbbreviation, zoneFromAbbreviation, defaultSettings, detectFormat, historyMatches, isValidEngineUrl, mergeSettings, moveItem,
+  FORMATS, clockLabel, clockParts, countItems, firstGraphemes, zoneAbbreviation, zoneFromAbbreviation, defaultSettings, detectFormat, historyMatches, isValidEngineUrl, mergeSettings, moveItem,
   normalizeDoi, normalizeHex, normalizeHttpUrl, normalizeSettings, parseBackup, recordHistory, relativeZone, routeQuery, serialize
 } from '../src/core.js';
 
@@ -213,4 +213,25 @@ test('untouched v4 default clocks drop their labels; renamed ones keep them', ()
   assert.equal(normalizeSettings({ version: 5, clocks: { world: v4 } }).settings.clocks.world[1].city, 'Pacific');
   const renamed = [v4[0], { city: 'West coast', tz: 'America/Los_Angeles' }, v4[2]];
   assert.equal(normalizeSettings({ version: 4, clocks: { world: renamed } }).settings.clocks.world[1].city, 'West coast');
+});
+
+test('firstGraphemes keeps emoji whole', () => {
+  assert.equal(firstGraphemes('🧑‍🔬', 3), '🧑‍🔬');
+  assert.equal(firstGraphemes('🇹🇼📚✨🎵', 3), '🇹🇼📚✨');
+  assert.equal(firstGraphemes('ABCD', 3), 'ABC');
+});
+
+test('launchers keep emoji labels and valid images, and drop bad images', () => {
+  const png = 'data:image/png;base64,iVBORw0KGgo=';
+  const { settings, report } = normalizeSettings({
+    launchers: [
+      { name: 'Lab', icon: '🧑‍🔬', image: png, links: [] },
+      { name: 'Web', icon: 'W', image: 'https://example.com/x.png', links: [] }
+    ]
+  });
+  assert.equal(settings.launchers[0].icon, '🧑‍🔬');
+  assert.equal(settings.launchers[0].image, png);
+  assert.equal(settings.launchers[1].image, '');
+  assert.ok(report.skipped.some((s) => s.item === 'Web launcher image'));
+  assert.ok(defaultSettings().launchers.every((l) => l.image === ''));
 });

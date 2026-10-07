@@ -1,13 +1,13 @@
 // Settings dialog. Edits stay in a draft until Save; appearance changes preview live and revert on Discard or close.
 import {
-  ACCENTS, BACKGROUND_IMAGE_LIMIT, BLOCKS, FORMATS, SEARCH_BOXES, SWATCHES,
-  ZONE_ABBREVIATION_LIST, clockLabel, clone, createId, isValidEngineUrl, isValidTimeZone, moveItem, normalizeHex, normalizeHttpUrl, serialize, zoneFromAbbreviation
+  ACCENTS, BACKGROUND_IMAGE_LIMIT, BLOCKS, FORMATS, SEARCH_BOXES, SHORTCUT_IMAGE_LIMIT, SWATCHES,
+  ZONE_ABBREVIATION_LIST, clockLabel, clone, createId, firstGraphemes, isValidEngineUrl, isValidTimeZone, moveItem, normalizeHex, normalizeHttpUrl, serialize, zoneFromAbbreviation
 } from './core.js';
 import { applyAppearance } from './appearance.js';
 import { h, icon, readImageFile, segmented, showModal } from './dom.js';
 import { pickImportFile } from './import-review.js';
 import { clearHistory, store, update } from './state.js';
-import { swatchPicker, toast } from './widgets.js';
+import { launcherMark, swatchPicker, toast } from './widgets.js';
 
 const TABS = ['Appearance', 'Search', 'Clocks', 'Launchers', 'Layout', 'Data'];
 const PRESETS = ['#f3f2f2', '#eae9e9', '#fff3e4', '#ffe3bf', '#e8f3ea', '#1d1c1b'];
@@ -16,7 +16,7 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
   const ui = { tab, engineBox: 'web', format: 'json', expanded: launcherId, saved: clone(store.settings) };
   let draft = clone(store.settings);
   if (addLauncher) {
-    const fresh = { id: createId('ln'), name: 'New launcher', icon: 'N', color: 'green', links: [] };
+    const fresh = { id: createId('ln'), name: 'New launcher', icon: 'N', color: 'green', image: '', links: [] };
     draft.launchers.push(fresh);
     ui.expanded = fresh.id;
   }
@@ -313,7 +313,7 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
             h('div', { style: { display: 'flex', flexDirection: 'column' } },
               h('button.icon-btn.small', { type: 'button', 'aria-label': `Move ${group.name} up`, disabled: i === 0, onclick: () => change(() => { draft.launchers = moveItem(groups, i, i - 1); }) }, icon('chevronUp', 14, 2.2)),
               h('button.icon-btn.small', { type: 'button', 'aria-label': `Move ${group.name} down`, disabled: i === groups.length - 1, onclick: () => change(() => { draft.launchers = moveItem(groups, i, i + 1); }) }, icon('chevronDown', 14, 2.2))),
-            h('span.badge', { 'aria-hidden': 'true', style: { width: '40px', height: '40px', fontSize: '13px', background: SWATCHES[group.color].fill, color: SWATCHES[group.color].fg } }, group.icon),
+            h('span.badge', { 'aria-hidden': 'true', style: { width: '40px', height: '40px', fontSize: '13px', background: SWATCHES[group.color].fill, color: SWATCHES[group.color].fg } }, launcherMark(group)),
             h('span.grow', {}, h('span.title', {}, group.name), h('span.sub', {}, `${group.links.length} link${group.links.length === 1 ? '' : 's'}`)),
             h('button.btn.quiet-outline', {
               type: 'button', 'aria-expanded': String(expanded), 'aria-label': `${expanded ? 'Close' : 'Edit'} ${group.name} launcher`,
@@ -328,7 +328,7 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
           h('button.btn.primary', {
             type: 'button', style: { alignSelf: 'flex-start' },
             onclick: () => change(() => {
-              const fresh = { id: createId('ln'), name: 'New launcher', icon: 'N', color: 'green', links: [] };
+              const fresh = { id: createId('ln'), name: 'New launcher', icon: 'N', color: 'green', image: '', links: [] };
               draft.launchers.push(fresh);
               ui.expanded = fresh.id;
             })
@@ -339,7 +339,30 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
       const launcherEditor = (group) => {
         const idBase = `ln-${group.id}`;
         const name = h('input.input.compact', { id: `${idBase}-name`, type: 'text', value: group.name, oninput: () => { group.name = name.value; touch(); } });
-        const mark = h('input.input.compact', { id: `${idBase}-icon`, type: 'text', value: group.icon, maxlength: 3, style: { width: '72px' }, oninput: () => { group.icon = mark.value.trim() || group.name.charAt(0).toUpperCase(); touch(); } });
+        // Up to 3 characters as people see them, so an emoji counts as one.
+        const mark = h('input.input.compact', {
+          id: `${idBase}-icon`, type: 'text', value: group.icon, style: { width: '72px' }, 'aria-describedby': `${idBase}-icon-note`,
+          oninput: () => { group.icon = firstGraphemes(mark.value.trim(), 3) || group.name.charAt(0).toUpperCase(); touch(); },
+          onchange: () => { mark.value = group.icon; }
+        });
+        const imageMsg = h('span.note', { id: `${idBase}-icon-note`, 'aria-live': 'polite' },
+          group.image ? 'The image fills the launcher in place of the label.' : 'Letters or an emoji, up to 3. Or choose an image (up to 512 KB).');
+        const imageControls = h('div.inline', { style: { gap: '8px' } },
+          h('label.btn.file-btn.round.small', {}, icon('upload', 14, 2.2), group.image ? 'Change image' : 'Choose image',
+            h('input', {
+              type: 'file', accept: 'image/png,image/jpeg,image/webp,image/svg+xml,image/gif', 'aria-describedby': `${idBase}-icon-note`,
+              onchange: async (event) => {
+                const file = event.target.files?.[0];
+                if (!file) return;
+                try {
+                  const image = await readImageFile(file, SHORTCUT_IMAGE_LIMIT);
+                  change(() => { group.image = image; });
+                } catch (error) {
+                  imageMsg.textContent = error.message;
+                }
+              }
+            })),
+          group.image ? h('button.btn.small', { type: 'button', onclick: () => change(() => { group.image = ''; }) }, icon('trash', 14), 'Remove image') : null);
         const links = group.links.map((link, i) => {
           const linkName = h('input.input.tight', { type: 'text', value: link.name, 'aria-label': 'Link name', oninput: () => { link.name = linkName.value; touch(); } });
           const linkUrl = h('input.input.tight', {
@@ -358,7 +381,9 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
           h('div.inline', { style: { gap: '16px' } },
             h('div.field-group', {}, h('label.field-label', { for: `${idBase}-name` }, 'Name'), name),
             h('div.field-group', {}, h('label.field-label', { for: `${idBase}-icon` }, 'Label'), mark),
+            h('div.field-group', {}, h('span.field-label', {}, 'Image'), imageControls),
             h('div.field-group', {}, h('span.field-label', {}, 'Color'), swatchPicker({ value: group.color, size: 'small', label: `${group.name} color`, onChange: (color) => change(() => { group.color = color; }) }))),
+          imageMsg,
           h('span.field-label', {}, 'Links'),
           ...(links.length ? links : [h('p.note', {}, 'No links yet.')]),
           h('div.inline', {},
