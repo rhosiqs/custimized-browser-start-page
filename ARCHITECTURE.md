@@ -24,6 +24,10 @@ newtab.html ─ main.js ─┬─ state.js ── storage.js ── chrome.stora
 
 The page reproduces the design canvas’s stage rule: the 1440×810 design is scaled with `transform: scale()` to fit the window, so the page never scrolls. Dialogs render inside the stage (not the browser top layer) so they scale with it; while one is open the rest of the stage is `inert`.
 
+## New tab focus
+
+Chrome keeps keyboard focus in the address bar on an overridden new tab. On load, `main.js` opens `newtab.html?focus` in a new tab at the same position and closes the original, which gives the page focus so the web search box gets the cursor.
+
 ## Settings flow
 
 - Quick edits (engine menu, shortcut popover, reorder, theme toggle) call `update()` directly.

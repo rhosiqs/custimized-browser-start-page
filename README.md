@@ -11,7 +11,7 @@ A Chrome extension (Manifest V3) that replaces the new tab page with a calm, loc
 - **Launcher dock** — groups of links that preview on hover or focus and pin open on click.
 - **Appearance** — light, dark or system theme; green, brown or ink accent; solid, gradient or image background.
 - **Data** — export to JSON, YAML, TOML or text; imports are reviewed (fixed, skipped, merge or replace) before anything changes.
-- Keyboard: `/` focuses web search; `Esc` closes menus and dialogs; Ctrl/⌘ + Enter or click opens in a new tab.
+- Keyboard: a new tab opens with the cursor in web search (the page reopens itself once so Chrome hands it focus, so the address bar shows the extension’s address); `/` focuses web search; `Esc` closes menus and dialogs; Ctrl/⌘ + Enter or click opens in a new tab.
 
 ## Install (unpacked)
 

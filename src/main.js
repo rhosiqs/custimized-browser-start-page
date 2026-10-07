@@ -116,7 +116,19 @@ function wireGlobalEvents() {
   });
 }
 
-async function start() {
+// Chrome keeps keyboard focus in the address bar on an overridden new tab, so focus() alone can't
+// reach the page. Reopening the page as an ordinary extension tab (marked ?focus) hands focus to it.
+function reopenForFocus() {
+  if (typeof chrome === 'undefined' || !chrome.tabs?.getCurrent || new URLSearchParams(location.search).has('focus')) return false;
+  chrome.tabs.getCurrent((tab) => {
+    if (!tab) { start(true); return; }
+    chrome.tabs.create({ url: chrome.runtime.getURL('newtab.html?focus'), index: tab.index, windowId: tab.windowId, active: true }, () => chrome.tabs.remove(tab.id));
+  });
+  return true;
+}
+
+async function start(skipReopen = false) {
+  if (!skipReopen && reopenForFocus()) return;
   fitStage();
   await initStore();
   subscribe(render);
