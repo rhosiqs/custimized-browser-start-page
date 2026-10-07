@@ -9,7 +9,7 @@ const view = { category: 'All', page: 0, editing: false, popoverId: null, focusA
 let section = null;
 
 export function shortcutsBlock() {
-  section ||= h('section.shortcuts', { 'aria-labelledby': 'shortcuts-h' });
+  section ||= h('section.shortcuts', { 'aria-label': 'Shortcuts' });
   render();
   return section;
 }
@@ -46,7 +46,6 @@ function render() {
   ) : null;
 
   const head = h('div.shortcuts-head', {},
-    h('h2', { id: 'shortcuts-h' }, 'Shortcuts'),
     chips,
     pager,
     h('button.pill.small', {
