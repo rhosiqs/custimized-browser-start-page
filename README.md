@@ -1,7 +1,7 @@
 # Start Page — Chrome New Tab Extension
 
 <p>
-  <img alt="Version" src="https://img.shields.io/badge/version-v1.9.1-blue">
+  <img alt="Version" src="https://img.shields.io/badge/version-v1.10.0-blue">
   <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green">
 </p>
 
@@ -16,12 +16,14 @@ A Chrome extension (Manifest V3) that replaces the new tab page with a calm, loc
 - **Clocks** — local time (12- or 24-hour; seconds shown smaller, on by default) and date plus configurable world clocks (UTC, PDT and EDT by default) with day and offset (“Tomorrow · +1h”). A clock shows its zone abbreviation, which follows daylight saving (PDT ↔ PST), unless you give it a label. Add one by abbreviation (PDT, CST, CET, JST…), city or zone name.
 - **Three search boxes** — Web, AI and Academic, each with its own engine list and default. Any box opens `http(s)` links directly and sends DOIs (`10.x/…`, `doi:…`, `doi.org/…`) to doi.org; other schemes such as `javascript:` are blocked.
 - **Suggestions** — recent queries from local history, plus web suggestions (Datamuse) in the Web box. ↑ ↓ to move, Enter to choose, Esc to close.
-- **Shortcuts** — optional categories with filter chips (the category row, with its Edit and Add buttons, can be turned off in Settings → Layout; the shortcuts then move up into its place), paging (rows × per row), drag any tile to reorder, a quick-edit popover on each tile (with delete), a full editor (website icon, letter, or uploaded image), an Edit mode with remove buttons and arrow-key reordering, and a Shortcuts tab in Settings that lists every shortcut to reorder, edit (in the same editor) or remove.
-- **Launcher dock** — groups of links, shown with website icons, that preview on hover or focus and pin open on click. Each launcher's icon is its label (up to 3 letters or emoji), a website's icon, an image link from the web, or an uploaded image; if a web icon fails to load, the label shows.
-- **Profiles** — separate sets of settings (appearance, search engines, clocks, shortcuts, launchers, layout), for example Work and Home. Switch or add one from the profile button at the left of the dock; Settings → Profiles renames, sets each profile's icon (first letter, a custom letter or emoji, or none), deletes, adds a blank profile or duplicates the one in use. Export and import work on the profile in use; search history is shared.
+- **Shortcuts** — optional categories with filter chips (the category row, with its Edit and Add buttons, can be turned off in Settings → Layout; the shortcuts then move up into its place), paging (rows × per row), drag any tile to reorder, a quick-edit popover on each tile (with delete), a full editor (name, address, category, icon, and whether it shows on all profiles), an Edit mode with remove buttons and arrow-key reordering, and a Shortcuts tab in Settings that lists every shortcut to reorder, edit (in the same editor) or remove.
+- **Launcher dock** — groups of links, shown with website icons, that preview on hover or focus and pin open on click. A launcher can show on all profiles. If a picture icon fails to load, a letter shows instead.
+- **Profiles** — separate sets of settings (appearance, search engines, clocks, shortcuts, launchers, layout), for example Work and Home. Switch or add one from the profile button at the left of the dock; Settings → Profiles renames, changes each profile's icon, deletes, adds a blank profile or duplicates the one in use. Export and import work on the profile in use; search history is shared.
+- **Show on all profiles** — a shortcut or launcher can be marked "Show on all profiles" in its editor. It then appears on every profile, edits to it apply everywhere, and deleting it removes it everywhere; each profile keeps its own order. Turning it off keeps the item in the profile you are in only.
+- **Icons** — every icon (shortcut, launcher, profile) is changed by clicking the icon itself, in Settings or in the shortcut editor. One picker offers a site's logo, an image from a web address, an uploaded image (scaled down to 128 px and stored in this browser), an emoji, or a solid color with a letter or without one. Profiles can also have no icon.
 - **Appearance** — light, dark or system theme; green, brown or ink accent; solid, gradient or image background, with separate background colors for the light and dark themes (dark defaults to #333333).
-- **Colors** — every color picker (accent, background, shortcut, launcher) shows two base colors and a + button; the + opens the other preset colors and a field for any #HEX color.
-- **Data** — export to JSON, YAML, TOML or text; imports are reviewed (fixed, skipped, merge or replace) before anything changes. A backup restores every setting, launcher icons included; merging takes the file's version of any shortcut or launcher you already have and keeps the rest.
+- **Colors** — every color picker (accent, background, icons) shows two base colors and a + button; the + opens the other preset colors and a field for any #HEX color.
+- **Data** — export to JSON, YAML, TOML or text; imports are reviewed (fixed, skipped, merge or replace) before anything changes. A backup restores every setting, icons included; merging takes the file's version of any shortcut or launcher you already have and keeps the rest.
 - Keyboard: `/` focuses web search; `Esc` closes menus and dialogs; Ctrl/⌘ + Enter or click opens in a new tab.
 
 ## Install (unpacked)
@@ -45,7 +47,7 @@ Settings and search history are stored in `chrome.storage.local` on this device 
 - `storage` — save settings and history.
 - `favicon` — show website icons from Chrome’s local favicon cache (no request to Google). When Chrome has no icon for a site yet, the page tries that site’s own `/favicon.ico` and `/apple-touch-icon.png`, then shows a letter.
 
-Fonts (Nunito, Noto Sans TC) are bundled in `fonts/`, so the page loads them from disk. Network requests happen only for Datamuse suggestions in the Web box, icon files from your shortcut and launcher sites (as above), image links you set as launcher icons (loaded without a referrer), and the destinations you open.
+Fonts (Nunito, Noto Sans TC) are bundled in `fonts/`, so the page loads them from disk. Network requests happen only for Datamuse suggestions in the Web box, icon files from your shortcut and launcher sites (as above), image links you set as icons (loaded without a referrer), and the destinations you open.
 
 ## Development
 
@@ -71,7 +73,7 @@ For quick UI work outside the extension, serve the folder (`python3 -m http.serv
 | `src/storage.js` | `chrome.storage.local` (or `localStorage`) persistence and favicon URLs. |
 | `src/state.js` | In-memory profiles/settings/history store with save-and-notify updates and profile actions. |
 | `src/search.js`, `src/shortcuts.js`, `src/dock.js` | Main page blocks. |
-| `src/shortcut-editor.js`, `src/settings.js`, `src/import-review.js` | Dialogs. |
+| `src/shortcut-editor.js`, `src/settings.js`, `src/import-review.js`, `src/icon-picker.js` | Dialogs, including the shared icon picker. |
 | `src/dom.js`, `src/widgets.js`, `src/appearance.js` | DOM helpers, shared widgets, theme application. |
 | `icons/` | Extension icons. |
 | `tests/core.test.js` | Node tests for `src/core.js`. |

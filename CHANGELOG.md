@@ -2,6 +2,17 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.10.0 — 2026-10-08
+
+### Added
+- Show on all profiles: a shortcut or launcher can be marked "Show on all profiles" in its editor (the shortcut editor, or the launcher's editor in Settings). It then appears on every profile, edits to it apply everywhere, and deleting it removes it everywhere. Each profile keeps its own order, and a new profile shows the shared items too. Turning the switch off keeps the item in the profile you are in only. Nothing is shared until you choose it, so existing settings need no change.
+- One icon picker for every icon. Click the icon itself (a shortcut in Settings or in the shortcut editor, a launcher, a profile) to open it. Choose a site's logo, an image from a web address, an uploaded image (scaled down to 128 px and stored in this browser), an emoji, or a solid color with a letter or with no letter. Profiles can also have no icon, or go back to the default.
+
+### Changed
+- The separate icon controls are gone: the shortcut editor's icon and color fields, the launcher editor's label, color and icon-mode controls, and the profile icon buttons in Settings → Profiles. Existing icons carry over unchanged (a shortcut's letter or upload, a launcher's label, website icon, image link or upload, and a profile's letter, custom text or none). Backups from earlier versions still import.
+- Replacing settings by an import keeps the shortcuts and launchers shown on all profiles, and an import never changes what is shared.
+- Settings schema version 9.
+
 ## v1.9.1 — 2026-10-08
 
 ### Added
