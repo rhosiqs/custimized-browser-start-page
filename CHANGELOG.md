@@ -2,6 +2,11 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.4.3 — 2026-10-08
+
+### Changed
+- A shortcut's edit button appears only when the pointer reaches the tile's top-right corner, instead of anywhere over the tile. Keyboard focus still shows it.
+
 ## v1.4.2 — 2026-10-08
 
 ### Fixed

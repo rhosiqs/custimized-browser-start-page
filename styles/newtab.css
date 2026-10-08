@@ -381,7 +381,8 @@ input:focus-visible { outline-offset: 2px; }
   background: var(--bg);
   opacity: 0;
 }
-.tile-wrap:hover .tile-edit,
+/* The button stays invisible until the pointer reaches it, so it shows only on the top-right corner. */
+.tile-edit:hover,
 .tile-wrap:focus-within .tile-edit,
 .tile-edit[aria-expanded='true'] { opacity: 1; }
 .tile-edit:hover { background: var(--surface); }
