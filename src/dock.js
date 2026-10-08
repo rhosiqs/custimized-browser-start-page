@@ -1,5 +1,5 @@
 // Bottom launcher dock: hover or focus previews a group's links, click pins it; plus theme and settings buttons.
-import { SWATCHES, hostOf } from './core.js';
+import { colorOf, hostOf } from './core.js';
 import { h, icon } from './dom.js';
 import { store, update } from './state.js';
 import { openSettings } from './settings.js';
@@ -39,7 +39,7 @@ function setOpen(id, pinned) {
 }
 
 function launcher(group) {
-  const swatch = SWATCHES[group.color] || SWATCHES.green;
+  const swatch = colorOf(group.color);
   const open = view.open === group.id;
   const flyoutId = `flyout-${group.id}`;
   const button = h('button.launcher-btn', {

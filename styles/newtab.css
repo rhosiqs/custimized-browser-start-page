@@ -652,6 +652,28 @@ input:focus-visible { outline-offset: 2px; }
 .swatch.small span { width: 24px; height: 24px; }
 .swatch.tiny { width: 32px; height: 32px; }
 .swatch.tiny span { width: 22px; height: 22px; }
+/* Color picker: two base swatches, then + (filled with the current color when it comes from the popup). */
+.color-choice { position: relative; flex-wrap: nowrap; }
+.swatch.more span { display: grid; place-items: center; border-style: dashed; border-color: var(--control); color: var(--ink); }
+.swatch.more[aria-pressed='true'] span { border-style: solid; border-color: var(--divider); }
+.color-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 220px;
+  padding: 10px;
+  border: 1px solid var(--control);
+  border-radius: 12px;
+  background: var(--pop);
+}
+.color-pop.up { top: auto; bottom: calc(100% + 6px); }
+.color-pop-hex { display: flex; gap: 6px; }
+.color-pop-hex .input { flex: 1; min-width: 0; letter-spacing: 0.06em; }
+.color-pop .msg { font-size: 12px; }
 
 .preview-card { display: flex; align-items: center; gap: 16px; padding: 14px 16px; border-radius: 6px; background: var(--surface); }
 .preview-card .badge { width: 52px; height: 52px; font-size: 22px; }
@@ -707,7 +729,6 @@ fieldset.plain legend { padding: 0; margin-bottom: 6px; font-size: 14px; font-we
 .form-grid { display: grid; grid-template-columns: 112px minmax(0, 1fr); align-items: center; gap: 16px; }
 .inline { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .note { font-size: 13px; color: var(--muted); }
-.color-input { width: 48px; height: 40px; flex: none; padding: 2px; border: 1px solid var(--control); border-radius: 6px; background: var(--bg); }
 .bg-preview { display: block; width: 20px; height: 20px; border-radius: 4px; border: 1px solid var(--divider); }
 
 .engine-table { display: flex; flex-direction: column; gap: 4px; }

@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  FORMATS, clockLabel, iconTone, clockParts, countItems, firstGraphemes, zoneAbbreviation, zoneFromAbbreviation, defaultSettings, detectFormat, historyMatches, isValidEngineUrl, mergeSettings, moveItem,
-  normalizeDoi, normalizeHex, normalizeHttpUrl, normalizeSettings, parseBackup, recordHistory, relativeZone, routeQuery, serialize
+  FORMATS, SWATCHES, clockLabel, colorOf, iconTone, clockParts, countItems, firstGraphemes, zoneAbbreviation, zoneFromAbbreviation, defaultSettings, detectFormat, historyMatches, isValidEngineUrl, mergeSettings, moveItem,
+  normalizeDoi, normalizeHex, normalizeHttpUrl, normalizeSettings, parseBackup, readableOn, recordHistory, relativeZone, routeQuery, serialize
 } from '../src/core.js';
 
 const google = { id: 'google', name: 'Google', url: 'https://www.google.com/search?q=%s' };
@@ -60,6 +60,29 @@ test('normalizeHex lowercases and expands shorthand', () => {
   assert.equal(normalizeHex('#B68235'), '#b68235');
   assert.equal(normalizeHex('#abc'), '#aabbcc');
   assert.equal(normalizeHex('red'), '');
+});
+
+test('colorOf resolves presets and custom HEX with readable text', () => {
+  assert.equal(colorOf('gold'), SWATCHES.gold);
+  assert.deepEqual(colorOf('#ABC'), { label: '#aabbcc', fill: '#aabbcc', fg: '#201f1d' });
+  assert.equal(colorOf('#1d3557').fg, '#f3f2f2');
+  assert.equal(colorOf('toString'), SWATCHES.green);
+  assert.equal(readableOn('#ffffff'), '#201f1d');
+  assert.equal(readableOn('#000000'), '#f3f2f2');
+});
+
+test('normalizeSettings keeps custom HEX colors for accent, shortcuts and launchers', () => {
+  const base = defaultSettings();
+  const { settings } = normalizeSettings({
+    ...base,
+    accent: '#C0FFEE',
+    shortcuts: [{ ...base.shortcuts[0], color: '#123' }, { ...base.shortcuts[1], color: 'purple' }],
+    launchers: [{ ...base.launchers[0], color: '#AbCdEf' }]
+  });
+  assert.equal(settings.accent, '#c0ffee');
+  assert.deepEqual(settings.shortcuts.map((s) => s.color), ['#112233', 'green']);
+  assert.equal(settings.launchers[0].color, '#abcdef');
+  assert.equal(normalizeSettings({ ...base, accent: 'teal' }).settings.accent, base.accent);
 });
 
 test('relativeZone describes day and offset', () => {

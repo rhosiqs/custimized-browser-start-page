@@ -1,4 +1,5 @@
 // Applies theme, accent and background from settings to the page root and stage.
+import { normalizeHex, readableOn } from './core.js';
 
 export function isDark(settings) {
   return settings.theme === 'dark' || (settings.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -9,6 +10,15 @@ export function applyAppearance(settings) {
   root.classList.toggle('theme-dark', isDark(settings));
   root.classList.toggle('theme-light', !isDark(settings));
   for (const accent of ['green', 'brown', 'ink']) root.classList.toggle(`acc-${accent}`, settings.accent === accent);
+  // A custom #HEX accent is the same in both themes, with text picked for contrast.
+  const custom = normalizeHex(settings.accent);
+  if (custom) {
+    root.style.setProperty('--acc', custom);
+    root.style.setProperty('--on-acc', readableOn(custom));
+  } else {
+    root.style.removeProperty('--acc');
+    root.style.removeProperty('--on-acc');
+  }
 
   const stage = document.getElementById('stage');
   const bg = settings.background;

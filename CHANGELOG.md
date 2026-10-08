@@ -2,6 +2,14 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.6.0 — 2026-10-08
+
+### Changed
+- Every color picker (Accent, background colors, shortcut and launcher colors) shows two base colors and a + button. The + opens a popup with the other preset colors and a field for any #HEX color. A color chosen there fills the + button.
+
+### Added
+- Custom #HEX colors for the accent and for shortcut and launcher colors. Their text color is picked for contrast; a custom accent looks the same in light and dark themes.
+
 ## v1.5.1 — 2026-10-08
 
 ### Changed

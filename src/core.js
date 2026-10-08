@@ -392,11 +392,34 @@ export function iconTone(pixels) {
 
 const HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
 
+// Text color for a #rrggbb fill: whichever of the page's ink and paper colors contrasts more (WCAG luminance).
+export function readableOn(hex) {
+  const channel = (i) => {
+    const c = parseInt(hex.slice(i, i + 2), 16) / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  const lum = 0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5);
+  // Luminance of #201f1d is 0.0137 and of #f3f2f2 is 0.887.
+  return (lum + 0.05) / 0.0637 >= 0.937 / (lum + 0.05) ? '#201f1d' : '#f3f2f2';
+}
+
+// A tile or launcher color is a SWATCHES key or a custom #rrggbb. Returns { label, fill, fg }.
+export function colorOf(color) {
+  if (Object.hasOwn(SWATCHES, color)) return SWATCHES[color];
+  const hex = normalizeHex(color);
+  return hex ? { label: hex, fill: hex, fg: readableOn(hex) } : SWATCHES.green;
+}
+
 export function normalizeHex(value) {
   const text = String(value ?? '').trim();
   if (!HEX.test(text)) return '';
   const hex = text.length === 4 ? `#${text.slice(1).split('').map((c) => c + c).join('')}` : text;
   return hex.toLowerCase();
+}
+
+// A preset key from allowed, or any #HEX color (stored as #rrggbb).
+function pickColor(value, allowed, fallback) {
+  return allowed.includes(value) ? value : normalizeHex(value) || fallback;
 }
 
 function pick(value, allowed, fallback) {
@@ -425,7 +448,7 @@ export function normalizeSettings(input, { fallback = defaultSettings() } = {}) 
   const legacyStarters = version === 1;
 
   out.theme = pick(src.theme, THEMES, out.theme);
-  out.accent = pick(src.accent, Object.keys(ACCENTS), out.accent);
+  out.accent = pickColor(src.accent, Object.keys(ACCENTS), out.accent);
 
   if (src.background && typeof src.background === 'object') {
     const bg = src.background;
@@ -534,7 +557,7 @@ export function normalizeSettings(input, { fallback = defaultSettings() } = {}) 
         name,
         url: url.url,
         category: text(item.category, 30),
-        color: pick(item.color, Object.keys(SWATCHES), 'green'),
+        color: pickColor(item.color, Object.keys(SWATCHES), 'green'),
         icon: icon === 'upload' && !image ? 'letter' : icon,
         image
       });
@@ -572,7 +595,7 @@ export function normalizeSettings(input, { fallback = defaultSettings() } = {}) 
         id: text(group.id, 60) || createId('ln'),
         name,
         icon: firstGraphemes(text(group.icon, 40), 3) || initialOf(name),
-        color: pick(group.color, Object.keys(SWATCHES), 'green'),
+        color: pickColor(group.color, Object.keys(SWATCHES), 'green'),
         iconMode,
         iconUrl,
         image,

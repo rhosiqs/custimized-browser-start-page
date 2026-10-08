@@ -1,13 +1,13 @@
 // Settings dialog. Edits stay in a draft until Save; appearance changes preview live and revert on Discard or close.
 import {
-  ACCENTS, BACKGROUND_IMAGE_LIMIT, BLOCKS, FORMATS, SEARCH_BOXES, SHORTCUT_IMAGE_LIMIT, SWATCHES,
-  ZONE_ABBREVIATION_LIST, clockLabel, clone, createId, firstGraphemes, isValidEngineUrl, isValidTimeZone, moveItem, normalizeHex, normalizeHttpUrl, serialize, zoneFromAbbreviation
+  ACCENTS, BACKGROUND_IMAGE_LIMIT, BLOCKS, FORMATS, SEARCH_BOXES, SHORTCUT_IMAGE_LIMIT,
+  ZONE_ABBREVIATION_LIST, clockLabel, clone, colorOf, createId, firstGraphemes, isValidEngineUrl, isValidTimeZone, moveItem, normalizeHttpUrl, serialize, zoneFromAbbreviation
 } from './core.js';
 import { applyAppearance } from './appearance.js';
 import { h, icon, readImageFile, segmented, showModal } from './dom.js';
 import { pickImportFile } from './import-review.js';
 import { clearHistory, store, update } from './state.js';
-import { launcherMark, sortHandle, swatchPicker, toast } from './widgets.js';
+import { colorChoice, launcherMark, sortHandle, swatchPicker, toast } from './widgets.js';
 
 const TABS = ['Appearance', 'Search', 'Clocks', 'Launchers', 'Layout', 'Data'];
 const PRESETS = ['#f3f2f2', '#eae9e9', '#fff3e4', '#ffe3bf', '#e8f3ea', '#1d1c1b'];
@@ -100,10 +100,11 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
             onChange: (value) => change(() => { draft.theme = value; })
           }),
           h('span.field-label', { id: 'lbl-acc' }, 'Accent'),
-          h('div.swatches', { role: 'group', 'aria-labelledby': 'lbl-acc' }, ...Object.entries(ACCENTS).map(([key, accent]) => h('button.swatch', {
-            type: 'button', 'aria-label': accent.label, 'aria-pressed': String(draft.accent === key),
-            onclick: () => change(() => { draft.accent = key; })
-          }, h('span', { style: { background: accent.preview } })))),
+          colorChoice({
+            label: 'Accent', value: draft.accent,
+            options: Object.entries(ACCENTS).map(([key, accent]) => ({ value: key, label: accent.label, fill: accent.preview, fg: '#f3f2f2' })),
+            onChange: (value) => change(() => { draft.accent = value; })
+          }),
           h('span.field-label', { id: 'lbl-bg' }, 'Background'),
           segmented({
             labelledBy: 'lbl-bg', value: bg.type,
@@ -147,38 +148,15 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
 
       const colorPicker = (key, label) => {
         const bg = draft.background;
-        const id = `hex-${key}`;
-        const value = bg[key];
-        const msg = h('span.msg.bad', { id: `${id}-msg`, hidden: true, style: { flexBasis: '100%', fontSize: '12px' } }, 'Use #RGB or #RRGGBB, for example #f3f2f2.');
-        const text = h('input.input.compact', {
-          id, type: 'text', value: value || '', placeholder: key === 'solid' ? 'Theme' : '', maxlength: 7, spellcheck: 'false', autocomplete: 'off',
-          'aria-describedby': `${id}-msg`, style: { width: '104px', letterSpacing: '0.06em' },
-          oninput: () => {
-            let v = text.value.trim();
-            if (v && v[0] !== '#') v = `#${v}`;
-            const hex = normalizeHex(v);
-            const empty = key === 'solid' && !v;
-            text.setAttribute('aria-invalid', String(!hex && !empty));
-            msg.hidden = Boolean(hex || empty);
-            if (hex || empty) { bg[key] = hex; picker.value = hex || '#f3f2f2'; touch(); }
-          }
-        });
-        const picker = h('input.color-input', {
-          type: 'color', 'aria-label': `${label} color picker`, value: value || '#f3f2f2',
-          oninput: () => { bg[key] = picker.value; text.value = picker.value; touch(); },
-          onchange: () => renderPanel()
-        });
         return [
-          h('label.field-label', { for: id }, label),
+          h('span.field-label', {}, label),
           h('div.inline', {},
-            picker, text,
-            h('div.swatches', { role: 'group', 'aria-label': `${label} suggestions`, style: { marginLeft: '6px', gap: '2px' } },
-              ...PRESETS.map((hex) => h('button.swatch.tiny', {
-                type: 'button', 'aria-label': hex, 'aria-pressed': String(value === hex),
-                onclick: () => change(() => { bg[key] = hex; })
-              }, h('span', { style: { background: hex } })))),
-            key === 'solid' && value ? h('button.btn.small', { type: 'button', onclick: () => change(() => { bg.solid = ''; }) }, 'Use theme color') : null,
-            msg)
+            colorChoice({
+              label, value: bg[key],
+              options: PRESETS.map((hex) => ({ value: hex, label: hex, fill: hex })),
+              onChange: (value) => change(() => { bg[key] = value; })
+            }),
+            key === 'solid' && bg.solid ? h('button.btn.small', { type: 'button', onclick: () => change(() => { bg.solid = ''; }) }, 'Use theme color') : null)
         ];
       };
 
@@ -308,7 +286,7 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
           const expanded = ui.expanded === group.id;
           const row = h(`li${expanded ? '.expanded' : ''}`, { dataset: { sortRow: '' } },
             sortHandle({ item: group, index: i, count: groups.length, label: group.name, onMove: (from, to) => change(() => { draft.launchers = moveItem(groups, from, to); }) }),
-            h('span.badge', { 'aria-hidden': 'true', style: { width: '40px', height: '40px', fontSize: '13px', background: SWATCHES[group.color].fill, color: SWATCHES[group.color].fg } }, launcherMark(group)),
+            h('span.badge', { 'aria-hidden': 'true', style: { width: '40px', height: '40px', fontSize: '13px', background: colorOf(group.color).fill, color: colorOf(group.color).fg } }, launcherMark(group)),
             h('span.grow', {}, h('span.title', {}, group.name), h('span.sub', {}, `${group.links.length} link${group.links.length === 1 ? '' : 's'}`)),
             h('button.btn.quiet-outline', {
               type: 'button', 'aria-expanded': String(expanded), 'aria-label': `${expanded ? 'Close' : 'Edit'} ${group.name} launcher`,

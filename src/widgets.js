@@ -1,12 +1,12 @@
-// Reusable pieces built on dom.js: shortcut badges, swatch pickers, listbox dropdowns, toasts.
-import { SWATCHES, firstGraphemes, iconTone, initialOf } from './core.js';
+// Reusable pieces built on dom.js: shortcut badges, color pickers, listbox dropdowns, toasts.
+import { SWATCHES, colorOf, firstGraphemes, iconTone, initialOf, normalizeHex, readableOn } from './core.js';
 import { grip, h, icon } from './dom.js';
 import { faviconUrl, siteIconSources } from './storage.js';
 
 // Round icon for a shortcut or launcher link: uploaded image, site favicon, or colored initial.
 // color: null leaves the letter's colors to the stylesheet (launcher links).
 export function badge({ name, url, color = 'green', icon: mode = 'site', image = '' }, className = '') {
-  const swatch = color === null ? null : SWATCHES[color] || SWATCHES.green;
+  const swatch = color === null ? null : colorOf(color);
   const letter = () => {
     el.className = `badge${className ? ` ${className}` : ''}`;
     if (swatch) {
@@ -187,17 +187,96 @@ export function sortHandle({ item, index, count, label, onMove }) {
   return handle;
 }
 
+// Shortcut and launcher colors: the SWATCHES presets plus custom #HEX.
 export function swatchPicker({ value, onChange, size = '', label = 'Color' }) {
-  const group = h('div.swatches', { role: 'group', 'aria-label': label });
-  const render = (current) => {
-    group.replaceChildren(...Object.entries(SWATCHES).map(([key, swatch]) => h(`button.swatch${size ? `.${size}` : ''}`, {
-      type: 'button',
-      'aria-label': swatch.label,
-      'aria-pressed': String(key === current),
-      onclick: () => { render(key); onChange(key); }
-    }, h('span', { style: { background: swatch.fill } }))));
+  const options = Object.entries(SWATCHES).map(([key, swatch]) => ({ value: key, label: swatch.label, fill: swatch.fill, fg: swatch.fg }));
+  return colorChoice({ value, options, onChange, size, label });
+}
+
+// Color picker that shows the first two options and a + button. The + opens a popup with the
+// other options and a #HEX field. options: [{ value, label, fill, fg? }] (fg: text on fill, for the + mark); onChange gets a value or '#rrggbb'.
+export function colorChoice({ value, options, onChange, size = '', label = 'Color' }) {
+  const group = h('div.swatches.color-choice', { role: 'group', 'aria-label': label });
+  const sized = size ? `.${size}` : '';
+  let current = value;
+  let pop = null;
+
+  const pick = (next) => {
+    close(false);
+    current = next;
+    render();
+    onChange(next);
   };
-  render(value);
+  const swatchButton = (option) => h(`button.swatch${sized}`, {
+    type: 'button', 'aria-label': option.label, 'aria-pressed': String(option.value === current),
+    onclick: () => pick(option.value)
+  }, h('span', { style: { background: option.fill } }));
+
+  const onOutside = (event) => { if (!group.contains(event.target)) close(false); };
+  function close(refocus) {
+    if (!pop) return;
+    pop.remove();
+    pop = null;
+    document.removeEventListener('pointerdown', onOutside, true);
+    more.setAttribute('aria-expanded', 'false');
+    if (refocus) more.focus();
+  }
+  const open = () => {
+    const hex = normalizeHex(current);
+    const msg = h('span.msg.bad', { hidden: true }, 'Use #RGB or #RRGGBB.');
+    const field = h('input.input.compact', {
+      type: 'text', value: hex, placeholder: '#RRGGBB', maxlength: 7, spellcheck: 'false', autocomplete: 'off',
+      'aria-label': `${label} HEX`,
+      oninput: () => { msg.hidden = true; field.removeAttribute('aria-invalid'); }
+    });
+    const apply = () => {
+      let v = field.value.trim();
+      if (v && v[0] !== '#') v = `#${v}`;
+      const next = normalizeHex(v);
+      if (next) { pick(next); more.focus(); return; }
+      field.setAttribute('aria-invalid', 'true');
+      msg.hidden = false;
+    };
+    pop = h('div.color-pop', {
+      role: 'dialog', 'aria-label': `More ${label.toLowerCase()} options`,
+      onkeydown: (event) => {
+        if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(true); }
+        // Keep Enter in the HEX field from submitting the form or popover around the picker.
+        if (event.key === 'Enter' && event.target === field) { event.preventDefault(); event.stopPropagation(); apply(); }
+      }
+    },
+      options.length > 2 ? h('div.swatches', {}, ...options.slice(2).map(swatchButton)) : null,
+      h('div.color-pop-hex', {},
+        field,
+        h('button.btn.outline.small', { type: 'button', onclick: apply }, 'Apply')),
+      msg);
+    group.append(pop);
+    more.setAttribute('aria-expanded', 'true');
+    document.addEventListener('pointerdown', onOutside, true);
+    // Open upward when the popup would run past the bottom of a scrolling dialog or the page.
+    let box = group.parentElement;
+    while (box && box !== document.body && !/(auto|scroll|hidden)/.test(getComputedStyle(box).overflowY)) box = box.parentElement;
+    const limit = box && box !== document.body ? box.getBoundingClientRect().bottom : window.innerHeight;
+    if (pop.getBoundingClientRect().bottom > limit) pop.classList.add('up');
+    (pop.querySelector('[aria-pressed="true"]') || field).focus();
+  };
+
+  // The + button carries a custom or popup color, so the current choice always shows.
+  const more = h(`button.swatch.more${sized}`, {
+    type: 'button', 'aria-haspopup': 'dialog', 'aria-expanded': 'false',
+    onclick: () => (pop ? close(true) : open())
+  });
+  function render() {
+    const base = options.slice(0, 2);
+    const inPopup = !base.some((o) => o.value === current);
+    const hex = normalizeHex(current);
+    const shown = !inPopup ? null : options.find((o) => o.value === current) || (hex && { label: hex, fill: hex });
+    more.setAttribute('aria-pressed', String(Boolean(shown)));
+    more.setAttribute('aria-label', shown ? `More colors (current: ${shown.label})` : 'More colors');
+    more.replaceChildren(h('span', { style: shown ? { background: shown.fill, color: shown.fg || readableOn(normalizeHex(shown.fill) || '#ffffff') } : {} }, icon('plus', 14)));
+    group.replaceChildren(...base.map(swatchButton), more, ...(pop ? [pop] : []));
+  }
+  render();
   return group;
 }
 
