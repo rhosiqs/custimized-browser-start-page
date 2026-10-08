@@ -458,7 +458,7 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
             h('button.switch', {
               type: 'button', role: 'switch', 'aria-checked': String(draft.layout.showCategories), style: { justifySelf: 'start' },
               onclick: () => change(() => { draft.layout.showCategories = !draft.layout.showCategories; })
-            }, h('span.track', { 'aria-hidden': 'true' }, h('span.knob')), 'Show the category row above shortcuts'))
+            }, h('span.track', { 'aria-hidden': 'true' }, h('span.knob')), 'Show the category row (with Edit and Add) above shortcuts'))
         ];
       };
 

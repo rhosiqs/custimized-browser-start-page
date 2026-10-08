@@ -25,6 +25,8 @@ function render() {
   const { shortcuts, layout } = store.settings;
   const categories = categoriesOf(shortcuts);
   if (view.category !== 'All' && (!layout.showCategories || !categories.includes(view.category))) view.category = 'All';
+  // With the category row off, the whole bar (chips, Edit, Add) goes and the grid moves up into its place.
+  if (!layout.showCategories) view.editing = false;
   const shown = shortcuts.filter((s) => view.category === 'All' || s.category === view.category);
   const perRow = layout.perRow;
   const cap = layout.rows * perRow;
@@ -32,8 +34,7 @@ function render() {
   view.page = Math.min(view.page, pages - 1);
   const visible = shown.slice(view.page * cap, view.page * cap + cap);
 
-  // With the category row turned off, the empty .chips still pushes the buttons to the right.
-  const chips = !layout.showCategories ? h('div.chips') : h('div.chips', { role: 'group', 'aria-label': 'Filter by category' },
+  const chips = h('div.chips', { role: 'group', 'aria-label': 'Filter by category' },
     ...['All', ...categories].map((name) => h('button.chip', {
       type: 'button',
       'aria-pressed': String(view.category === name),
@@ -62,13 +63,16 @@ function render() {
 
   const grid = h('div.grid', { style: { gridTemplateColumns: `repeat(${perRow}, minmax(0, 1fr))` } });
   if (!visible.length) {
-    grid.append(h('p.empty', {}, shortcuts.length ? 'No shortcuts in this category.' : 'No shortcuts yet. Use Add to create one.'));
+    grid.append(h('p.empty', {}, shortcuts.length ? 'No shortcuts in this category.'
+      : layout.showCategories ? 'No shortcuts yet. Use Add to create one.' : 'No shortcuts yet. Turn on the category row in Settings → Layout to add one.'));
   }
   visible.forEach((item, index) => {
     grid.append(view.editing ? editTile(item, visible) : viewTile(item, index % perRow >= perRow - 3));
   });
 
-  section.replaceChildren(head, grid);
+  section.classList.toggle('no-head', !layout.showCategories);
+  if (layout.showCategories) section.replaceChildren(head, grid);
+  else section.replaceChildren(grid, ...(pager ? [h('div.shortcuts-foot', {}, pager)] : []));
   // The popover opens above its tile; flip it below when that would leave the page.
   const pop = section.querySelector('.popover');
   if (pop && pop.getBoundingClientRect().top < 0) pop.classList.add('below');

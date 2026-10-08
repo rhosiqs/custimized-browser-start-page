@@ -2,6 +2,11 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.5.1 — 2026-10-08
+
+### Changed
+- Turning off the category row now hides the whole bar above the shortcuts, Edit and Add buttons and divider included, and the shortcuts move up into its place. Page arrows, when there is more than one page, sit at the bottom right. Turn the row back on to add shortcuts or use Edit mode.
+
 ## v1.5.0 — 2026-10-08
 
 ### Added
