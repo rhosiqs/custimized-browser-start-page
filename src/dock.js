@@ -52,7 +52,7 @@ function profileSwitcher() {
   },
   h('span.profile-mark', { 'aria-hidden': 'true' }, profileMark(current.name)),
   h('span.profile-name', {}, current.name),
-  icon('chevronUp', 16, 2));
+  icon('chevronUp', 14, 2));
 
   const pickAndClose = (fn) => () => { setProfilesOpen(false); fn(); button.focus(); };
   const menu = h('div.flyout', { id: 'profile-menu', hidden: !view.profiles },

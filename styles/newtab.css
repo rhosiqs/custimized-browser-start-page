@@ -509,27 +509,27 @@ input:focus-visible { outline-offset: 2px; }
 .profile-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  height: 40px;
-  padding: 0 10px 0 4px;
+  gap: 6px;
+  height: 32px;
+  padding: 0 8px 0 3px;
   border: 1px solid var(--divider);
   border-radius: 999px;
   background: var(--bg);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
 }
 .profile-btn:hover, .profile-btn[aria-expanded='true'] { border-color: var(--ink); }
 .profile-btn svg { color: var(--muted); }
 .profile-mark {
-  width: 30px;
-  height: 30px;
+  width: 24px;
+  height: 24px;
   flex: none;
   display: grid;
   place-items: center;
   border-radius: 999px;
   background: var(--acc);
   color: var(--on-acc);
-  font-size: 13px;
+  font-size: 11px;
 }
 .profile-name { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .profile-item { width: 100%; border: 0; background: transparent; font: inherit; text-align: left; }
