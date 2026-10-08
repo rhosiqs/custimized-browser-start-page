@@ -94,24 +94,26 @@ export function segmented({ label, labelledBy, options, value, onChange, classNa
 
 // ---------- Modal ----------
 
-let openModal = null;
+// Open dialogs, bottom first. A nested dialog opens over the one below it; any other closes them all.
+const modals = [];
 
 // Opens a dialog inside the scaled stage; the page behind it becomes inert until it closes.
-export function showModal({ labelledBy, className = '', build, onClose }) {
-  closeModal();
+export function showModal({ labelledBy, className = '', build, onClose, nested = false }) {
+  if (!nested) closeAllModals();
   const stage = document.getElementById('stage');
-  const background = [...stage.children].filter((el) => el.id !== 'toast');
+  // Elements already inert belong to the dialog below, which restores them.
+  const background = [...stage.children].filter((el) => el.id !== 'toast' && !el.hasAttribute('inert'));
   const previousFocus = document.activeElement;
   const dialog = h(`div.dialog${className ? `.${className}` : ''}`, { role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': labelledBy });
   const scrim = h('div.scrim', {
-    onmousedown: (event) => { if (event.target === scrim) closeModal(); }
+    onmousedown: (event) => { if (event.target === scrim) closeModal(state); }
   }, dialog);
   background.forEach((el) => el.setAttribute('inert', ''));
   stage.append(scrim);
 
   const state = { scrim, dialog, background, previousFocus, onClose };
-  openModal = state;
-  const close = () => closeModal();
+  modals.push(state);
+  const close = () => closeModal(state);
   build(dialog, close);
 
   scrim.addEventListener('keydown', (event) => {
@@ -119,7 +121,7 @@ export function showModal({ labelledBy, className = '', build, onClose }) {
       // Let an open menu inside the dialog handle Escape first.
       if (event.defaultPrevented) return;
       event.preventDefault();
-      closeModal();
+      closeModal(state);
     }
   });
   const first = dialog.querySelector('[autofocus]') || dialog.querySelector('input, button, select, textarea, a[href]');
@@ -127,18 +129,25 @@ export function showModal({ labelledBy, className = '', build, onClose }) {
   return close;
 }
 
-export function closeModal() {
-  if (!openModal) return;
-  const { scrim, background, previousFocus, onClose } = openModal;
-  openModal = null;
-  scrim.remove();
-  background.forEach((el) => el.removeAttribute('inert'));
-  onClose?.();
-  if (previousFocus && document.contains(previousFocus)) previousFocus.focus();
+// Closes the given dialog (default: the top one) and any opened over it.
+export function closeModal(target = modals[modals.length - 1]) {
+  const index = modals.indexOf(target);
+  if (index < 0) return;
+  while (modals.length > index) {
+    const { scrim, background, previousFocus, onClose } = modals.pop();
+    scrim.remove();
+    background.forEach((el) => el.removeAttribute('inert'));
+    onClose?.();
+    if (previousFocus && document.contains(previousFocus)) previousFocus.focus();
+  }
+}
+
+function closeAllModals() {
+  if (modals.length) closeModal(modals[0]);
 }
 
 export function isModalOpen() {
-  return Boolean(openModal);
+  return modals.length > 0;
 }
 
 // Reads a user-chosen image file as a data URL after type and size checks.

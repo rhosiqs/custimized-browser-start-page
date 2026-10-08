@@ -2,6 +2,11 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.8.0 — 2026-10-08
+
+### Added
+- A Shortcuts tab in Settings lists every shortcut with its icon, category and site. Drag the grip (or use the arrow keys) to reorder, Edit or Add opens the same shortcut editor as the page, and the trash button removes one. Changes there apply when you save Settings, like the other tabs.
+
 ## v1.7.0 — 2026-10-08
 
 ### Changed

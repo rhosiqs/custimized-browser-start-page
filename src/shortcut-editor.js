@@ -6,9 +6,14 @@ import { badge, dropdown, swatchPicker, toast } from './widgets.js';
 
 const NEW_CATEGORY = '\u0000new';
 
-export function openShortcutEditor(id, { category = '' } = {}) {
-  const existing = id ? store.settings.shortcuts.find((s) => s.id === id) : null;
-  const categories = categoriesOf(store.settings.shortcuts);
+// By default edits are saved at once. Settings passes its draft list and a commit that edits it
+// instead; the editor then opens over Settings and the change waits for its Save.
+export function openShortcutEditor(id, { category = '', shortcuts, commit } = {}) {
+  const inSettings = Boolean(commit);
+  const list = shortcuts || store.settings.shortcuts;
+  const apply = commit || ((fn) => update((settings) => fn(settings.shortcuts)));
+  const existing = id ? list.find((s) => s.id === id) : null;
+  const categories = categoriesOf(list);
   const draft = existing ? { ...existing } : {
     id: createId('sc'), name: '', url: '', category, color: 'green', icon: 'site', image: ''
   };
@@ -17,6 +22,7 @@ export function openShortcutEditor(id, { category = '' } = {}) {
   showModal({
     labelledBy: 'ed-title',
     className: 'editor',
+    nested: inSettings,
     build(dialog, close) {
       const preview = h('div.preview-card');
       const urlMsg = h('span.msg', { id: 'sc-url-msg', 'aria-live': 'polite' });
@@ -117,13 +123,13 @@ export function openShortcutEditor(id, { category = '' } = {}) {
           image: draft.icon === 'upload' ? draft.image : ''
         };
         if (next.icon === 'upload' && !next.image) next.icon = 'letter';
-        update((settings) => {
-          const index = settings.shortcuts.findIndex((s) => s.id === next.id);
-          if (index >= 0) settings.shortcuts[index] = next;
-          else settings.shortcuts.push(next);
+        apply((items) => {
+          const index = items.findIndex((s) => s.id === next.id);
+          if (index >= 0) items[index] = next;
+          else items.push(next);
         });
         close();
-        toast(existing ? `Saved ${next.name}` : `Added ${next.name}`);
+        if (!inSettings) toast(existing ? `Saved ${next.name}` : `Added ${next.name}`);
       });
 
       dialog.addEventListener('keydown', (event) => {
@@ -152,9 +158,9 @@ export function openShortcutEditor(id, { category = '' } = {}) {
           existing ? h('button.btn.outline', {
             type: 'button',
             onclick: () => {
-              update((settings) => { settings.shortcuts = settings.shortcuts.filter((s) => s.id !== existing.id); });
+              apply((items) => { items.splice(items.findIndex((s) => s.id === existing.id), 1); });
               close();
-              toast(`Deleted ${existing.name}`);
+              if (!inSettings) toast(`Deleted ${existing.name}`);
             }
           }, 'Delete') : null,
           h('span.spacer'),

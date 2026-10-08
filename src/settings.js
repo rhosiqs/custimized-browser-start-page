@@ -1,15 +1,16 @@
 // Settings dialog. Edits stay in a draft until Save; appearance changes preview live and revert on Discard or close.
 import {
   ACCENTS, BACKGROUND_IMAGE_LIMIT, BLOCKS, FORMATS, SEARCH_BOXES, SHORTCUT_IMAGE_LIMIT,
-  ZONE_ABBREVIATION_LIST, clockLabel, clone, colorOf, createId, firstGraphemes, isValidEngineUrl, isValidTimeZone, moveItem, normalizeHttpUrl, serialize, zoneFromAbbreviation
+  ZONE_ABBREVIATION_LIST, clockLabel, clone, colorOf, createId, firstGraphemes, hostOf, isValidEngineUrl, isValidTimeZone, moveItem, normalizeHttpUrl, serialize, zoneFromAbbreviation
 } from './core.js';
 import { applyAppearance, isDark } from './appearance.js';
 import { h, icon, readImageFile, segmented, showModal } from './dom.js';
 import { pickImportFile } from './import-review.js';
+import { openShortcutEditor } from './shortcut-editor.js';
 import { clearHistory, store, update } from './state.js';
-import { colorChoice, launcherMark, sortHandle, swatchPicker, toast } from './widgets.js';
+import { badge, colorChoice, launcherMark, sortHandle, swatchPicker, toast } from './widgets.js';
 
-const TABS = ['Appearance', 'Search', 'Clocks', 'Launchers', 'Layout', 'Data'];
+const TABS = ['Appearance', 'Search', 'Clocks', 'Shortcuts', 'Launchers', 'Layout', 'Data'];
 // Background presets per theme; the first two are the picker's base colors.
 const PRESETS = {
   light: ['#f3f2f2', '#eae9e9', '#fff3e4', '#ffe3bf', '#e8f3ea'],
@@ -83,7 +84,7 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
       };
 
       const renderPanel = () => {
-        const builders = { Appearance: appearanceTab, Search: searchTab, Clocks: clocksTab, Launchers: launchersTab, Layout: layoutTab, Data: dataTab };
+        const builders = { Appearance: appearanceTab, Search: searchTab, Clocks: clocksTab, Shortcuts: shortcutsTab, Launchers: launchersTab, Layout: layoutTab, Data: dataTab };
         const scroll = panel.scrollTop;
         panel.replaceChildren(...[builders[ui.tab]()].flat());
         panel.scrollTop = scroll;
@@ -288,6 +289,36 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
       };
 
       // ---------- Launchers ----------
+      // ---------- Shortcuts ----------
+      // The shortcut editor opens over Settings and edits the draft, so changes wait for Save.
+      const shortcutsTab = () => {
+        const list = draft.shortcuts;
+        const add = h('button.btn.primary', { type: 'button', style: { alignSelf: 'flex-start' }, onclick: () => edit(null) }, 'Add shortcut');
+        const edit = (id) => openShortcutEditor(id, {
+          shortcuts: draft.shortcuts,
+          commit: (fn) => {
+            change(() => fn(draft.shortcuts));
+            // The editor closes right after; then put focus back on the edited row.
+            const target = id || draft.shortcuts[draft.shortcuts.length - 1]?.id;
+            queueMicrotask(() => (panel.querySelector(`[data-edit-id="${CSS.escape(target || '')}"]`) || panel.querySelector('.btn.primary'))?.focus());
+          }
+        });
+        const items = list.map((item, i) => h('li', { dataset: { sortRow: '' } },
+          sortHandle({ item, index: i, count: list.length, label: item.name, onMove: (from, to) => change(() => { draft.shortcuts = moveItem(list, from, to); }) }),
+          badge(item),
+          h('span.grow', {}, h('span.title', {}, item.name), h('span.sub', {}, `${item.category || 'No category'} · ${hostOf(item.url)}`)),
+          h('button.btn.quiet-outline', { type: 'button', 'aria-label': `Edit ${item.name} shortcut`, dataset: { editId: item.id }, onclick: () => edit(item.id) }, 'Edit'),
+          h('button.icon-btn', {
+            type: 'button', 'aria-label': `Remove ${item.name} shortcut`, title: 'Remove shortcut',
+            onclick: () => change(() => { draft.shortcuts = draft.shortcuts.filter((s) => s.id !== item.id); })
+          }, icon('trash', 16))));
+        return [
+          h('span.note', {}, 'Shortcuts show below the search boxes. Edit opens the same editor as the page; changes apply when you save.'),
+          list.length ? h('ul.list', {}, ...items) : h('p.note', {}, 'No shortcuts yet.'),
+          add
+        ];
+      };
+
       const launchersTab = () => {
         const groups = draft.launchers;
         const items = groups.map((group, i) => {
