@@ -43,14 +43,15 @@ function setProfilesOpen(open) {
 // The current profile's name on the left of the dock; its menu switches, adds or manages profiles.
 function profileSwitcher() {
   const current = activeProfile();
-  const button = h('button.profile-btn', {
+  const mark = profileMark(current);
+  const button = h(`button.profile-btn${mark ? '' : '.no-mark'}`, {
     type: 'button',
     'aria-label': `Profile: ${current.name}. Switch profile`,
     'aria-expanded': String(view.profiles),
     'aria-controls': 'profile-menu',
     onclick: () => setProfilesOpen(!view.profiles)
   },
-  h('span.profile-mark', { 'aria-hidden': 'true' }, profileMark(current.name)),
+  mark ? h('span.profile-mark', { 'aria-hidden': 'true' }, mark) : null,
   h('span.profile-name', {}, current.name),
   icon('chevronUp', 14, 2));
 
@@ -67,7 +68,7 @@ function profileSwitcher() {
           'aria-current': on ? 'true' : null,
           onclick: pickAndClose(() => switchProfile(profile.id))
         },
-        h('span.badge', { 'aria-hidden': 'true' }, profileMark(profile.name)),
+        h('span.badge', { 'aria-hidden': 'true' }, profileMark(profile)),
         h('span.name', {}, profile.name),
         on ? h('span.host', {}, 'In use') : null);
       }),

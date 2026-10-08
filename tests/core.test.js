@@ -374,12 +374,46 @@ test('normalizeProfiles repairs ids, names and the active profile', () => {
 });
 
 test('profileMark takes the first letter or a whole emoji', () => {
-  assert.equal(profileMark(' work'), 'W');
-  assert.equal(profileMark('🧑‍🔬 Lab'), '🧑‍🔬');
-  assert.equal(profileMark(''), '?');
+  assert.equal(profileMark({ name: ' work' }), 'W');
+  assert.equal(profileMark({ name: '🧑‍🔬 Lab' }), '🧑‍🔬');
+  assert.equal(profileMark({ name: '' }), '?');
+});
+
+test('profileMark follows a custom icon or none', () => {
+  assert.equal(profileMark({ name: 'Work', icon: 'custom', iconText: '💼' }), '💼');
+  assert.equal(profileMark({ name: 'Work', icon: 'none' }), '');
+  assert.equal(profileMark({ name: 'Work', icon: 'custom', iconText: '' }), 'W');
+});
+
+test('normalizeProfiles keeps a valid icon choice and drops the rest', () => {
+  const { list } = normalizeProfiles({
+    list: [
+      { id: 'a', name: 'A', icon: 'custom', iconText: '🏠🏠🏠' },
+      { id: 'b', name: 'B', icon: 'none', iconText: 'x' },
+      { id: 'c', name: 'C', icon: 'custom', iconText: '  ' },
+      { id: 'd', name: 'D', icon: 'weird' }
+    ]
+  });
+  assert.deepEqual(list, [
+    { id: 'a', name: 'A', icon: 'custom', iconText: '🏠🏠' },
+    { id: 'b', name: 'B', icon: 'none' },
+    { id: 'c', name: 'C' },
+    { id: 'd', name: 'D' }
+  ]);
 });
 
 test('nextProfileName skips names in use', () => {
   assert.equal(nextProfileName(defaultProfiles().list), 'Profile 2');
   assert.equal(nextProfileName([{ id: 'a', name: 'Default' }, { id: 'b', name: 'Profile 3' }]), 'Profile 4');
+});
+
+test('v8 gives the dark theme #333333 unless a later save chose the theme color', () => {
+  assert.equal(defaultSettings().background.dark.solid, '#333333');
+  const old = normalizeSettings({ version: 7, background: { type: 'solid', light: { solid: '' }, dark: { solid: '' } } }).settings.background;
+  assert.equal(old.dark.solid, '#333333');
+  assert.equal(old.light.solid, '');
+  const custom = normalizeSettings({ version: 7, background: { type: 'solid', dark: { solid: '#282725' } } }).settings.background;
+  assert.equal(custom.dark.solid, '#282725');
+  const chosen = normalizeSettings({ version: 8, background: { type: 'solid', dark: { solid: '' } } }).settings.background;
+  assert.equal(chosen.dark.solid, '');
 });

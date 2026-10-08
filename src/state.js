@@ -1,6 +1,6 @@
 // The single in-memory copy of profiles, the active profile's settings and history; every change goes through
 // update() or a profile action so it is saved and re-rendered.
-import { PROFILE_NAME_MAX, clone, createId, defaultSettings, nextProfileName, recordHistory } from './core.js';
+import { PROFILE_NAME_MAX, clone, createId, defaultSettings, nextProfileName, normalizeProfiles, recordHistory } from './core.js';
 import { loadHistory, loadProfiles, loadSettings, removeSettings, saveHistory, saveProfiles, saveSettings } from './storage.js';
 
 const listeners = new Set();
@@ -77,6 +77,13 @@ export function renameProfile(id, name) {
   const clean = String(name ?? '').trim().slice(0, PROFILE_NAME_MAX);
   if (!clean) return;
   setProfiles({ ...store.profiles, list: store.profiles.list.map((p) => (p.id === id ? { ...p, name: clean } : p)) });
+  notify();
+}
+
+// icon is 'letter', 'custom' (shows iconText) or 'none'.
+export function setProfileIcon(id, icon, iconText = '') {
+  const list = store.profiles.list.map((p) => (p.id === id ? { id: p.id, name: p.name, icon, iconText } : p));
+  setProfiles(normalizeProfiles({ ...store.profiles, list }));
   notify();
 }
 

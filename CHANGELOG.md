@@ -2,6 +2,14 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.9.1 — 2026-10-08
+
+### Added
+- Each profile can choose its icon in Settings → Profiles: the first letter of its name (as before), a custom letter or emoji, or none. With none, the dock's profile button shows just the name.
+
+### Changed
+- The dark theme's default background is now #333333. Saves that used the theme color move to it; a custom dark color stays, and "Use theme color" still brings back the old shade.
+
 ## v1.9.0 — 2026-10-08
 
 ### Added

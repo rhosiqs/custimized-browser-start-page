@@ -518,6 +518,7 @@ input:focus-visible { outline-offset: 2px; }
   font-size: 13px;
   font-weight: 700;
 }
+.profile-btn.no-mark { padding-left: 12px; }
 .profile-btn:hover, .profile-btn[aria-expanded='true'] { border-color: var(--ink); }
 .profile-btn svg { color: var(--muted); }
 .profile-mark {
@@ -674,6 +675,7 @@ input:focus-visible { outline-offset: 2px; }
   font-weight: 700;
 }
 .seg[aria-pressed='true'] { background: var(--ink); color: var(--bg); }
+.seg-group.small .seg { min-height: 28px; padding: 0 10px; font-size: 13px; }
 
 .swatches { display: flex; gap: 4px; flex-wrap: wrap; }
 .swatch {
@@ -786,6 +788,9 @@ fieldset.plain legend { padding: 0; margin-bottom: 6px; font-size: 14px; font-we
 .list .badge.site img { width: 22px; height: 22px; }
 .list .badge.profile { background: var(--surface); color: var(--sub); }
 .list .badge.profile.on { background: var(--acc); color: var(--on-acc); }
+.list > li.profile-row { padding: 8px 0; }
+.profile-icon { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+.profile-icon .input.compact { width: 52px; height: 36px; text-align: center; }
 .block-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
 .block-list li { display: flex; align-items: center; gap: 6px; min-height: 52px; padding: 0 14px 0 4px; border-radius: 6px; background: var(--surface); }
 .block-list .num { width: 26px; font-size: 13px; font-weight: 700; color: var(--green); font-variant-numeric: tabular-nums; }

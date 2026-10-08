@@ -1,6 +1,6 @@
 // Pure logic shared by the new tab page and the Node tests: no DOM, no chrome.* calls.
 
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 export const HISTORY_LIMIT = 30;
 export const SHORTCUT_IMAGE_LIMIT = 512 * 1024;
 export const BACKGROUND_IMAGE_LIMIT = 3 * 1024 * 1024;
@@ -109,7 +109,7 @@ export function defaultSettings() {
       type: 'solid',
       image: '',
       light: { solid: '', from: '#f3f2f2', to: '#e8f3ea' },
-      dark: { solid: '', from: '#1d1c1b', to: '#213324' }
+      dark: { solid: '#333333', from: '#1d1c1b', to: '#213324' }
     },
     engines: clone(DEFAULT_ENGINES),
     clocks: {
@@ -501,6 +501,8 @@ export function normalizeSettings(input, { fallback = defaultSettings() } = {}) 
         slot.to = legacy.to;
       }
     }
+    // v8 made #333333 the dark theme's default solid color; saves that followed the theme color take it.
+    if (version < 8 && !out.background.dark.solid) out.background.dark.solid = '#333333';
     if (bg.image) {
       if (isImageDataUrl(bg.image, BACKGROUND_IMAGE_LIMIT)) out.background.image = bg.image;
       else report.skipped.push({ item: 'Background image', reason: 'not an embedded image under 3 MB' });
@@ -709,16 +711,29 @@ export function normalizeProfiles(input) {
     const id = typeof item?.id === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(item.id) ? item.id : '';
     if (!id || seen.has(id)) continue;
     seen.add(id);
-    list.push({ id, name: text(item.name, PROFILE_NAME_MAX) || `Profile ${list.length + 1}` });
+    const name = text(item.name, PROFILE_NAME_MAX) || `Profile ${list.length + 1}`;
+    list.push({ id, name, ...profileIconOf(item) });
   }
   if (!list.length) return defaultProfiles();
   const active = seen.has(src.active) ? src.active : list[0].id;
   return { active, list };
 }
 
-// The letter (or emoji) that stands for a profile.
-export function profileMark(name) {
-  return firstGraphemes(String(name ?? '').trim(), 1).toUpperCase() || '?';
+// A profile's icon is its name's first letter (the default, stored as nothing), a custom letter or emoji, or none.
+export const PROFILE_ICONS = ['letter', 'custom', 'none'];
+
+function profileIconOf(item) {
+  const iconText = firstGraphemes(text(item.iconText, 40), 2);
+  if (item.icon === 'none') return { icon: 'none' };
+  if (item.icon === 'custom' && iconText) return { icon: 'custom', iconText };
+  return {};
+}
+
+// The text that stands for a profile, or '' when it shows no icon.
+export function profileMark(profile) {
+  if (profile?.icon === 'none') return '';
+  if (profile?.icon === 'custom' && profile.iconText) return profile.iconText;
+  return firstGraphemes(String(profile?.name ?? '').trim(), 1).toUpperCase() || '?';
 }
 
 // "Profile 2", "Profile 3", … skipping names already taken.

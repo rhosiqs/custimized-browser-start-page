@@ -7,7 +7,7 @@ import { applyAppearance, isDark } from './appearance.js';
 import { h, icon, readImageFile, segmented, showModal } from './dom.js';
 import { pickImportFile } from './import-review.js';
 import { openShortcutEditor } from './shortcut-editor.js';
-import { activeProfile, clearHistory, createProfile, deleteProfile, renameProfile, store, switchProfile, update } from './state.js';
+import { activeProfile, clearHistory, createProfile, deleteProfile, renameProfile, setProfileIcon, store, switchProfile, update } from './state.js';
 import { badge, colorChoice, launcherMark, sortHandle, swatchPicker, toast } from './widgets.js';
 
 const TABS = ['Profiles', 'Appearance', 'Search', 'Clocks', 'Shortcuts', 'Launchers', 'Layout', 'Data'];
@@ -120,9 +120,41 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
               showProfile();
             }
           });
-          return h('li', {},
-            h(`span.badge.profile${on ? '.on' : ''}`, { 'aria-hidden': 'true' }, profileMark(profile.name)),
-            h('span.grow', {}, name),
+          // Letter uses the name's first character; Custom shows what is typed; None hides it in the dock.
+          const pending = ui.customIcon === profile.id;
+          const mode = pending ? 'custom' : profile.icon || 'letter';
+          const iconText = h('input.input.compact', {
+            type: 'text', value: profile.iconText || '', placeholder: profileMark({ name: profile.name }), dataset: { profileIcon: profile.id }, 'aria-label': `${profile.name} icon text`,
+            onchange: () => {
+              // Clearing the text falls back to the letter.
+              const value = iconText.value.trim();
+              ui.customIcon = null;
+              setProfileIcon(profile.id, value ? 'custom' : 'letter', value);
+              renderPanel();
+            }
+          });
+          const iconChoice = h('div.profile-icon', {},
+            segmented({
+              label: `${profile.name} icon`, value: mode, className: 'small',
+              options: [{ value: 'letter', label: 'Letter' }, { value: 'custom', label: 'Custom' }, { value: 'none', label: 'None' }],
+              onChange: (value) => {
+                if (value === mode) return;
+                // Custom needs text before it sticks; until then the field waits for it.
+                ui.customIcon = null;
+                if (value === 'custom' && !profile.iconText) {
+                  ui.customIcon = profile.id;
+                  renderPanel();
+                  document.querySelector(`[data-profile-icon="${profile.id}"]`)?.focus();
+                  return;
+                }
+                setProfileIcon(profile.id, value, profile.iconText);
+                renderPanel();
+              }
+            }),
+            mode === 'custom' ? iconText : null);
+          return h('li.profile-row', {},
+            h(`span.badge.profile${on ? '.on' : ''}`, { 'aria-hidden': 'true' }, profileMark(profile)),
+            h('span.grow', {}, name, iconChoice),
             on
               ? h('span.note', {}, 'In use, editing now')
               : h('button.btn.quiet-outline', { type: 'button', 'aria-label': `Use ${profile.name} profile`, onclick: () => loadProfile(() => switchProfile(profile.id)) }, 'Use'),
