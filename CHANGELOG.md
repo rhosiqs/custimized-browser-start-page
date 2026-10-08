@@ -2,6 +2,14 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.11.0 — 2026-10-08
+
+### Added
+- Saving a change to a shortcut or launcher shown on all profiles now asks for confirmation first, naming the items, since the change reaches every profile. This covers the quick edit on the page, the shortcut editor, and Settings (asked once when you press Save). Deleting one already asked.
+
+### Changed
+- A fresh install (and a new blank profile) now starts with one launcher, Google. Saved settings are not changed.
+
 ## v1.10.2 — 2026-10-08
 
 ### Fixed

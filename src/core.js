@@ -78,9 +78,7 @@ const DEFAULT_SHORTCUTS = [
 ];
 
 const DEFAULT_LAUNCHERS = [
-  ['Google', 'G', 'green', [['Google', 'www.google.com']]],
-  ['Gmail', 'M', 'brown', [['Gmail', 'mail.google.com']]],
-  ['Google Drive', 'D', 'gold', [['Google Drive', 'drive.google.com']]]
+  ['Google', 'G', 'green', [['Google', 'www.google.com']]]
 ];
 
 let idCounter = 0;
@@ -834,6 +832,26 @@ export function joinShared(rawSettings, rawShared) {
     base[kind] = list;
   }
   return base;
+}
+
+// Names of items shown on all profiles that `next` changes (content or the shared flag) compared with `prev`.
+// Removed items are left out: deleting one asks on its own.
+export function changedSharedItems(prev, next) {
+  const names = [];
+  for (const kind of SHARED_KINDS) {
+    const after = new Map((next?.[kind] || []).map((item) => [item.id, item]));
+    for (const item of prev?.[kind] || []) {
+      if (item.shared !== true || !after.has(item.id)) continue;
+      if (JSON.stringify(item) !== JSON.stringify(after.get(item.id))) names.push(item.name);
+    }
+  }
+  return names;
+}
+
+// The question asked before saving changes to items shown on all profiles.
+export function sharedEditPrompt(names) {
+  const list = names.map((n) => `"${n}"`).join(', ');
+  return `${list} ${names.length === 1 ? 'shows' : 'show'} on all profiles. Save the changes for every profile?`;
 }
 
 // Settings with every shared flag removed (an imported file never changes what is shared).
