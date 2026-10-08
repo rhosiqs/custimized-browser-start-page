@@ -476,6 +476,8 @@ input:focus-visible { outline-offset: 2px; }
 .launcher-img { width: 100%; height: 100%; object-fit: cover; }
 .launcher-site { width: 100%; height: 100%; display: grid; place-items: center; border-radius: 999px; background: var(--pop); }
 .launcher-site img { width: 24px; height: 24px; object-fit: contain; }
+:root.theme-light [data-tone='light'] { background: var(--ink); }
+:root.theme-dark [data-tone='dark'] { background: #f3f2f2; }
 .launcher-add {
   width: 40px;
   height: 40px;

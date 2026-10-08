@@ -367,6 +367,27 @@ export function categoriesOf(shortcuts) {
   return [...new Set(shortcuts.map((item) => item.category).filter(Boolean))];
 }
 
+// Whether a site icon is all light (white logo for dark tabs) or all dark ink on a transparent
+// background, so the badge can put it on a contrasting disc. pixels: RGBA bytes (ImageData.data).
+// Returns 'light', 'dark' or '' (colored, mixed, or opaque edge to edge).
+export function iconTone(pixels) {
+  let opaque = 0, light = 0, dark = 0;
+  for (let i = 0; i < pixels.length; i += 4) {
+    if (pixels[i + 3] < 128) continue;
+    opaque += 1;
+    const [r, g, b] = [pixels[i], pixels[i + 1], pixels[i + 2]];
+    const luma = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+    if (Math.max(r, g, b) - Math.min(r, g, b) > 48) continue;
+    if (luma > 0.82) light += 1;
+    else if (luma < 0.25) dark += 1;
+  }
+  const total = pixels.length / 4;
+  if (!opaque || opaque > total * 0.9) return '';
+  if (light >= opaque * 0.9) return 'light';
+  if (dark >= opaque * 0.9) return 'dark';
+  return '';
+}
+
 // ---------- Normalization (also the import validator) ----------
 
 const HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;

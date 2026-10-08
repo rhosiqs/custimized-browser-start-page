@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  FORMATS, clockLabel, clockParts, countItems, firstGraphemes, zoneAbbreviation, zoneFromAbbreviation, defaultSettings, detectFormat, historyMatches, isValidEngineUrl, mergeSettings, moveItem,
+  FORMATS, clockLabel, iconTone, clockParts, countItems, firstGraphemes, zoneAbbreviation, zoneFromAbbreviation, defaultSettings, detectFormat, historyMatches, isValidEngineUrl, mergeSettings, moveItem,
   normalizeDoi, normalizeHex, normalizeHttpUrl, normalizeSettings, parseBackup, recordHistory, relativeZone, routeQuery, serialize
 } from '../src/core.js';
 
@@ -286,4 +286,14 @@ test('merging a backup restores matching launchers and shortcuts from the file',
   assert.equal(merged.launchers[0].links.at(-1).name, 'Local only');
   assert.deepEqual([merged.shortcuts[0].icon, merged.shortcuts[0].color], ['letter', 'gold']);
   assert.equal(merged.shortcuts.length, current.shortcuts.length);
+});
+
+test('iconTone flags all-light and all-dark icons on transparent backgrounds', () => {
+  // 4×4 icon: the first n pixels opaque in rgb, the rest transparent.
+  const icon = (rgb, n = 8) => Array.from({ length: 16 }, (_, i) => (i < n ? [...rgb, 255] : [0, 0, 0, 0])).flat();
+  assert.equal(iconTone(icon([255, 255, 255])), 'light');
+  assert.equal(iconTone(icon([24, 23, 23])), 'dark');
+  assert.equal(iconTone(icon([217, 119, 87])), '');
+  assert.equal(iconTone(icon([255, 255, 255], 16)), '', 'opaque squares keep their own background');
+  assert.equal(iconTone(icon([0, 0, 0], 0)), '');
 });

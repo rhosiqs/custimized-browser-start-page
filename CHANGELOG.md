@@ -2,6 +2,11 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.4.2 — 2026-10-08
+
+### Fixed
+- Website icons that are a white logo (as Chrome saves them for sites like GitHub and ChatGPT after visiting in dark mode) no longer vanish on the white circle in light mode; they get a dark circle. Black logos get a light circle in dark mode.
+
 ## v1.4.1 — 2026-10-08
 
 ### Changed

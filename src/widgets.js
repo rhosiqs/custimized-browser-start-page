@@ -1,5 +1,5 @@
 // Reusable pieces built on dom.js: shortcut badges, swatch pickers, listbox dropdowns, toasts.
-import { SWATCHES, firstGraphemes, initialOf } from './core.js';
+import { SWATCHES, firstGraphemes, iconTone, initialOf } from './core.js';
 import { h, icon } from './dom.js';
 import { faviconUrl, siteIconSources } from './storage.js';
 
@@ -30,6 +30,7 @@ export function badge({ name, url, color = 'green', icon: mode = 'site', image =
       img.onload = async () => {
         if (img.naturalWidth < 2) tryNext(index + 1);
         else if (source.chromeCache && await isChromeDefaultIcon(img)) tryNext(index + 1);
+        else markTone(el, img);
       };
       img.src = source.src;
     };
@@ -66,6 +67,7 @@ export function launcherMark(group) {
     img.onload = async () => {
       if (img.naturalWidth < 2) tryNext(index + 1);
       else if (source.chromeCache && await isChromeDefaultIcon(img)) tryNext(index + 1);
+      else markTone(disc, img);
     };
     img.src = source.src;
   };
@@ -76,16 +78,36 @@ export function launcherMark(group) {
 
 // Chrome's favicon cache answers unknown pages with a generic globe; detect it by comparing pixels.
 let defaultIconPixels = null;
-function iconPixels(img) {
+// Cross-origin icons taint the canvas; they read as no pixels.
+function iconData(img) {
   try {
     const canvas = document.createElement('canvas');
     canvas.width = canvas.height = 16;
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     ctx.drawImage(img, 0, 0, 16, 16);
-    return ctx.getImageData(0, 0, 16, 16).data.join(',');
+    return ctx.getImageData(0, 0, 16, 16).data;
   } catch {
-    return '';
+    return null;
   }
+}
+function iconPixels(img) {
+  return iconData(img)?.join(',') || '';
+}
+// A white logo vanishes on the light disc and a black one on the dark disc; the stylesheet swaps the disc.
+// A cross-origin icon is read again through CORS; sites that don't allow it keep the plain disc.
+function markTone(holder, img) {
+  const apply = (data) => {
+    const tone = data ? iconTone(data) : '';
+    if (tone) holder.dataset.tone = tone;
+    else delete holder.dataset.tone;
+  };
+  const data = iconData(img);
+  if (data || img.src.startsWith(location.origin)) { apply(data); return; }
+  const probe = new Image();
+  probe.crossOrigin = 'anonymous';
+  probe.referrerPolicy = 'no-referrer';
+  probe.onload = () => apply(iconData(probe));
+  probe.src = img.src;
 }
 async function isChromeDefaultIcon(img) {
   defaultIconPixels ||= new Promise((resolve) => {
