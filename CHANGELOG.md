@@ -2,6 +2,12 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.6.1 — 2026-10-08
+
+### Changed
+- The search buttons are a magnifier icon in the accent color, with no text or background. The button's name and tooltip still say what it will do (Search or Open).
+- The clocks, search boxes and shortcuts stack from the top of the page with fixed gaps instead of spreading over the height, so everything, the shortcuts most of all, sits higher.
+
 ## v1.6.0 — 2026-10-08
 
 ### Changed

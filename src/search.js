@@ -34,7 +34,8 @@ function createBox(box) {
     role: 'combobox', 'aria-autocomplete': 'list', 'aria-expanded': 'false', 'aria-controls': `${id}-list`
   });
   const hint = h('span.hint', { hidden: true });
-  const go = h('button.go-btn', { type: 'button' }, 'Search');
+  // Icon-only: the action (Search or Open) is the button's accessible name and tooltip.
+  const go = h('button.go-btn', { type: 'button', 'aria-label': 'Search', title: 'Search' }, icon('search', 22, 2));
   const engineMenu = h('div.menu.engine-menu', { role: 'listbox', 'aria-label': `${meta.kicker} engine`, hidden: true });
   const suggestMenu = h('div.menu.suggest-menu', { id: `${id}-list`, role: 'listbox', 'aria-label': 'Suggestions', hidden: true });
   const wrap = h('div.search-wrap', { dataset: { keep: `field-${box}` } },
@@ -49,7 +50,8 @@ function createBox(box) {
     hint.hidden = !show;
     hint.className = `hint ${r.kind}`;
     hint.textContent = show ? r.hint : '';
-    go.textContent = r.action;
+    go.setAttribute('aria-label', r.action);
+    go.title = r.action;
     go.disabled = r.kind === 'blocked';
   };
 
