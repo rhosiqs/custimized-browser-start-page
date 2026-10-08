@@ -42,12 +42,12 @@ function launcher(group) {
   const swatch = colorOf(group.color);
   const open = view.open === group.id;
   const flyoutId = `flyout-${group.id}`;
-  const button = h('button.launcher-btn', {
+  const button = h('button.launcher-btn.launcher-face', {
     type: 'button',
     'aria-label': `${group.name} links`,
     'aria-expanded': String(open),
     'aria-controls': flyoutId,
-    style: { background: swatch.fill, color: swatch.fg },
+    style: { '--fill': swatch.fill, '--fg': swatch.fg },
     onmouseenter: () => { if (!view.pinned) setOpen(group.id, false); },
     onfocus: () => { if (!view.pinned) setOpen(group.id, false); },
     onclick: () => (view.open === group.id && view.pinned ? setOpen(null, false) : setOpen(group.id, true))

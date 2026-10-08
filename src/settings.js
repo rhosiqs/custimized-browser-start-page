@@ -286,7 +286,7 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
           const expanded = ui.expanded === group.id;
           const row = h(`li${expanded ? '.expanded' : ''}`, { dataset: { sortRow: '' } },
             sortHandle({ item: group, index: i, count: groups.length, label: group.name, onMove: (from, to) => change(() => { draft.launchers = moveItem(groups, from, to); }) }),
-            h('span.badge', { 'aria-hidden': 'true', style: { width: '40px', height: '40px', fontSize: '13px', background: colorOf(group.color).fill, color: colorOf(group.color).fg } }, launcherMark(group)),
+            h('span.badge.launcher-face', { 'aria-hidden': 'true', style: { width: '40px', height: '40px', fontSize: '13px', '--fill': colorOf(group.color).fill, '--fg': colorOf(group.color).fg } }, launcherMark(group)),
             h('span.grow', {}, h('span.title', {}, group.name), h('span.sub', {}, `${group.links.length} link${group.links.length === 1 ? '' : 's'}`)),
             h('button.btn.quiet-outline', {
               type: 'button', 'aria-expanded': String(expanded), 'aria-label': `${expanded ? 'Close' : 'Edit'} ${group.name} launcher`,

@@ -2,6 +2,11 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.6.2 — 2026-10-08
+
+### Changed
+- A launcher with an image icon (uploaded, online image, or website icon) shows the icon full size, filling the button, with no launcher color or disc behind it. The color still shows behind a text label.
+
 ## v1.6.1 — 2026-10-08
 
 ### Changed

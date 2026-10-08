@@ -10,7 +10,10 @@ export function h(tag, props = {}, ...children) {
     if (value === undefined || value === null || value === false) continue;
     if (key.startsWith('on') && typeof value === 'function') el.addEventListener(key.slice(2).toLowerCase(), value);
     else if (key === 'class') el.className = [el.className, value].filter(Boolean).join(' ');
-    else if (key === 'style' && typeof value === 'object') Object.assign(el.style, value);
+    else if (key === 'style' && typeof value === 'object') {
+      // Custom properties (--name) need setProperty; Object.assign skips them.
+      for (const [prop, v] of Object.entries(value)) prop.startsWith('--') ? el.style.setProperty(prop, v) : (el.style[prop] = v);
+    }
     else if (key === 'dataset') Object.assign(el.dataset, value);
     else if (key === 'value' || key === 'checked' || key === 'textContent') el[key] = value;
     else el.setAttribute(key, value === true ? '' : String(value));
