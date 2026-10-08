@@ -166,7 +166,7 @@ test('parseBackup reports unreadable files', () => {
 test('mergeSettings adds new items and keeps items only on this device', () => {
   const current = defaultSettings();
   const incoming = normalizeSettings({
-    shortcuts: [{ name: 'GitHub', url: 'https://github.com' }, { name: 'Lobsters', url: 'https://lobste.rs' }],
+    shortcuts: [{ name: 'YouTube', url: 'https://www.youtube.com' }, { name: 'Lobsters', url: 'https://lobste.rs' }],
     clocks: { world: [{ city: 'Taipei', tz: 'Asia/Taipei' }, { city: 'Eastern', tz: 'America/New_York' }] }
   }).settings;
   const merged = mergeSettings(current, incoming);
@@ -367,6 +367,7 @@ test('letterOf uses the custom letters, else the name\'s first character', () =>
 test('icons of every kind survive every export format', () => {
   const png = 'data:image/png;base64,iVBORw0KGgo=';
   const settings = defaultSettings();
+  settings.shortcuts.push({ id: 'sc-3', name: 'Third', url: 'https://third.example/', category: '', icon: siteIcon() }, { id: 'sc-4', name: 'Fourth', url: 'https://fourth.example/', category: '', icon: siteIcon() });
   settings.shortcuts[0].icon = { kind: 'upload', color: 'ink', text: '', data: png };
   settings.shortcuts[1].icon = { kind: 'emoji', text: '📅' };
   settings.shortcuts[2].icon = { kind: 'image', color: 'gold', text: '', url: 'https://example.com/logo.png' };
@@ -515,7 +516,7 @@ test('splitShared leaves a stub in the profile and moves the content to the shar
   assert.equal(profile.shortcuts.length, settings.shortcuts.length, 'order is kept');
   assert.deepEqual(shared.shortcuts, [settings.shortcuts[1]]);
   assert.deepEqual(shared.launchers, [settings.launchers[2]]);
-  assert.equal(settings.shortcuts[1].name, 'Calendar', 'the input is not changed');
+  assert.equal(settings.shortcuts[1].name, 'YouTube', 'the input is not changed');
 });
 
 test('joinShared puts the shared content back at the profile\'s own position', () => {
@@ -558,7 +559,7 @@ test('turning sharing off keeps the item here and removes it from the other prof
   delete edited.shortcuts[1].shared;
   const saved = splitShared(edited);
   assert.deepEqual(saved.shared.shortcuts, []);
-  assert.equal(saved.profile.shortcuts[1].name, 'Calendar');
+  assert.equal(saved.profile.shortcuts[1].name, 'YouTube');
   assert.ok(!joinShared(otherProfile, saved.shared).shortcuts.some((s) => s.id === 'sc-2'));
 });
 

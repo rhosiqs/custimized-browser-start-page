@@ -73,25 +73,14 @@ const DEFAULT_ENGINES = {
 };
 
 const DEFAULT_SHORTCUTS = [
-  ['Gmail', 'https://mail.google.com', 'Daily', 'green'],
   ['Calendar', 'https://calendar.google.com', 'Daily', 'beige'],
-  ['Notion', 'https://www.notion.so', 'Daily', 'ink'],
-  ['Google Scholar', 'https://scholar.google.com', 'Research', 'brown'],
-  ['PubMed', 'https://pubmed.ncbi.nlm.nih.gov', 'Research', 'green'],
-  ['arXiv', 'https://arxiv.org', 'Research', 'gold'],
-  ['Zotero', 'https://www.zotero.org', 'Research', 'mint'],
-  ['GitHub', 'https://github.com', 'Dev', 'ink'],
-  ['Stack Overflow', 'https://stackoverflow.com', 'Dev', 'gold'],
-  ['MDN', 'https://developer.mozilla.org', 'Dev', 'brown'],
-  ['YouTube', 'https://www.youtube.com', 'Media', 'beige'],
-  ['Spotify', 'https://open.spotify.com', 'Media', 'mint']
+  ['YouTube', 'https://www.youtube.com', 'Media', 'beige']
 ];
 
 const DEFAULT_LAUNCHERS = [
-  ['Google', 'G', 'green', [['Gmail', 'mail.google.com'], ['Drive', 'drive.google.com'], ['Docs', 'docs.google.com'], ['Calendar', 'calendar.google.com'], ['Maps', 'maps.google.com']]],
-  ['Microsoft', 'M', 'brown', [['Outlook', 'outlook.office.com'], ['OneDrive', 'onedrive.live.com'], ['Word', 'www.office.com'], ['Teams', 'teams.microsoft.com']]],
-  ['AI', 'AI', 'gold', [['Claude', 'claude.ai'], ['ChatGPT', 'chatgpt.com'], ['Gemini', 'gemini.google.com'], ['Perplexity', 'www.perplexity.ai']]],
-  ['Developer', '</>', 'ink', [['GitHub', 'github.com'], ['Stack Overflow', 'stackoverflow.com'], ['MDN', 'developer.mozilla.org'], ['npm', 'www.npmjs.com']]]
+  ['Google', 'G', 'green', [['Google', 'www.google.com']]],
+  ['Gmail', 'M', 'brown', [['Gmail', 'mail.google.com']]],
+  ['Google Drive', 'D', 'gold', [['Google Drive', 'drive.google.com']]]
 ];
 
 let idCounter = 0;
