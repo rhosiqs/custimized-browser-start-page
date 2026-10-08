@@ -722,6 +722,7 @@ input:focus-visible { outline-offset: 2px; }
 
 .preview-card { display: flex; align-items: center; gap: 16px; padding: 14px 16px; border-radius: 6px; background: var(--surface); }
 .preview-card .badge { width: 52px; height: 52px; font-size: 22px; }
+.preview-card .badge.plain { background: var(--bg); }
 .preview-card .badge.neutral { background: var(--divider); color: var(--sub); }
 .preview-card .badge.site img { width: 30px; height: 30px; }
 .preview-card .name { font-size: 17px; font-weight: 700; }
