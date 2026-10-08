@@ -2,6 +2,11 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.6.3 — 2026-10-08
+
+### Changed
+- The clocks, search boxes and shortcuts sit centered as one group in the space above the dock, keeping the tighter fixed gaps from v1.6.1, instead of starting at the top of the page.
+
 ## v1.6.2 — 2026-10-08
 
 ### Changed

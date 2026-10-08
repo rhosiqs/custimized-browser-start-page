@@ -126,8 +126,8 @@ input:focus-visible { outline-offset: 2px; }
   padding: 28px 80px 92px;
   display: flex;
   flex-direction: column;
-  /* Blocks stack from the top with fixed gaps, so the shortcuts sit high; spare space stays above the dock. */
-  justify-content: flex-start;
+  /* Blocks keep fixed gaps and sit centered as one group in the space above the dock. */
+  justify-content: center;
   gap: 32px;
 }
 
