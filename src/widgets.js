@@ -9,7 +9,7 @@ import { faviconUrl, siteIconSources } from './storage.js';
 // stylesheet's colors; icon.color '' also leaves the colors to the stylesheet (profiles).
 export function badge({ name, url, icon: spec }, className = '') {
   const ic = spec || { kind: 'site', color: '' };
-  if (ic.kind === 'none') return h('span.badge.empty', { 'aria-hidden': 'true', class: className });
+  if (ic.kind === 'none') return h('span.badge.no-icon', { 'aria-hidden': 'true', class: className });
   const swatch = ic.color ? colorOf(ic.color) : null;
   const el = h('span.badge', { 'aria-hidden': 'true', class: className });
   const base = `badge${className ? ` ${className}` : ''}`;
@@ -116,20 +116,13 @@ function iconPixels(img) {
   return iconData(img)?.join(',') || '';
 }
 // A white logo vanishes on the light disc and a black one on the dark disc; the stylesheet swaps the disc.
-// A cross-origin icon is read again through CORS; sites that don't allow it keep the plain disc.
+// Only icons this page can read (Chrome's cache) are checked: a cross-origin icon keeps the plain disc,
+// since reading it again through CORS logs an error for every site that refuses.
 function markTone(holder, img) {
-  const apply = (data) => {
-    const tone = data ? iconTone(data) : '';
-    if (tone) holder.dataset.tone = tone;
-    else delete holder.dataset.tone;
-  };
   const data = iconData(img);
-  if (data || img.src.startsWith(location.origin)) { apply(data); return; }
-  const probe = new Image();
-  probe.crossOrigin = 'anonymous';
-  probe.referrerPolicy = 'no-referrer';
-  probe.onload = () => apply(iconData(probe));
-  probe.src = img.src;
+  const tone = data ? iconTone(data) : '';
+  if (tone) holder.dataset.tone = tone;
+  else delete holder.dataset.tone;
 }
 async function isChromeDefaultIcon(img) {
   defaultIconPixels ||= new Promise((resolve) => {

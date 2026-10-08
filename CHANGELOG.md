@@ -2,6 +2,12 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.10.2 — 2026-10-08
+
+### Fixed
+- A profile with no icon showed a large empty box in the dock's profile menu and in Settings → Profiles; it is now the small dashed circle.
+- Website icons no longer log "blocked by CORS policy" errors on the extensions page. A site's own icon (used when the browser has none cached) now always sits on the plain disc.
+
 ## v1.10.1 — 2026-10-08
 
 ### Changed
