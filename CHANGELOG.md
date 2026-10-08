@@ -2,6 +2,11 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.4.1 — 2026-10-08
+
+### Changed
+- Fonts (Nunito, Noto Sans TC) ship with the extension instead of loading from Google Fonts on every new tab, so text renders in the right font offline and the page makes no font requests.
+
 ## v1.4.0 — 2026-10-08
 
 ### Added

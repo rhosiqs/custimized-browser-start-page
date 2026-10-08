@@ -2,7 +2,7 @@
 
 ## Shape
 
-A Manifest V3 extension whose only surface is `chrome_url_overrides.newtab` → `newtab.html`. There is no background service worker and no content script. The page loads `src/main.js` as an ES module; every other module is imported from there. Extension CSP forbids inline scripts, so all behavior lives in `src/`.
+A Manifest V3 extension whose only surface is `chrome_url_overrides.newtab` → `newtab.html`. There is no background service worker and no content script. The page loads `src/main.js` as an ES module; every other module is imported from there. Extension CSP forbids inline scripts, so all behavior lives in `src/`. Fonts are bundled in `fonts/` (`fonts.css` plus unicode-range woff2 slices), so the page makes no font requests.
 
 ```
 newtab.html ─ main.js ─┬─ state.js ── storage.js ── chrome.storage.local

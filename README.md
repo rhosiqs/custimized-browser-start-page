@@ -34,7 +34,7 @@ Settings and search history are stored in `chrome.storage.local` on this device 
 - `storage` — save settings and history.
 - `favicon` — show website icons from Chrome’s local favicon cache (no request to Google). When Chrome has no icon for a site yet, the page tries that site’s own `/favicon.ico` and `/apple-touch-icon.png`, then shows a letter.
 
-Network requests happen only for Datamuse suggestions in the Web box, the Google Fonts stylesheet (Nunito, Noto Sans TC), icon files from your shortcut and launcher sites (as above), image links you set as launcher icons (loaded without a referrer), and the destinations you open.
+Fonts (Nunito, Noto Sans TC) are bundled in `fonts/`, so the page loads them from disk. Network requests happen only for Datamuse suggestions in the Web box, icon files from your shortcut and launcher sites (as above), image links you set as launcher icons (loaded without a referrer), and the destinations you open.
 
 ## Development
 
