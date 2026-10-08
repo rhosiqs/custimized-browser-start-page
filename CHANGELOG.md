@@ -6,6 +6,7 @@ Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
 ### Changed
 - A shortcut's edit button appears only when the pointer reaches the tile's top-right corner, instead of anywhere over the tile. Keyboard focus still shows it.
+- The search boxes are shorter (46 px instead of 56 px, with smaller engine and Search buttons and tighter spacing), so they take less of the page.
 
 ## v1.4.2 — 2026-10-08
 
