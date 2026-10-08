@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  FORMATS, SWATCHES, clockLabel, colorOf, iconTone, clockParts, countItems, firstGraphemes, zoneAbbreviation, zoneFromAbbreviation, defaultSettings, detectFormat, historyMatches, isImageDataUrl, isValidEngineUrl, mergeSettings, moveItem,
+  DEFAULT_PROFILE_ID, FORMATS, SWATCHES, defaultProfiles, nextProfileName, normalizeProfiles, profileMark, profileOfSettingsKey, profileSettingsKey, clockLabel, colorOf, iconTone, clockParts, countItems, firstGraphemes, zoneAbbreviation, zoneFromAbbreviation, defaultSettings, detectFormat, historyMatches, isImageDataUrl, isValidEngineUrl, mergeSettings, moveItem,
   normalizeDoi, normalizeHex, normalizeHttpUrl, normalizeSettings, parseBackup, readableOn, recordHistory, relativeZone, routeQuery, serialize
 } from '../src/core.js';
 
@@ -351,4 +351,35 @@ test('layout.showCategories defaults on and keeps an explicit off', () => {
   assert.equal(normalizeSettings({}).settings.layout.showCategories, true);
   assert.equal(normalizeSettings({ layout: { rows: 2 } }).settings.layout.showCategories, true);
   assert.equal(normalizeSettings({ layout: { showCategories: false } }).settings.layout.showCategories, false);
+});
+
+test('profiles: the first keeps the old settings key, others get their own', () => {
+  assert.equal(profileSettingsKey(DEFAULT_PROFILE_ID), 'startPage:settings');
+  assert.equal(profileSettingsKey('pf-abc'), 'startPage:settings:pf-abc');
+  assert.equal(profileOfSettingsKey('startPage:settings'), DEFAULT_PROFILE_ID);
+  assert.equal(profileOfSettingsKey('startPage:settings:pf-abc'), 'pf-abc');
+  assert.equal(profileOfSettingsKey('startPage:history'), '');
+});
+
+test('normalizeProfiles repairs ids, names and the active profile', () => {
+  assert.deepEqual(normalizeProfiles(undefined), defaultProfiles());
+  assert.deepEqual(normalizeProfiles({ list: [] }), defaultProfiles());
+  const fixed = normalizeProfiles({
+    active: 'gone',
+    list: [{ id: 'work', name: '  Work  ' }, { id: 'work', name: 'Dup' }, { id: 'bad id!', name: 'X' }, { id: 'home', name: '' }]
+  });
+  assert.deepEqual(fixed, { active: 'work', list: [{ id: 'work', name: 'Work' }, { id: 'home', name: 'Profile 2' }] });
+  assert.equal(normalizeProfiles({ active: 'home', list: fixed.list }).active, 'home');
+  assert.equal(normalizeProfiles({ list: [{ id: 'a', name: 'x'.repeat(80) }] }).list[0].name.length, 32);
+});
+
+test('profileMark takes the first letter or a whole emoji', () => {
+  assert.equal(profileMark(' work'), 'W');
+  assert.equal(profileMark('🧑‍🔬 Lab'), '🧑‍🔬');
+  assert.equal(profileMark(''), '?');
+});
+
+test('nextProfileName skips names in use', () => {
+  assert.equal(nextProfileName(defaultProfiles().list), 'Profile 2');
+  assert.equal(nextProfileName([{ id: 'a', name: 'Default' }, { id: 'b', name: 'Profile 3' }]), 'Profile 4');
 });

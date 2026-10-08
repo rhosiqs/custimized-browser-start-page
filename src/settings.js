@@ -1,16 +1,16 @@
 // Settings dialog. Edits stay in a draft until Save; appearance changes preview live and revert on Discard or close.
 import {
-  ACCENTS, BACKGROUND_IMAGE_LIMIT, BLOCKS, FORMATS, SEARCH_BOXES, SHORTCUT_IMAGE_LIMIT,
-  ZONE_ABBREVIATION_LIST, clockLabel, clone, colorOf, createId, firstGraphemes, hostOf, isValidEngineUrl, isValidTimeZone, moveItem, normalizeHttpUrl, serialize, zoneFromAbbreviation
+  ACCENTS, BACKGROUND_IMAGE_LIMIT, BLOCKS, FORMATS, PROFILE_NAME_MAX, SEARCH_BOXES, SHORTCUT_IMAGE_LIMIT,
+  ZONE_ABBREVIATION_LIST, clockLabel, clone, colorOf, createId, firstGraphemes, hostOf, profileMark, isValidEngineUrl, isValidTimeZone, moveItem, normalizeHttpUrl, serialize, zoneFromAbbreviation
 } from './core.js';
 import { applyAppearance, isDark } from './appearance.js';
 import { h, icon, readImageFile, segmented, showModal } from './dom.js';
 import { pickImportFile } from './import-review.js';
 import { openShortcutEditor } from './shortcut-editor.js';
-import { clearHistory, store, update } from './state.js';
+import { activeProfile, clearHistory, createProfile, deleteProfile, renameProfile, store, switchProfile, update } from './state.js';
 import { badge, colorChoice, launcherMark, sortHandle, swatchPicker, toast } from './widgets.js';
 
-const TABS = ['Appearance', 'Search', 'Clocks', 'Shortcuts', 'Launchers', 'Layout', 'Data'];
+const TABS = ['Profiles', 'Appearance', 'Search', 'Clocks', 'Shortcuts', 'Launchers', 'Layout', 'Data'];
 // Background presets per theme; the first two are the picker's base colors.
 const PRESETS = {
   light: ['#f3f2f2', '#eae9e9', '#fff3e4', '#ffe3bf', '#e8f3ea'],
@@ -36,6 +36,9 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
       const tabs = h('div.tabs', { role: 'tablist', 'aria-label': 'Settings sections' });
       const panel = h('div.dialog-body', { role: 'tabpanel', id: 'settings-panel', tabindex: '-1' });
       const status = h('span.status', { role: 'status' });
+      // Names the profile these settings belong to.
+      const kicker = h('span.kicker');
+      const showProfile = () => { kicker.textContent = `${activeProfile().name.toUpperCase()} PROFILE`; };
       const discard = h('button.btn.outline', { type: 'button' }, 'Discard');
       const save = h('button.btn.primary', { type: 'button' }, 'Save');
 
@@ -84,7 +87,7 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
       };
 
       const renderPanel = () => {
-        const builders = { Appearance: appearanceTab, Search: searchTab, Clocks: clocksTab, Shortcuts: shortcutsTab, Launchers: launchersTab, Layout: layoutTab, Data: dataTab };
+        const builders = { Profiles: profilesTab, Appearance: appearanceTab, Search: searchTab, Clocks: clocksTab, Shortcuts: shortcutsTab, Launchers: launchersTab, Layout: layoutTab, Data: dataTab };
         const scroll = panel.scrollTop;
         panel.replaceChildren(...[builders[ui.tab]()].flat());
         panel.scrollTop = scroll;
@@ -93,6 +96,55 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
 
       // Re-render the panel after a structural change; text edits only call touch().
       const change = (fn) => { fn(); renderPanel(); };
+
+      // ---------- Profiles ----------
+      // Profile actions apply at once. Switching or adding one loads its settings into this dialog.
+      const loadProfile = async (action) => {
+        if (dirty() && !window.confirm('Discard unsaved settings changes?')) return;
+        await action();
+        ui.saved = clone(store.settings);
+        draft = clone(store.settings);
+        showProfile();
+        renderPanel();
+      };
+
+      const profilesTab = () => {
+        const { list, active } = store.profiles;
+        const items = list.map((profile) => {
+          const on = profile.id === active;
+          const name = h('input.input.compact', {
+            type: 'text', value: profile.name, maxlength: PROFILE_NAME_MAX, 'aria-label': 'Profile name', style: { width: '240px' },
+            onchange: () => {
+              renameProfile(profile.id, name.value);
+              name.value = store.profiles.list.find((p) => p.id === profile.id).name;
+              showProfile();
+            }
+          });
+          return h('li', {},
+            h(`span.badge.profile${on ? '.on' : ''}`, { 'aria-hidden': 'true' }, profileMark(profile.name)),
+            h('span.grow', {}, name),
+            on
+              ? h('span.note', {}, 'In use, editing now')
+              : h('button.btn.quiet-outline', { type: 'button', 'aria-label': `Use ${profile.name} profile`, onclick: () => loadProfile(() => switchProfile(profile.id)) }, 'Use'),
+            on ? null : h('button.icon-btn', {
+              type: 'button', 'aria-label': `Delete ${profile.name} profile`, title: 'Delete profile',
+              onclick: () => {
+                if (!window.confirm(`Delete the ${profile.name} profile and all its settings?`)) return;
+                deleteProfile(profile.id);
+                renderPanel();
+                toast(`Deleted ${profile.name}`);
+              }
+            }, icon('trash', 16)));
+        });
+        return [
+          h('span.note', {}, 'Each profile has its own appearance, search engines, clocks, shortcuts, launchers and layout. The other tabs edit the profile in use. Search history is shared.'),
+          h('ul.list', {}, ...items),
+          h('div.inline', {},
+            h('button.btn.primary', { type: 'button', onclick: () => loadProfile(() => createProfile()) }, 'New profile'),
+            h('button.btn.outline', { type: 'button', onclick: () => loadProfile(() => createProfile({ copy: true })) }, 'Duplicate current')),
+          h('span.note', {}, 'A new profile starts from the default settings; a duplicate copies the profile in use as it was last saved.')
+        ];
+      };
 
       // ---------- Appearance ----------
       const appearanceTab = () => {
@@ -482,9 +534,9 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
       // ---------- Data ----------
       const dataTab = () => {
         const meta = FORMATS[ui.format];
-        const fileName = `start-page.${meta.ext}`;
+        const fileName = `start-page-${activeProfile().name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'profile'}.${meta.ext}`;
         return [
-          h('span.note', {}, 'Everything is stored in this browser. Export a backup or move it to another device.'),
+          h('span.note', {}, `Everything is stored in this browser. Export a backup of the ${activeProfile().name} profile, or import one into it.`),
           h('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px' } },
             h('span.field-label', { id: 'lbl-fmt' }, 'Export format'),
             segmented({
@@ -548,12 +600,13 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
 
       dialog.append(
         h('div.dialog-head', {},
-          h('div.titles', {}, h('span.kicker', {}, 'START PAGE'), h('h1', { id: 'set-title' }, 'Settings')),
+          h('div.titles', {}, kicker, h('h1', { id: 'set-title' }, 'Settings')),
           h('button.close-btn', { type: 'button', 'aria-label': 'Close settings', onclick: requestClose }, icon('close'))),
         tabs,
         panel,
         h('div.dialog-foot', {}, status, discard, save)
       );
+      showProfile();
       renderTabs();
       renderPanel();
       if (ui.expanded) panel.querySelector('.launcher-editor input')?.focus();

@@ -1,7 +1,7 @@
 // Persistence: chrome.storage.local inside the extension, localStorage when the page is opened as a plain file.
-import { defaultSettings, emptyHistory, normalizeHistory, normalizeSettings } from './core.js';
+import { defaultSettings, emptyHistory, normalizeHistory, normalizeProfiles, normalizeSettings, profileOfSettingsKey, profileSettingsKey } from './core.js';
 
-const SETTINGS_KEY = 'startPage:settings';
+const PROFILES_KEY = 'startPage:profiles';
 const HISTORY_KEY = 'startPage:history';
 
 const chromeStore = typeof chrome !== 'undefined' && chrome.storage?.local ? chrome.storage.local : null;
@@ -21,13 +21,31 @@ async function writeRaw(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
 }
 
-export async function loadSettings() {
-  const raw = await readRaw(SETTINGS_KEY);
+async function removeRaw(key) {
+  if (chromeStore) return chromeStore.remove(key);
+  localStorage.removeItem(key);
+}
+
+export async function loadProfiles() {
+  return normalizeProfiles(await readRaw(PROFILES_KEY));
+}
+
+export function saveProfiles(profiles) {
+  return writeRaw(PROFILES_KEY, profiles);
+}
+
+// A profile with nothing saved yet starts from the defaults.
+export async function loadSettings(profileId) {
+  const raw = await readRaw(profileSettingsKey(profileId));
   return raw ? normalizeSettings(raw).settings : defaultSettings();
 }
 
-export function saveSettings(settings) {
-  return writeRaw(SETTINGS_KEY, settings);
+export function saveSettings(profileId, settings) {
+  return writeRaw(profileSettingsKey(profileId), settings);
+}
+
+export function removeSettings(profileId) {
+  return removeRaw(profileSettingsKey(profileId));
 }
 
 export async function loadHistory() {
@@ -39,17 +57,24 @@ export function saveHistory(history) {
   return writeRaw(HISTORY_KEY, history);
 }
 
-// Calls back when another new tab saves settings, so open tabs stay in sync.
-export function onSettingsChanged(callback) {
+// Calls back when another new tab changes the profile list or saves a profile's settings, so open tabs stay in sync.
+// onSettings gets (profileId, settings) for any profile; the caller keeps the one it shows.
+export function onStorageChanged({ onProfiles, onSettings }) {
+  const handle = (key, value) => {
+    if (key === PROFILES_KEY) return onProfiles(normalizeProfiles(value));
+    const profileId = profileOfSettingsKey(key);
+    if (profileId) onSettings(profileId, normalizeSettings(value).settings);
+  };
   if (chromeStore && chrome.storage.onChanged) {
     chrome.storage.onChanged.addListener((changes, area) => {
-      if (area === 'local' && changes[SETTINGS_KEY]?.newValue) callback(normalizeSettings(changes[SETTINGS_KEY].newValue).settings);
+      if (area !== 'local') return;
+      for (const [key, change] of Object.entries(changes)) if (change.newValue) handle(key, change.newValue);
     });
   } else {
     window.addEventListener('storage', (event) => {
-      if (event.key !== SETTINGS_KEY || !event.newValue) return;
+      if (!event.key || !event.newValue) return;
       try {
-        callback(normalizeSettings(JSON.parse(event.newValue)).settings);
+        handle(event.key, JSON.parse(event.newValue));
       } catch {
         // Ignore malformed values written by other pages.
       }

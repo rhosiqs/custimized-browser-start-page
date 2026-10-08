@@ -678,6 +678,57 @@ export function countItems(source) {
   };
 }
 
+// ---------- Profiles ----------
+
+// Each profile keeps a whole settings object of its own. The first profile uses the settings key from before
+// profiles existed, so nothing moves when they arrive.
+export const DEFAULT_PROFILE_ID = 'default';
+export const PROFILE_NAME_MAX = 32;
+
+export function defaultProfiles() {
+  return { active: DEFAULT_PROFILE_ID, list: [{ id: DEFAULT_PROFILE_ID, name: 'Default' }] };
+}
+
+export function profileSettingsKey(id) {
+  return id === DEFAULT_PROFILE_ID ? 'startPage:settings' : `startPage:settings:${id}`;
+}
+
+// The profile a storage key holds settings for, or '' for any other key.
+export function profileOfSettingsKey(key) {
+  if (key === 'startPage:settings') return DEFAULT_PROFILE_ID;
+  const match = /^startPage:settings:([A-Za-z0-9_-]{1,64})$/.exec(String(key));
+  return match ? match[1] : '';
+}
+
+// Repairs a stored profile list: unique ids, non-empty names, at least one profile, and an active one in the list.
+export function normalizeProfiles(input) {
+  const src = input && typeof input === 'object' ? input : {};
+  const seen = new Set();
+  const list = [];
+  for (const item of Array.isArray(src.list) ? src.list : []) {
+    const id = typeof item?.id === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(item.id) ? item.id : '';
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    list.push({ id, name: text(item.name, PROFILE_NAME_MAX) || `Profile ${list.length + 1}` });
+  }
+  if (!list.length) return defaultProfiles();
+  const active = seen.has(src.active) ? src.active : list[0].id;
+  return { active, list };
+}
+
+// The letter (or emoji) that stands for a profile.
+export function profileMark(name) {
+  return firstGraphemes(String(name ?? '').trim(), 1).toUpperCase() || '?';
+}
+
+// "Profile 2", "Profile 3", … skipping names already taken.
+export function nextProfileName(list) {
+  const taken = new Set(list.map((p) => p.name.toLowerCase()));
+  let n = list.length + 1;
+  while (taken.has(`profile ${n}`)) n += 1;
+  return `Profile ${n}`;
+}
+
 // ---------- Import / export ----------
 
 export const FORMATS = Object.freeze({

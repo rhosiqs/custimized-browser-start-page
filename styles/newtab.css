@@ -505,6 +505,36 @@ input:focus-visible { outline-offset: 2px; }
   background: transparent;
 }
 .dock-sep { width: 1px; height: 28px; margin: 0 4px; background: var(--divider); }
+.profile-switch { position: relative; }
+.profile-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 10px 0 4px;
+  border: 1px solid var(--divider);
+  border-radius: 999px;
+  background: var(--bg);
+  font-size: 14px;
+  font-weight: 700;
+}
+.profile-btn:hover, .profile-btn[aria-expanded='true'] { border-color: var(--ink); }
+.profile-btn svg { color: var(--muted); }
+.profile-mark {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--acc);
+  color: var(--on-acc);
+  font-size: 13px;
+}
+.profile-name { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.profile-item { width: 100%; border: 0; background: transparent; font: inherit; text-align: left; }
+.profile-item .badge { display: grid; place-items: center; }
+.profile-item[aria-current='true'] .badge { background: var(--acc); color: var(--on-acc); }
 .flyout { position: absolute; left: -12px; bottom: 40px; z-index: 10; padding-bottom: 14px; }
 .flyout[hidden] { display: none; }
 .flyout-card {
@@ -754,6 +784,8 @@ fieldset.plain legend { padding: 0; margin-bottom: 6px; font-size: 14px; font-we
 .list .sub { font-size: 13px; color: var(--muted); }
 .list .badge { width: 40px; height: 40px; font-size: 16px; }
 .list .badge.site img { width: 22px; height: 22px; }
+.list .badge.profile { background: var(--surface); color: var(--sub); }
+.list .badge.profile.on { background: var(--acc); color: var(--on-acc); }
 .block-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
 .block-list li { display: flex; align-items: center; gap: 6px; min-height: 52px; padding: 0 14px 0 4px; border-radius: 6px; background: var(--surface); }
 .block-list .num { width: 26px; font-size: 13px; font-weight: 700; color: var(--green); font-variant-numeric: tabular-nums; }

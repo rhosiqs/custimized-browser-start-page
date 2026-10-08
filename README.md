@@ -1,7 +1,7 @@
 # Start Page — Chrome New Tab Extension
 
 <p>
-  <img alt="Version" src="https://img.shields.io/badge/version-v1.8.3-blue">
+  <img alt="Version" src="https://img.shields.io/badge/version-v1.9.0-blue">
   <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green">
 </p>
 
@@ -18,6 +18,7 @@ A Chrome extension (Manifest V3) that replaces the new tab page with a calm, loc
 - **Suggestions** — recent queries from local history, plus web suggestions (Datamuse) in the Web box. ↑ ↓ to move, Enter to choose, Esc to close.
 - **Shortcuts** — optional categories with filter chips (the category row, with its Edit and Add buttons, can be turned off in Settings → Layout; the shortcuts then move up into its place), paging (rows × per row), drag any tile to reorder, a quick-edit popover on each tile (with delete), a full editor (website icon, letter, or uploaded image), an Edit mode with remove buttons and arrow-key reordering, and a Shortcuts tab in Settings that lists every shortcut to reorder, edit (in the same editor) or remove.
 - **Launcher dock** — groups of links, shown with website icons, that preview on hover or focus and pin open on click. Each launcher's icon is its label (up to 3 letters or emoji), a website's icon, an image link from the web, or an uploaded image; if a web icon fails to load, the label shows.
+- **Profiles** — separate sets of settings (appearance, search engines, clocks, shortcuts, launchers, layout), for example Work and Home. Switch or add one from the profile button at the left of the dock; Settings → Profiles renames, deletes, adds a blank profile or duplicates the one in use. Export and import work on the profile in use; search history is shared.
 - **Appearance** — light, dark or system theme; green, brown or ink accent; solid, gradient or image background, with separate background colors for the light and dark themes.
 - **Colors** — every color picker (accent, background, shortcut, launcher) shows two base colors and a + button; the + opens the other preset colors and a field for any #HEX color.
 - **Data** — export to JSON, YAML, TOML or text; imports are reviewed (fixed, skipped, merge or replace) before anything changes. A backup restores every setting, launcher icons included; merging takes the file's version of any shortcut or launcher you already have and keeps the rest.
@@ -54,7 +55,7 @@ No dependencies. Node.js is needed only for the checks:
 npm run verify   # syntax check + unit tests
 ```
 
-The tests cover URL/DOI routing, engine templates, history, clocks, settings normalization and import reporting, merge, and every export format.
+The tests cover URL/DOI routing, engine templates, history, clocks, settings normalization and import reporting, profile list repair, merge, and every export format.
 
 For quick UI work outside the extension, serve the folder (`python3 -m http.server`) and open `newtab.html`; settings then fall back to `localStorage` and website icons fall back to letters.
 
@@ -68,7 +69,7 @@ For quick UI work outside the extension, serve the folder (`python3 -m http.serv
 | `src/main.js` | Entry: loads settings, renders blocks, stage scaling, page-wide keys, cross-tab sync. |
 | `src/core.js` | Pure logic: routing, validation, normalization, merge, import/export. |
 | `src/storage.js` | `chrome.storage.local` (or `localStorage`) persistence and favicon URLs. |
-| `src/state.js` | In-memory settings/history store with save-and-notify updates. |
+| `src/state.js` | In-memory profiles/settings/history store with save-and-notify updates and profile actions. |
 | `src/search.js`, `src/shortcuts.js`, `src/dock.js` | Main page blocks. |
 | `src/shortcut-editor.js`, `src/settings.js`, `src/import-review.js` | Dialogs. |
 | `src/dom.js`, `src/widgets.js`, `src/appearance.js` | DOM helpers, shared widgets, theme application. |

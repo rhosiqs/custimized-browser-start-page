@@ -16,8 +16,8 @@ newtab.html ─ main.js ─┬─ state.js ── storage.js ── chrome.stora
 ## Layers
 
 - **`core.js`** — pure functions with no DOM or `chrome.*` access, so Node can test them. Owns the settings schema (`defaultSettings`), validation and repair (`normalizeSettings` returns `{ settings, report }`, which doubles as the import report), query routing, history, clock math (including the zone abbreviation table used for clock names and for adding clocks), merge and serialization.
-- **`storage.js`** — reads/writes `startPage:settings` and `startPage:history` in `chrome.storage.local`, falling back to `localStorage` outside the extension. Loaded settings always pass through `normalizeSettings`.
-- **`state.js`** — the single in-memory copy. Every mutation goes through `update()`, which clones, saves and notifies subscribers. `main.js` subscribes and re-renders.
+- **`storage.js`** — reads/writes `startPage:profiles`, each profile's settings and `startPage:history` in `chrome.storage.local`, falling back to `localStorage` outside the extension. Loaded settings always pass through `normalizeSettings`, and the profile list through `normalizeProfiles`.
+- **`state.js`** — the single in-memory copy: the profile list, the active profile's settings and history. Every settings mutation goes through `update()`, which clones, saves to the active profile and notifies subscribers; profile actions (`switchProfile`, `createProfile`, `renameProfile`, `deleteProfile`) save the list and notify too. `main.js` subscribes and re-renders.
 - **UI modules** — build DOM with the `h()` helper. Blocks (clocks, search, shortcuts) are long-lived elements that re-render their own contents; the search block is built once so typed text and focus survive settings changes.
 
 ## Rendering and layout
@@ -36,6 +36,14 @@ The page reproduces the design canvas’s stage rule: the 1440×810 design is sc
 - The Settings dialog edits a draft; appearance previews live via `applyAppearance(draft)` and reverts on close. Save validates engines and launcher links, then commits once.
 - Imports parse the file (`parseBackup`), normalize it into a report, and apply as **merge** (`mergeSettings`, starting from current settings; a shortcut or launcher in both takes the file's version, keeping its id and any links only on this device) or **replace** (starting from defaults). Export writes the saved settings object whole, so every format round-trips exactly.
 - Other open new tabs pick up saved changes through `chrome.storage.onChanged`.
+
+## Profiles
+
+`startPage:profiles` holds `{ active, list: [{ id, name }] }`. Each profile's whole settings object lives under its own key (`profileSettingsKey` in `core.js`): the first profile, `default`, keeps `startPage:settings` from before profiles, so older saves need no migration, and the others use `startPage:settings:<id>`. A profile with nothing saved loads the defaults. History is shared.
+
+- The dock's profile switcher (`dock.js`) switches profiles or adds one, then opens Settings › Profiles. Settings edits a draft of the active profile only; switching or adding a profile there (after the unsaved-changes check) reloads the draft from the new profile, and the dialog's kicker names it. Renaming and deleting apply at once; the profile in use can't be deleted, so one always remains.
+- Export and import act on the active profile.
+- Cross-tab sync: another tab's profile list change is followed, including its active profile, unless a dialog is open here (then this tab keeps the profile it is editing). Settings changes from other tabs apply only for the active profile.
 
 ## Export format
 

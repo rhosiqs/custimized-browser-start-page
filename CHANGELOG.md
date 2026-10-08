@@ -2,6 +2,14 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.9.0 — 2026-10-08
+
+### Added
+- Profiles: each profile keeps its own appearance, search engines, clocks, shortcuts, launchers and layout. The profile button at the left of the dock shows the profile in use and opens a menu to switch profiles, add a new one or manage them.
+- A Profiles tab in Settings renames and deletes profiles, switches to one, and adds a blank profile or a duplicate of the one in use. The top of Settings names the profile being edited.
+- Export and import work on the profile in use, and the exported file is named after it. Search history stays shared across profiles.
+- Your existing settings become the Default profile; nothing needs to move.
+
 ## v1.8.3 — 2026-10-08
 
 ### Fixed

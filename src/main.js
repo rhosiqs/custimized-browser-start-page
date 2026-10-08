@@ -5,8 +5,8 @@ import { closeDockPopups, renderDock } from './dock.js';
 import { h, isModalOpen } from './dom.js';
 import { closeSearchPopups, focusWebSearch, searchBlock } from './search.js';
 import { closeShortcutPopover, shortcutsBlock } from './shortcuts.js';
-import { initStore, replaceFromOtherTab, store, subscribe } from './state.js';
-import { onSettingsChanged } from './storage.js';
+import { initStore, profilesFromOtherTab, replaceFromOtherTab, store, subscribe } from './state.js';
+import { onStorageChanged } from './storage.js';
 
 const DESIGN_WIDTH = 1440;
 const DESIGN_HEIGHT = 810;
@@ -118,10 +118,17 @@ async function start() {
   fitStage();
   await initStore();
   subscribe(render);
-  onSettingsChanged((settings) => {
-    if (JSON.stringify(settings) === JSON.stringify(store.settings)) return;
-    // Don't swap settings underneath an open dialog; the next change after it closes will catch up.
-    if (!isModalOpen()) replaceFromOtherTab(settings);
+  onStorageChanged({
+    onProfiles: (profiles) => {
+      if (JSON.stringify(profiles) === JSON.stringify(store.profiles)) return;
+      // An open dialog keeps editing the profile it opened on.
+      profilesFromOtherTab(profiles, { keepActive: isModalOpen() });
+    },
+    onSettings: (profileId, settings) => {
+      if (profileId !== store.profiles.active || JSON.stringify(settings) === JSON.stringify(store.settings)) return;
+      // Don't swap settings underneath an open dialog; the next change after it closes will catch up.
+      if (!isModalOpen()) replaceFromOtherTab(settings);
+    }
   });
   wireGlobalEvents();
   render();
