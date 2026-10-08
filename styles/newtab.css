@@ -378,7 +378,7 @@ input:focus-visible { outline-offset: 2px; }
 }
 .badge.site { background: var(--pop); border: 1px solid var(--divider); }
 .badge.plain { background: var(--surface); color: var(--ink); }
-.badge.empty { border: 1px dashed var(--control); }
+.badge.no-icon { border: 1px dashed var(--control); }
 .badge img { width: 100%; height: 100%; object-fit: cover; }
 .badge.site img { width: 26px; height: 26px; object-fit: contain; }
 .tile-edit {
