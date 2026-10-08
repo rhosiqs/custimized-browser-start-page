@@ -1,6 +1,6 @@
 // Pure logic shared by the new tab page and the Node tests: no DOM, no chrome.* calls.
 
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;
 export const HISTORY_LIMIT = 30;
 export const SHORTCUT_IMAGE_LIMIT = 512 * 1024;
 export const BACKGROUND_IMAGE_LIMIT = 3 * 1024 * 1024;
@@ -24,9 +24,14 @@ export const ACCENTS = Object.freeze({
 export const THEMES = ['light', 'dark', 'system'];
 export const BACKGROUNDS = ['solid', 'gradient', 'image'];
 export const BLOCKS = Object.freeze({ clocks: 'Clocks', search: 'Search', shortcuts: 'Shortcuts' });
-export const ICON_MODES = ['site', 'letter', 'upload'];
-// Launcher button faces: its label, a website's icon, an online image, or an uploaded image.
-export const LAUNCHER_ICON_MODES = ['label', 'site', 'url', 'upload'];
+// Before schema v9 a shortcut chose one of these, and a launcher one of the LEGACY_LAUNCHER_MODES.
+const LEGACY_SHORTCUT_ICONS = ['site', 'letter', 'upload'];
+const LEGACY_LAUNCHER_MODES = ['label', 'site', 'url', 'upload'];
+// Every icon (shortcut, launcher, profile) is one of these kinds; see normalizeIcon.
+export const ICON_KINDS = ['site', 'image', 'upload', 'emoji', 'color'];
+export const ICON_TEXT_MAX = 3;
+// Uploaded icon images are scaled down to this many pixels on the longer side.
+export const ICON_IMAGE_SIZE = 128;
 
 export const SEARCH_BOXES = Object.freeze({
   web: { kicker: 'WEB', placeholder: 'Search the web or paste a link' },
@@ -123,10 +128,10 @@ export function defaultSettings() {
     },
     layout: { blocks: ['clocks', 'search', 'shortcuts'], rows: 2, perRow: 8, showCategories: true },
     shortcuts: DEFAULT_SHORTCUTS.map(([name, url, category, color], index) => ({
-      id: `sc-${index + 1}`, name, url: new URL(url).href, category, color, icon: 'site', image: ''
+      id: `sc-${index + 1}`, name, url: new URL(url).href, category, icon: siteIcon(color)
     })),
-    launchers: DEFAULT_LAUNCHERS.map(([name, icon, color, links], index) => ({
-      id: `ln-${index + 1}`, name, icon, color, iconMode: 'label', iconUrl: '', image: '',
+    launchers: DEFAULT_LAUNCHERS.map(([name, label, color, links], index) => ({
+      id: `ln-${index + 1}`, name, icon: colorIcon(color, label),
       links: links.map(([linkName, host]) => ({ name: linkName, url: `https://${host}/` }))
     }))
   };
@@ -458,6 +463,85 @@ function text(value, max = 120) {
   return typeof value === 'string' ? value.trim().slice(0, max) : typeof value === 'number' ? String(value) : '';
 }
 
+// ---------- Icons ----------
+
+// One icon model serves shortcuts, launchers and profiles. Fields by kind:
+//   site    { color, text, url }   the website's own logo; url '' means the item's own address
+//   image   { color, text, url }   an image from the web
+//   upload  { color, text, data }  an uploaded image (data URL)
+//   emoji   { text }               an emoji or a few characters on a plain disc
+//   color   { color, letter, text } a solid color with a letter (text, else the name's first letter) or none
+//   none    { }                    nothing (profiles only)
+// color is a SWATCHES key or #rrggbb; for site, image and upload it shows behind the letter shown when the picture can't load.
+export function siteIcon(color = 'green') {
+  return { kind: 'site', color, text: '', url: '' };
+}
+
+export function blankLauncher() {
+  return { id: createId('ln'), name: 'New launcher', icon: colorIcon('green'), links: [] };
+}
+
+export function colorIcon(color = 'green', text = '') {
+  return { kind: 'color', color, letter: true, text };
+}
+
+// Returns a valid icon; a kind that lacks what it needs (an image without an address, an emoji without text)
+// becomes a color icon. report (optional) gets what was dropped, labelled with label.
+export function normalizeIcon(raw, { color = 'green', allowNone = false, requireUrl = false, report = null, label = 'Item' } = {}) {
+  const src = raw && typeof raw === 'object' ? raw : {};
+  const fill = pickColor(src.color, Object.keys(SWATCHES), color);
+  const letters = firstGraphemes(text(src.text, 40), ICON_TEXT_MAX);
+  let kind = allowNone && src.kind === 'none' ? 'none' : pick(src.kind, ICON_KINDS, 'site');
+  if (kind === 'none') return { kind };
+  let url = '';
+  if (kind === 'site' || kind === 'image') {
+    const rawUrl = String(src.url ?? '').trim();
+    const check = rawUrl ? normalizeHttpUrl(rawUrl) : null;
+    if (check?.ok) url = check.url;
+    else if (rawUrl) report?.skipped.push({ item: `${label} icon address`, reason: 'not an http(s) address' });
+    if (!url && (kind === 'image' || requireUrl)) kind = 'color';
+  }
+  let data = '';
+  if (kind === 'upload') {
+    if (isImageDataUrl(src.data, SHORTCUT_IMAGE_LIMIT)) data = src.data;
+    else {
+      if (src.data) report?.skipped.push({ item: `${label} icon image`, reason: 'not an embedded image under 512 KB' });
+      kind = 'color';
+    }
+  }
+  if (kind === 'emoji' && !letters) kind = 'color';
+  if (kind === 'emoji') return { kind, text: letters };
+  if (kind === 'color') return { kind, color: fill, letter: src.letter !== false, text: letters };
+  if (kind === 'upload') return { kind, color: fill, text: letters, data };
+  return { kind, color: fill, text: letters, url };
+}
+
+// The letters an icon shows when it has no picture: its own text, else the name's first character (an emoji stays whole).
+export function letterOf(name, letters = '') {
+  return firstGraphemes(String(letters ?? '').trim(), ICON_TEXT_MAX) || firstGraphemes(String(name ?? '').trim(), 1).toUpperCase() || '?';
+}
+
+// Icons saved before schema v9: a shortcut had icon 'site' | 'letter' | 'upload' (+ image, color); a launcher had a
+// label (icon), iconMode 'label' | 'site' | 'url' | 'upload', iconUrl, image and color.
+function legacyShortcutIcon(item, color, starterToSite) {
+  let mode = pick(item.icon, LEGACY_SHORTCUT_ICONS, 'site');
+  // Version 1 shipped the starter shortcuts (ids sc-1, sc-2, …) as letters; they now use website icons.
+  if (starterToSite && mode === 'letter' && /^sc-\d+$/.test(String(item.id))) mode = 'site';
+  if (mode === 'site') return siteIcon(color);
+  if (mode === 'upload' && isImageDataUrl(item.image, SHORTCUT_IMAGE_LIMIT)) return { kind: 'upload', color, text: '', data: item.image };
+  return colorIcon(color);
+}
+
+function legacyLauncherIcon(group, color, report, label) {
+  const letters = firstGraphemes(text(group.icon, 40), ICON_TEXT_MAX);
+  const hasImage = isImageDataUrl(group.image, SHORTCUT_IMAGE_LIMIT);
+  if (group.image && !hasImage) report.skipped.push({ item: `${label} image`, reason: 'not an embedded image under 512 KB' });
+  // Saves from before icon modes show their image when they have one, else the label.
+  const mode = pick(group.iconMode, LEGACY_LAUNCHER_MODES, hasImage ? 'upload' : 'label');
+  const kind = { label: 'color', site: 'site', url: 'image', upload: 'upload' }[mode];
+  return normalizeIcon({ kind, color, text: letters, url: group.iconUrl, data: group.image }, { color, report, label });
+}
+
 // Returns { settings, report } where report lists what was repaired or dropped.
 export function normalizeSettings(input, { fallback = defaultSettings() } = {}) {
   const report = { fixed: [], skipped: [] };
@@ -586,18 +670,18 @@ export function normalizeSettings(input, { fallback = defaultSettings() } = {}) 
         return;
       }
       seenUrls.set(key, true);
-      let icon = pick(item.icon, ICON_MODES, 'site');
-      // Version 1 shipped the starter shortcuts (ids sc-1, sc-2, …) as letters; they now use website icons.
-      if (legacyStarters && icon === 'letter' && /^sc-\d+$/.test(String(item.id))) icon = 'site';
-      const image = icon === 'upload' && isImageDataUrl(item.image, SHORTCUT_IMAGE_LIMIT) ? item.image : '';
+      const color = pickColor(item.color, Object.keys(SWATCHES), 'green');
+      // Before schema v9 the icon was a mode string with a separate image and color; now it is an icon object.
+      const icon = item.icon && typeof item.icon === 'object'
+        ? normalizeIcon(item.icon, { color, report, label })
+        : legacyShortcutIcon(item, color, legacyStarters);
       out.shortcuts.push({
         id: text(item.id, 60) || createId('sc'),
         name,
         url: url.url,
         category: text(item.category, 30),
-        color: pickColor(item.color, Object.keys(SWATCHES), 'green'),
-        icon: icon === 'upload' && !image ? 'letter' : icon,
-        image
+        icon,
+        ...(item.shared === true ? { shared: true } : {})
       });
     });
     const ids = new Set();
@@ -619,24 +703,16 @@ export function normalizeSettings(input, { fallback = defaultSettings() } = {}) 
         }
         links.push({ name: linkName, url: url.url });
       });
-      // An uploaded image fills the launcher button in place of its label.
-      const image = isImageDataUrl(group.image, SHORTCUT_IMAGE_LIMIT) ? group.image : '';
-      if (group.image && !image) report.skipped.push({ item: `${name} launcher image`, reason: 'not an embedded image under 512 KB' });
-      // Saves from before icon modes show their image when they have one, else the label.
-      let iconMode = pick(group.iconMode, LAUNCHER_ICON_MODES, image ? 'upload' : 'label');
-      const rawIconUrl = String(group.iconUrl ?? '').trim();
-      const iconUrl = rawIconUrl && normalizeHttpUrl(rawIconUrl).ok ? normalizeHttpUrl(rawIconUrl).url : '';
-      if (rawIconUrl && !iconUrl) report.skipped.push({ item: `${name} launcher icon address`, reason: 'not an http(s) address' });
-      // An image link needs an address and an upload needs its image; a website icon falls back to the first link.
-      if ((iconMode === 'upload' && !image) || (iconMode === 'url' && !iconUrl)) iconMode = 'label';
+      const color = pickColor(group.color, Object.keys(SWATCHES), 'green');
+      const label = `${name} launcher`;
+      const icon = group.icon && typeof group.icon === 'object'
+        ? normalizeIcon(group.icon, { color, report, label })
+        : legacyLauncherIcon(group, color, report, label);
       out.launchers.push({
         id: text(group.id, 60) || createId('ln'),
         name,
-        icon: firstGraphemes(text(group.icon, 40), 3) || initialOf(name),
-        color: pickColor(group.color, Object.keys(SWATCHES), 'green'),
-        iconMode,
-        iconUrl,
-        image,
+        icon,
+        ...(group.shared === true ? { shared: true } : {}),
         links
       });
     });
@@ -653,7 +729,9 @@ export function mergeSettings(current, incoming) {
   const urlKey = (s) => `${s.name.toLowerCase()}|${s.url}`;
   const fileShortcuts = new Map(incoming.shortcuts.map((s) => [urlKey(s), s]));
   const have = new Set(current.shortcuts.map(urlKey));
-  merged.shortcuts = current.shortcuts.map((s) => (fileShortcuts.has(urlKey(s)) ? { ...clone(fileShortcuts.get(urlKey(s))), id: s.id } : s))
+  // A shared shortcut or launcher stays shared when the file's version replaces it.
+  const keepShared = (from) => (from.shared ? { shared: true } : {});
+  merged.shortcuts = current.shortcuts.map((s) => (fileShortcuts.has(urlKey(s)) ? { ...clone(fileShortcuts.get(urlKey(s))), id: s.id, ...keepShared(s) } : s))
     .concat(incoming.shortcuts.filter((s) => !have.has(urlKey(s))).map((s) => ({ ...s, id: createId('sc') })));
   const nameKey = (l) => l.name.toLowerCase();
   const fileLaunchers = new Map(incoming.launchers.map((l) => [nameKey(l), l]));
@@ -663,7 +741,7 @@ export function mergeSettings(current, incoming) {
     if (!file) return l;
     // Links only on this device stay, after the file's links.
     const fileUrls = new Set(file.links.map((link) => link.url));
-    return { ...clone(file), id: l.id, links: clone(file.links).concat(l.links.filter((link) => !fileUrls.has(link.url))) };
+    return { ...clone(file), id: l.id, ...keepShared(l), links: clone(file.links).concat(l.links.filter((link) => !fileUrls.has(link.url))) };
   }).concat(incoming.launchers.filter((l) => !launcherNames.has(nameKey(l))).map((l) => ({ ...l, id: createId('ln') })));
   const zones = new Set(current.clocks.world.map((c) => c.tz));
   merged.clocks.world = current.clocks.world.concat(incoming.clocks.world.filter((c) => !zones.has(c.tz)));
@@ -678,6 +756,126 @@ export function countItems(source) {
     clocks: Array.isArray(s.clocks?.world) ? s.clocks.world.length : 0,
     settings: ['theme', 'accent', 'background', 'engines', 'layout'].some((k) => k in s) ? 1 : 0
   };
+}
+
+// ---------- Items shown on all profiles ----------
+
+// A shortcut or launcher with shared: true appears on every profile. Its content lives once in the shared store
+// (startPage:shared); each profile's own settings keep only a stub { id, shared: true } where it sits in that
+// profile's order. The page always works with the joined view, where stubs are replaced by the shared items.
+export const SHARED_KINDS = ['shortcuts', 'launchers'];
+
+export function emptyShared() {
+  return { shortcuts: [], launchers: [] };
+}
+
+// Repairs the stored shared store: arrays of objects with a text id, each flagged shared.
+export function normalizeShared(input) {
+  const out = emptyShared();
+  const src = input && typeof input === 'object' ? input : {};
+  for (const kind of SHARED_KINDS) {
+    const seen = new Set();
+    for (const item of Array.isArray(src[kind]) ? src[kind] : []) {
+      if (!item || typeof item !== 'object' || typeof item.id !== 'string' || !item.id || seen.has(item.id)) continue;
+      seen.add(item.id);
+      out[kind].push({ ...clone(item), shared: true });
+    }
+  }
+  return out;
+}
+
+// What makes two items the same one: a shortcut's name and address, a launcher's name.
+function itemKey(kind, item) {
+  const name = String(item?.name ?? '').trim().toLowerCase();
+  return kind === 'shortcuts' ? `${name}|${normalizeHttpUrl(item?.url).url || ''}` : name;
+}
+
+// Splits settings (the joined view) into what one profile stores and the shared store.
+export function splitShared(settings) {
+  const profile = clone(settings);
+  const shared = emptyShared();
+  for (const kind of SHARED_KINDS) {
+    profile[kind] = (settings[kind] || []).map((item) => {
+      if (item.shared !== true) return item;
+      shared[kind].push(clone(item));
+      return { id: item.id, shared: true };
+    });
+  }
+  return { profile, shared };
+}
+
+// Builds the page's view from one profile's stored settings (raw, not yet normalized) and the shared store:
+// each stub becomes its shared item, a stub whose item is gone is dropped, and shared items missing from the
+// profile's order are added at the end. A local item that clashes with a shared one (same id, or the same name and
+// address) gives way, so the shared item is never lost to normalization.
+export function joinShared(rawSettings, rawShared) {
+  const shared = normalizeShared(rawShared);
+  const base = rawSettings && typeof rawSettings === 'object' ? clone(rawSettings) : {};
+  for (const kind of SHARED_KINDS) {
+    if (!Array.isArray(base[kind])) {
+      if (!shared[kind].length) continue;
+      base[kind] = defaultSettings()[kind];
+    }
+    const byId = new Map(shared[kind].map((item) => [item.id, item]));
+    const byKey = new Map(shared[kind].map((item) => [itemKey(kind, item), item]));
+    const seen = new Set();
+    const list = [];
+    for (const item of base[kind]) {
+      if (item && item.shared === true && byId.has(item.id)) {
+        if (!seen.has(item.id)) list.push(clone(byId.get(item.id)));
+        seen.add(item.id);
+      } else if (item && typeof item === 'object') {
+        // A stub (no name) whose shared item was deleted elsewhere disappears.
+        if (item.shared === true && typeof item.name !== 'string') continue;
+        // A local item that is the same one as a shared item (see itemKey) gives its place to it.
+        const twin = byKey.get(itemKey(kind, item));
+        if (twin) {
+          if (!seen.has(twin.id)) list.push(clone(twin));
+          seen.add(twin.id);
+          continue;
+        }
+        const local = { ...item };
+        delete local.shared;
+        list.push(byId.has(local.id) ? { ...local, id: createId(kind === 'shortcuts' ? 'sc' : 'ln') } : local);
+      } else {
+        list.push(item);
+      }
+    }
+    for (const item of shared[kind]) if (!seen.has(item.id)) list.push(clone(item));
+    base[kind] = list;
+  }
+  return base;
+}
+
+// Settings with every shared flag removed (an imported file never changes what is shared).
+export function stripShared(settings) {
+  const out = clone(settings);
+  for (const kind of SHARED_KINDS) out[kind] = (out[kind] || []).map((item) => { const { shared, ...rest } = item; return rest; });
+  return out;
+}
+
+// Keeps the current shared items in settings that replace the current ones (a Replace import), so they stay on every profile.
+export function keepSharedFrom(next, current) {
+  const out = clone(next);
+  for (const kind of SHARED_KINDS) {
+    const kept = (current[kind] || []).filter((item) => item.shared === true);
+    const ids = new Set(kept.map((item) => item.id));
+    const byKey = new Map(kept.map((item) => [itemKey(kind, item), item]));
+    const placed = new Set();
+    const list = [];
+    for (const item of out[kind]) {
+      // An item that is the same one as a shared item (see itemKey) gives its place to it.
+      const twin = byKey.get(itemKey(kind, item));
+      if (twin) {
+        if (!placed.has(twin.id)) list.push(clone(twin));
+        placed.add(twin.id);
+      } else {
+        list.push(ids.has(item.id) ? { ...item, id: createId(kind === 'shortcuts' ? 'sc' : 'ln') } : item);
+      }
+    }
+    out[kind] = list.concat(kept.filter((item) => !placed.has(item.id)).map(clone));
+  }
+  return out;
 }
 
 // ---------- Profiles ----------
@@ -719,21 +917,31 @@ export function normalizeProfiles(input) {
   return { active, list };
 }
 
-// A profile's icon is its name's first letter (the default, stored as nothing), a custom letter or emoji, or none.
-export const PROFILE_ICONS = ['letter', 'custom', 'none'];
+// A profile's icon is an ordinary icon (see normalizeIcon) or nothing stored, which shows the name's first letter
+// on the neutral badge; kind 'none' leaves the dock button with the name only. Before the icon picker a profile
+// had icon 'custom' with iconText (now an emoji icon) or 'none'.
+export function defaultProfileIcon() {
+  return { kind: 'color', color: '', letter: true, text: '' };
+}
+
+function isDefaultProfileIcon(icon) {
+  return icon.kind === 'color' && !icon.color && icon.letter && !icon.text;
+}
 
 function profileIconOf(item) {
-  const iconText = firstGraphemes(text(item.iconText, 40), 2);
-  if (item.icon === 'none') return { icon: 'none' };
-  if (item.icon === 'custom' && iconText) return { icon: 'custom', iconText };
+  if (item.icon && typeof item.icon === 'object') {
+    const icon = normalizeIcon(item.icon, { color: '', allowNone: true, requireUrl: true });
+    return isDefaultProfileIcon(icon) ? {} : { icon };
+  }
+  if (item.icon === 'none') return { icon: { kind: 'none' } };
+  const letters = firstGraphemes(text(item.iconText, 40), 2);
+  if (item.icon === 'custom' && letters) return { icon: { kind: 'emoji', text: letters } };
   return {};
 }
 
-// The text that stands for a profile, or '' when it shows no icon.
-export function profileMark(profile) {
-  if (profile?.icon === 'none') return '';
-  if (profile?.icon === 'custom' && profile.iconText) return profile.iconText;
-  return firstGraphemes(String(profile?.name ?? '').trim(), 1).toUpperCase() || '?';
+// The icon to draw for a profile.
+export function profileIcon(profile) {
+  return profile?.icon || defaultProfileIcon();
 }
 
 // "Profile 2", "Profile 3", … skipping names already taken.

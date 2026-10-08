@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  DEFAULT_PROFILE_ID, FORMATS, SWATCHES, defaultProfiles, nextProfileName, normalizeProfiles, profileMark, profileOfSettingsKey, profileSettingsKey, clockLabel, colorOf, iconTone, clockParts, countItems, firstGraphemes, zoneAbbreviation, zoneFromAbbreviation, defaultSettings, detectFormat, historyMatches, isImageDataUrl, isValidEngineUrl, mergeSettings, moveItem,
+  DEFAULT_PROFILE_ID, FORMATS, SWATCHES, clone, colorIcon, defaultProfiles, joinShared, keepSharedFrom, letterOf, nextProfileName, normalizeIcon, normalizeProfiles, normalizeShared, profileIcon, splitShared, stripShared, siteIcon, profileOfSettingsKey, profileSettingsKey, clockLabel, colorOf, iconTone, clockParts, countItems, firstGraphemes, zoneAbbreviation, zoneFromAbbreviation, defaultSettings, detectFormat, historyMatches, isImageDataUrl, isValidEngineUrl, mergeSettings, moveItem,
   normalizeDoi, normalizeHex, normalizeHttpUrl, normalizeSettings, parseBackup, readableOn, recordHistory, relativeZone, routeQuery, serialize
 } from '../src/core.js';
 
@@ -76,12 +76,12 @@ test('normalizeSettings keeps custom HEX colors for accent, shortcuts and launch
   const { settings } = normalizeSettings({
     ...base,
     accent: '#C0FFEE',
-    shortcuts: [{ ...base.shortcuts[0], color: '#123' }, { ...base.shortcuts[1], color: 'purple' }],
-    launchers: [{ ...base.launchers[0], color: '#AbCdEf' }]
+    shortcuts: [{ ...base.shortcuts[0], icon: { kind: 'site', color: '#123' } }, { ...base.shortcuts[1], icon: { kind: 'site', color: 'purple' } }],
+    launchers: [{ ...base.launchers[0], icon: { kind: 'color', color: '#AbCdEf' } }]
   });
   assert.equal(settings.accent, '#c0ffee');
-  assert.deepEqual(settings.shortcuts.map((s) => s.color), ['#112233', 'green']);
-  assert.equal(settings.launchers[0].color, '#abcdef');
+  assert.deepEqual(settings.shortcuts.map((s) => s.icon.color), ['#112233', 'green']);
+  assert.equal(settings.launchers[0].icon.color, '#abcdef');
   assert.equal(normalizeSettings({ ...base, accent: 'teal' }).settings.accent, base.accent);
 });
 
@@ -180,14 +180,13 @@ test('countItems summarises an import', () => {
 });
 
 test('version 1 starter shortcuts move from letters to website icons', () => {
-  const v1 = defaultSettings();
-  v1.version = 1;
-  v1.shortcuts.forEach((s) => { s.icon = 'letter'; });
-  v1.shortcuts.push({ id: 'sc-lx2k-1', name: 'Mine', url: 'https://example.com/', category: 'General', color: 'green', icon: 'letter', image: '' });
+  const v1 = { version: 1, shortcuts: defaultSettings().shortcuts.map((s) => ({ id: s.id, name: s.name, url: s.url, category: s.category, color: 'green', icon: 'letter', image: '' })) };
+  v1.shortcuts.push({ id: 'sc-lx2k-1', name: 'Mine', url: 'https://example.com/', category: 'General', color: 'gold', icon: 'letter', image: '' });
   const { settings } = normalizeSettings(v1);
-  assert.ok(settings.shortcuts.slice(0, -1).every((s) => s.icon === 'site'));
-  assert.equal(settings.shortcuts.at(-1).icon, 'letter');
-  assert.equal(normalizeSettings({ ...settings, shortcuts: [{ ...settings.shortcuts[0], icon: 'letter' }] }).settings.shortcuts[0].icon, 'letter');
+  assert.ok(settings.shortcuts.slice(0, -1).every((s) => s.icon.kind === 'site'));
+  assert.deepEqual(settings.shortcuts.at(-1).icon, { kind: 'color', color: 'gold', letter: true, text: '' });
+  const again = normalizeSettings({ ...settings, shortcuts: [{ ...settings.shortcuts[0], icon: colorIcon('ink') }] }).settings;
+  assert.equal(again.shortcuts[0].icon.kind, 'color');
 });
 
 test('seconds are on by default and older saves turn them on once', () => {
@@ -277,45 +276,103 @@ test('firstGraphemes keeps emoji whole', () => {
   assert.equal(firstGraphemes('ABCD', 3), 'ABC');
 });
 
-test('launchers keep emoji labels and valid images, and drop bad images', () => {
+test('launcher labels, images and modes saved before schema v9 become icon objects', () => {
   const png = 'data:image/png;base64,iVBORw0KGgo=';
   const { settings, report } = normalizeSettings({
+    version: 8,
     launchers: [
-      { name: 'Lab', icon: '🧑‍🔬', image: png, links: [] },
-      { name: 'Web', icon: 'W', image: 'https://example.com/x.png', links: [] }
-    ]
-  });
-  assert.equal(settings.launchers[0].icon, '🧑‍🔬');
-  assert.equal(settings.launchers[0].image, png);
-  assert.equal(settings.launchers[1].image, '');
-  assert.ok(report.skipped.some((s) => s.item === 'Web launcher image'));
-  assert.ok(defaultSettings().launchers.every((l) => l.image === ''));
-});
-
-test('launcher icon modes: old saves pick upload or label, and bad choices fall back to the label', () => {
-  const png = 'data:image/png;base64,iVBORw0KGgo=';
-  const { settings, report } = normalizeSettings({
-    launchers: [
-      { name: 'Old image', icon: 'O', image: png, links: [] },
+      { name: 'Lab', icon: '🧑‍🔬', color: 'ink', image: png, links: [] },
+      { name: 'Web', icon: 'W', image: 'https://example.com/x.png', links: [] },
       { name: 'Old label', icon: 'L', links: [] },
-      { name: 'Site', icon: 'S', iconMode: 'site', iconUrl: 'github.com', links: [] },
+      { name: 'Site', icon: 'S', iconMode: 'site', iconUrl: 'github.com', color: 'gold', links: [] },
       { name: 'Link', icon: 'K', iconMode: 'url', iconUrl: 'https://example.com/logo.png', links: [] },
       { name: 'Empty link', icon: 'E', iconMode: 'url', iconUrl: '', links: [] },
-      { name: 'Bad link', icon: 'B', iconMode: 'url', iconUrl: 'javascript:alert(1)', links: [] }
+      { name: 'Bad link', icon: 'B', iconMode: 'url', iconUrl: 'javascript:alert(1)', links: [] },
+      { name: 'Up', icon: 'U', iconMode: 'upload', image: png, links: [] },
+      { name: 'No image', icon: 'N', iconMode: 'upload', links: [] }
     ]
   });
-  assert.deepEqual(settings.launchers.map((l) => l.iconMode), ['upload', 'label', 'site', 'url', 'label', 'label']);
-  assert.equal(settings.launchers[2].iconUrl, 'https://github.com/');
-  assert.equal(settings.launchers[3].iconUrl, 'https://example.com/logo.png');
+  const icons = settings.launchers.map((l) => l.icon);
+  assert.deepEqual(icons[0], { kind: 'upload', color: 'ink', text: '🧑‍🔬', data: png }, 'a saved image wins when there is no mode');
+  assert.deepEqual(icons[1], { kind: 'color', color: 'green', letter: true, text: 'W' });
+  assert.deepEqual(icons[2], { kind: 'color', color: 'green', letter: true, text: 'L' });
+  assert.deepEqual(icons[3], { kind: 'site', color: 'gold', text: 'S', url: 'https://github.com/' });
+  assert.deepEqual(icons[4], { kind: 'image', color: 'green', text: 'K', url: 'https://example.com/logo.png' });
+  assert.equal(icons[5].kind, 'color', 'an image link needs an address');
+  assert.equal(icons[6].kind, 'color');
+  assert.equal(icons[7].kind, 'upload');
+  assert.equal(icons[8].kind, 'color');
+  assert.ok(report.skipped.some((s) => s.item === 'Web launcher image'));
   assert.ok(report.skipped.some((s) => s.item === 'Bad link launcher icon address'));
-  assert.ok(defaultSettings().launchers.every((l) => l.iconMode === 'label' && l.iconUrl === ''));
+  assert.ok(settings.launchers.every((l) => !('iconMode' in l) && !('color' in l) && !('image' in l)));
 });
 
-test('every format restores launcher icons exactly', () => {
+test('shortcut icons saved before schema v9 keep their mode, image and color', () => {
+  const png = 'data:image/png;base64,iVBORw0KGgo=';
+  const { settings } = normalizeSettings({
+    version: 8,
+    shortcuts: [
+      { id: 'a', name: 'Site', url: 'https://a.example/', icon: 'site', color: 'brown' },
+      { id: 'b', name: 'Letter', url: 'https://b.example/', icon: 'letter', color: 'gold' },
+      { id: 'c', name: 'Upload', url: 'https://c.example/', icon: 'upload', image: png, color: 'ink' },
+      { id: 'd', name: 'Lost', url: 'https://d.example/', icon: 'upload', image: '', color: 'mint' },
+      { id: 'e', name: 'Odd', url: 'https://e.example/', icon: 'weird' }
+    ]
+  });
+  assert.deepEqual(settings.shortcuts.map((s) => s.icon), [
+    { kind: 'site', color: 'brown', text: '', url: '' },
+    { kind: 'color', color: 'gold', letter: true, text: '' },
+    { kind: 'upload', color: 'ink', text: '', data: png },
+    { kind: 'color', color: 'mint', letter: true, text: '' },
+    { kind: 'site', color: 'green', text: '', url: '' }
+  ]);
+  assert.ok(settings.shortcuts.every((s) => !('image' in s) && !('color' in s) && typeof s.icon === 'object'));
+});
+
+test('normalizeIcon keeps each kind\'s fields and falls back to a color icon when one is missing', () => {
+  const png = 'data:image/png;base64,iVBORw0KGgo=';
+  assert.deepEqual(normalizeIcon({ kind: 'site', url: 'github.com', color: '#ABC', text: 'abcd' }), { kind: 'site', color: '#aabbcc', text: 'abc', url: 'https://github.com/' });
+  assert.deepEqual(normalizeIcon({ kind: 'image', url: 'https://x.example/a.png', data: png }), { kind: 'image', color: 'green', text: '', url: 'https://x.example/a.png' });
+  assert.equal(normalizeIcon({ kind: 'image', url: 'javascript:alert(1)' }).kind, 'color');
+  assert.equal(normalizeIcon({ kind: 'image' }).kind, 'color');
+  assert.deepEqual(normalizeIcon({ kind: 'upload', data: png, url: 'https://x.example/' }), { kind: 'upload', color: 'green', text: '', data: png });
+  assert.equal(normalizeIcon({ kind: 'upload', data: 'https://x.example/a.png' }).kind, 'color');
+  assert.equal(normalizeIcon({ kind: 'upload', data: `${png}"); background: url("x` }).kind, 'color', 'text after the data would break out of CSS url()');
+  assert.deepEqual(normalizeIcon({ kind: 'emoji', text: '🧑‍🔬📚✨🎵', color: 'ink' }), { kind: 'emoji', text: '🧑‍🔬📚✨' });
+  assert.equal(normalizeIcon({ kind: 'emoji', text: '  ' }).kind, 'color');
+  assert.deepEqual(normalizeIcon({ kind: 'color', letter: false, text: 'x' }), { kind: 'color', color: 'green', letter: false, text: 'x' });
+  assert.equal(normalizeIcon({ kind: 'color' }).letter, true);
+  assert.equal(normalizeIcon({ kind: 'none' }).kind, 'site', 'none is only for profiles');
+  assert.deepEqual(normalizeIcon({ kind: 'none' }, { allowNone: true }), { kind: 'none' });
+  assert.equal(normalizeIcon({ kind: 'site' }, { requireUrl: true }).kind, 'color');
+  assert.equal(normalizeIcon('nonsense').kind, 'site');
+  assert.equal(normalizeIcon({ kind: 'color', color: 'purple' }).color, 'green');
+  assert.equal(normalizeIcon({ kind: 'color', color: 'purple' }, { color: '' }).color, '');
+});
+
+test('normalizeIcon reports a bad address or image', () => {
+  const report = { fixed: [], skipped: [] };
+  normalizeIcon({ kind: 'site', url: 'ftp://x' }, { report, label: 'Mail' });
+  normalizeIcon({ kind: 'upload', data: 'nope' }, { report, label: 'Mail' });
+  assert.deepEqual(report.skipped.map((s) => s.item), ['Mail icon address', 'Mail icon image']);
+});
+
+test('letterOf uses the custom letters, else the name\'s first character', () => {
+  assert.equal(letterOf('gmail'), 'G');
+  assert.equal(letterOf('Gmail', 'abcd'), 'abc');
+  assert.equal(letterOf('🧑‍🔬 Lab'), '🧑‍🔬');
+  assert.equal(letterOf(''), '?');
+});
+
+test('icons of every kind survive every export format', () => {
+  const png = 'data:image/png;base64,iVBORw0KGgo=';
   const settings = defaultSettings();
-  settings.launchers[0] = { ...settings.launchers[0], iconMode: 'upload', image: 'data:image/png;base64,iVBORw0KGgo=' };
-  settings.launchers[1] = { ...settings.launchers[1], icon: '🧑‍🔬📚', iconMode: 'site', iconUrl: 'https://github.com/' };
-  settings.launchers[2] = { ...settings.launchers[2], iconMode: 'url', iconUrl: 'https://example.com/logo.png' };
+  settings.shortcuts[0].icon = { kind: 'upload', color: 'ink', text: '', data: png };
+  settings.shortcuts[1].icon = { kind: 'emoji', text: '📅' };
+  settings.shortcuts[2].icon = { kind: 'image', color: 'gold', text: '', url: 'https://example.com/logo.png' };
+  settings.shortcuts[3].icon = { kind: 'color', color: '#112233', letter: false, text: '' };
+  settings.launchers[0].icon = { kind: 'site', color: 'green', text: 'G', url: 'https://github.com/' };
+  settings.launchers[1].icon = { kind: 'emoji', text: '🧑‍🔬📚' };
   for (const format of Object.keys(FORMATS)) {
     const text = serialize(settings, format);
     assert.deepEqual(normalizeSettings(parseBackup(text, detectFormat(`x.${FORMATS[format].ext}`, text))).settings, settings, format);
@@ -326,14 +383,14 @@ test('merging a backup restores matching launchers and shortcuts from the file',
   const current = defaultSettings();
   current.launchers[0].links.push({ name: 'Local only', url: 'https://local.example/' });
   const backup = defaultSettings();
-  backup.launchers[0] = { ...backup.launchers[0], icon: '🔍', color: 'ink', iconMode: 'site', iconUrl: 'https://google.com/' };
-  backup.shortcuts[0] = { ...backup.shortcuts[0], icon: 'letter', color: 'gold' };
+  backup.launchers[0] = { ...backup.launchers[0], icon: { kind: 'site', color: 'ink', text: '🔍', url: 'https://google.com/' } };
+  backup.shortcuts[0] = { ...backup.shortcuts[0], icon: colorIcon('gold') };
   const merged = mergeSettings(current, normalizeSettings(backup).settings);
   assert.equal(merged.launchers.length, current.launchers.length);
   assert.equal(merged.launchers[0].id, current.launchers[0].id);
-  assert.deepEqual([merged.launchers[0].icon, merged.launchers[0].color, merged.launchers[0].iconMode], ['🔍', 'ink', 'site']);
+  assert.deepEqual(merged.launchers[0].icon, { kind: 'site', color: 'ink', text: '🔍', url: 'https://google.com/' });
   assert.equal(merged.launchers[0].links.at(-1).name, 'Local only');
-  assert.deepEqual([merged.shortcuts[0].icon, merged.shortcuts[0].color], ['letter', 'gold']);
+  assert.deepEqual(merged.shortcuts[0].icon, colorIcon('gold'));
   assert.equal(merged.shortcuts.length, current.shortcuts.length);
 });
 
@@ -373,32 +430,48 @@ test('normalizeProfiles repairs ids, names and the active profile', () => {
   assert.equal(normalizeProfiles({ list: [{ id: 'a', name: 'x'.repeat(80) }] }).list[0].name.length, 32);
 });
 
-test('profileMark takes the first letter or a whole emoji', () => {
-  assert.equal(profileMark({ name: ' work' }), 'W');
-  assert.equal(profileMark({ name: '🧑‍🔬 Lab' }), '🧑‍🔬');
-  assert.equal(profileMark({ name: '' }), '?');
+test('a profile without an icon shows its first letter on the neutral badge', () => {
+  assert.deepEqual(profileIcon({ name: 'Work' }), { kind: 'color', color: '', letter: true, text: '' });
+  assert.equal(letterOf('🧑‍🔬 Lab'), '🧑‍🔬');
 });
 
-test('profileMark follows a custom icon or none', () => {
-  assert.equal(profileMark({ name: 'Work', icon: 'custom', iconText: '💼' }), '💼');
-  assert.equal(profileMark({ name: 'Work', icon: 'none' }), '');
-  assert.equal(profileMark({ name: 'Work', icon: 'custom', iconText: '' }), 'W');
-});
-
-test('normalizeProfiles keeps a valid icon choice and drops the rest', () => {
+test('normalizeProfiles turns the v1.9.1 letter, custom and none icons into icon objects', () => {
   const { list } = normalizeProfiles({
     list: [
       { id: 'a', name: 'A', icon: 'custom', iconText: '🏠🏠🏠' },
       { id: 'b', name: 'B', icon: 'none', iconText: 'x' },
       { id: 'c', name: 'C', icon: 'custom', iconText: '  ' },
-      { id: 'd', name: 'D', icon: 'weird' }
+      { id: 'd', name: 'D', icon: 'weird' },
+      { id: 'e', name: 'E', icon: 'letter' }
     ]
   });
   assert.deepEqual(list, [
-    { id: 'a', name: 'A', icon: 'custom', iconText: '🏠🏠' },
-    { id: 'b', name: 'B', icon: 'none' },
+    { id: 'a', name: 'A', icon: { kind: 'emoji', text: '🏠🏠' } },
+    { id: 'b', name: 'B', icon: { kind: 'none' } },
     { id: 'c', name: 'C' },
-    { id: 'd', name: 'D' }
+    { id: 'd', name: 'D' },
+    { id: 'e', name: 'E' }
+  ]);
+});
+
+test('normalizeProfiles keeps valid icon objects, drops the default one and repairs the rest', () => {
+  const { list } = normalizeProfiles({
+    list: [
+      { id: 'a', name: 'A', icon: { kind: 'color', color: 'ink', letter: false } },
+      { id: 'b', name: 'B', icon: { kind: 'color', color: '', letter: true, text: '' } },
+      { id: 'c', name: 'C', icon: { kind: 'site', url: 'github.com' } },
+      { id: 'd', name: 'D', icon: { kind: 'site' } },
+      { id: 'e', name: 'E', icon: { kind: 'emoji', text: '' } },
+      { id: 'f', name: 'F', icon: { kind: 'none' } }
+    ]
+  });
+  assert.deepEqual(list, [
+    { id: 'a', name: 'A', icon: { kind: 'color', color: 'ink', letter: false, text: '' } },
+    { id: 'b', name: 'B' },
+    { id: 'c', name: 'C', icon: { kind: 'site', color: '', text: '', url: 'https://github.com/' } },
+    { id: 'd', name: 'D' },
+    { id: 'e', name: 'E' },
+    { id: 'f', name: 'F', icon: { kind: 'none' } }
   ]);
 });
 
@@ -416,4 +489,134 @@ test('v8 gives the dark theme #333333 unless a later save chose the theme color'
   assert.equal(custom.dark.solid, '#282725');
   const chosen = normalizeSettings({ version: 8, background: { type: 'solid', dark: { solid: '' } } }).settings.background;
   assert.equal(chosen.dark.solid, '');
+});
+
+// ---------- Items shown on all profiles ----------
+
+const sharedSample = () => {
+  const settings = defaultSettings();
+  settings.shortcuts[1].shared = true;
+  settings.launchers[2].shared = true;
+  return settings;
+};
+
+test('normalizeSettings keeps the shared flag on shortcuts and launchers only when true', () => {
+  const { settings } = normalizeSettings({ ...defaultSettings(), shortcuts: [{ ...defaultSettings().shortcuts[0], shared: true }, { ...defaultSettings().shortcuts[1], shared: 'yes' }] });
+  assert.equal(settings.shortcuts[0].shared, true);
+  assert.ok(!('shared' in settings.shortcuts[1]));
+  assert.ok(defaultSettings().shortcuts.every((s) => !('shared' in s)));
+});
+
+test('splitShared leaves a stub in the profile and moves the content to the shared store', () => {
+  const settings = sharedSample();
+  const { profile, shared } = splitShared(settings);
+  assert.deepEqual(profile.shortcuts[1], { id: 'sc-2', shared: true });
+  assert.deepEqual(profile.launchers[2], { id: 'ln-3', shared: true });
+  assert.equal(profile.shortcuts.length, settings.shortcuts.length, 'order is kept');
+  assert.deepEqual(shared.shortcuts, [settings.shortcuts[1]]);
+  assert.deepEqual(shared.launchers, [settings.launchers[2]]);
+  assert.equal(settings.shortcuts[1].name, 'Calendar', 'the input is not changed');
+});
+
+test('joinShared puts the shared content back at the profile\'s own position', () => {
+  const settings = sharedSample();
+  const { profile, shared } = splitShared(settings);
+  assert.deepEqual(joinShared(profile, shared), settings);
+  assert.deepEqual(normalizeSettings(joinShared(profile, shared)).settings, settings);
+});
+
+test('an edit to a shared item is seen by every profile', () => {
+  const { profile: workProfile, shared } = splitShared(sharedSample());
+  const home = splitShared(normalizeSettings({ ...defaultSettings(), shortcuts: [] }).settings).profile;
+  const work = joinShared(workProfile, shared);
+  work.shortcuts[1].name = 'Renamed';
+  work.shortcuts[1].icon = { kind: 'emoji', text: '📅' };
+  const saved = splitShared(work);
+  const reopenedHome = normalizeSettings(joinShared(home, saved.shared)).settings;
+  assert.deepEqual(reopenedHome.shortcuts.map((s) => s.name), ['Renamed']);
+  assert.deepEqual(reopenedHome.shortcuts[0].icon, { kind: 'emoji', text: '📅' });
+  assert.equal(reopenedHome.shortcuts[0].shared, true);
+});
+
+test('deleting a shared item removes it from every profile', () => {
+  const full = sharedSample();
+  const { profile: otherProfile, shared } = splitShared(full);
+  const edited = clone(full);
+  edited.shortcuts = edited.shortcuts.filter((s) => s.id !== 'sc-2');
+  const saved = splitShared(edited);
+  assert.deepEqual(saved.shared.shortcuts, []);
+  const other = joinShared(otherProfile, saved.shared);
+  assert.ok(!other.shortcuts.some((s) => s.id === 'sc-2'), 'the stub in another profile is dropped');
+  assert.equal(other.shortcuts.length, full.shortcuts.length - 1);
+  assert.equal(shared.shortcuts.length, 1);
+});
+
+test('turning sharing off keeps the item here and removes it from the other profiles', () => {
+  const full = sharedSample();
+  const { profile: otherProfile } = splitShared(full);
+  const edited = clone(full);
+  delete edited.shortcuts[1].shared;
+  const saved = splitShared(edited);
+  assert.deepEqual(saved.shared.shortcuts, []);
+  assert.equal(saved.profile.shortcuts[1].name, 'Calendar');
+  assert.ok(!joinShared(otherProfile, saved.shared).shortcuts.some((s) => s.id === 'sc-2'));
+});
+
+test('a new shared item is added at the end of profiles that have no place for it yet', () => {
+  const shared = normalizeShared({ shortcuts: [{ id: 'sc-new', name: 'Shared', url: 'https://shared.example/', category: '', icon: siteIcon() }], launchers: [] });
+  const joined = normalizeSettings(joinShared(defaultSettings(), shared)).settings;
+  assert.equal(joined.shortcuts.at(-1).name, 'Shared');
+  assert.equal(joined.shortcuts.at(-1).shared, true);
+  assert.equal(joined.shortcuts.length, defaultSettings().shortcuts.length + 1);
+  const empty = normalizeSettings(joinShared({ version: 9, theme: 'dark' }, shared)).settings;
+  assert.equal(empty.shortcuts.at(-1).name, 'Shared', 'a profile saved without shortcuts gets the starter ones plus the shared item');
+});
+
+test('a local item that clashes with a shared one gives way instead of the shared item being lost', () => {
+  const sharedItem = { id: 'sc-3', name: 'Mine', url: 'https://mine.example/', category: '', icon: siteIcon(), shared: true };
+  const local = defaultSettings();
+  local.shortcuts.push({ id: 'x', name: 'mine', url: 'https://mine.example/', category: '', icon: siteIcon() });
+  const joined = normalizeSettings(joinShared(local, { shortcuts: [sharedItem], launchers: [] })).settings;
+  assert.equal(joined.shortcuts.filter((s) => s.name.toLowerCase() === 'mine').length, 1);
+  assert.ok(joined.shortcuts.find((s) => s.name === 'Mine').shared);
+  const sameId = joinShared(defaultSettings(), { shortcuts: [sharedItem], launchers: [] });
+  assert.equal(sameId.shortcuts.filter((s) => s.id === 'sc-3').length, 1, 'the starter with the shared item\'s id gets a new id');
+  assert.equal(sameId.shortcuts.find((s) => s.id === 'sc-3').shared, true);
+});
+
+test('a starter launcher with the same name as a shared launcher gives way to it', () => {
+  const sharedGoogle = { ...defaultSettings().launchers[0], icon: colorIcon('ink', '🔍'), shared: true };
+  const joined = normalizeSettings(joinShared(defaultSettings(), { shortcuts: [], launchers: [sharedGoogle] })).settings;
+  assert.equal(joined.launchers.filter((l) => l.name === 'Google').length, 1);
+  assert.equal(joined.launchers[0].shared, true, 'in the starter\'s place');
+  assert.equal(joined.launchers[0].icon.text, '🔍');
+  const replaced = keepSharedFrom(defaultSettings(), joined);
+  assert.equal(replaced.launchers.filter((l) => l.name === 'Google').length, 1);
+});
+
+test('normalizeShared repairs the stored shared items', () => {
+  assert.deepEqual(normalizeShared(undefined), { shortcuts: [], launchers: [] });
+  const fixed = normalizeShared({ shortcuts: [{ id: 'a', name: 'A' }, { id: 'a', name: 'dup' }, null, { name: 'no id' }], launchers: 'x' });
+  assert.deepEqual(fixed, { shortcuts: [{ id: 'a', name: 'A', shared: true }], launchers: [] });
+});
+
+test('imported files never change what is shared: stripShared, merge and replace', () => {
+  const current = sharedSample();
+  const file = normalizeSettings(sharedSample()).settings;
+  assert.ok(stripShared(file).shortcuts.every((s) => !('shared' in s)));
+  const merged = mergeSettings(current, stripShared(file));
+  assert.equal(merged.shortcuts.find((s) => s.id === 'sc-2').shared, true, 'a replaced shortcut stays shared');
+  assert.equal(merged.launchers.find((l) => l.id === 'ln-3').shared, true);
+  const replacement = stripShared(defaultSettings());
+  replacement.shortcuts = [replacement.shortcuts[0]];
+  const replaced = keepSharedFrom(replacement, current);
+  assert.deepEqual(replaced.shortcuts.map((s) => s.id), ['sc-1', 'sc-2']);
+  assert.equal(replaced.shortcuts[1].shared, true);
+  assert.equal(replaced.launchers.filter((l) => l.shared).length, 1);
+  const clash = defaultSettings();
+  const kept = keepSharedFrom(clash, current);
+  assert.equal(new Set(kept.shortcuts.map((s) => s.id)).size, kept.shortcuts.length, 'ids stay unique');
+  assert.equal(kept.shortcuts.filter((s) => s.shared).length, 1);
+  assert.equal(kept.shortcuts.length, clash.shortcuts.length, 'the starter twin of a shared shortcut gives way');
+  assert.equal(kept.shortcuts[1].shared, true, 'and the shared one takes its place');
 });

@@ -1,8 +1,12 @@
 // Persistence: chrome.storage.local inside the extension, localStorage when the page is opened as a plain file.
-import { defaultSettings, emptyHistory, normalizeHistory, normalizeProfiles, normalizeSettings, profileOfSettingsKey, profileSettingsKey } from './core.js';
+import {
+  defaultSettings, emptyHistory, emptyShared, joinShared, normalizeHistory, normalizeProfiles, normalizeSettings, normalizeShared, profileOfSettingsKey, profileSettingsKey, splitShared
+} from './core.js';
 
 const PROFILES_KEY = 'startPage:profiles';
 const HISTORY_KEY = 'startPage:history';
+// Shortcuts and launchers shown on all profiles; each profile keeps only stubs that give their place (see joinShared).
+const SHARED_KEY = 'startPage:shared';
 
 const chromeStore = typeof chrome !== 'undefined' && chrome.storage?.local ? chrome.storage.local : null;
 
@@ -34,14 +38,33 @@ export function saveProfiles(profiles) {
   return writeRaw(PROFILES_KEY, profiles);
 }
 
-// A profile with nothing saved yet starts from the defaults.
-export async function loadSettings(profileId) {
-  const raw = await readRaw(profileSettingsKey(profileId));
-  return raw ? normalizeSettings(raw).settings : defaultSettings();
+// What this page last read or wrote of the shared store, so a save writes it only when it changed.
+let lastShared = JSON.stringify(emptyShared());
+
+async function loadShared() {
+  const shared = normalizeShared(await readRaw(SHARED_KEY));
+  lastShared = JSON.stringify(shared);
+  return shared;
 }
 
-export function saveSettings(profileId, settings) {
-  return writeRaw(profileSettingsKey(profileId), settings);
+// A profile with nothing saved yet starts from the defaults. Shared items are joined in before normalizing.
+export async function loadSettings(profileId) {
+  const [raw, shared] = await Promise.all([readRaw(profileSettingsKey(profileId)), loadShared()]);
+  return normalizeSettings(joinShared(raw || defaultSettings(), shared)).settings;
+}
+
+// Splits shared items out: the profile keeps stubs, the shared store keeps the items.
+export async function saveSettings(profileId, settings) {
+  const { profile, shared } = splitShared(settings);
+  const json = JSON.stringify(shared);
+  // Both writes start at once, so quick saves keep their order.
+  const writes = [];
+  if (json !== lastShared) {
+    lastShared = json;
+    writes.push(writeRaw(SHARED_KEY, shared));
+  }
+  writes.push(writeRaw(profileSettingsKey(profileId), profile));
+  return Promise.all(writes);
 }
 
 export function removeSettings(profileId) {
@@ -57,13 +80,14 @@ export function saveHistory(history) {
   return writeRaw(HISTORY_KEY, history);
 }
 
-// Calls back when another new tab changes the profile list or saves a profile's settings, so open tabs stay in sync.
-// onSettings gets (profileId, settings) for any profile; the caller keeps the one it shows.
-export function onStorageChanged({ onProfiles, onSettings }) {
+// Calls back when another new tab changes the profile list, saves a profile's settings or changes the shared items,
+// so open tabs stay in sync. onSettings gets the profile id; the caller reloads the one it shows.
+export function onStorageChanged({ onProfiles, onSettings, onShared }) {
   const handle = (key, value) => {
     if (key === PROFILES_KEY) return onProfiles(normalizeProfiles(value));
+    if (key === SHARED_KEY) return onShared();
     const profileId = profileOfSettingsKey(key);
-    if (profileId) onSettings(profileId, normalizeSettings(value).settings);
+    if (profileId) onSettings(profileId);
   };
   if (chromeStore && chrome.storage.onChanged) {
     chrome.storage.onChanged.addListener((changes, area) => {
