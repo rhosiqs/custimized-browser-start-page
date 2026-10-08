@@ -1,6 +1,15 @@
 # Start Page — Chrome New Tab Extension
 
+<p>
+  <img alt="Version" src="https://img.shields.io/badge/version-v1.8.2-blue">
+  <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green">
+</p>
+
 A Chrome extension (Manifest V3) that replaces the new tab page with a calm, local-first start page: clocks, three smart search boxes, shortcuts, and a launcher dock. Plain HTML, CSS and JavaScript modules — no framework, no build step.
+
+<img src="docs/screenshot.png" alt="Start Page new tab screenshot" width="720">
+
+*The new tab page with default settings.*
 
 ## Features
 
@@ -65,3 +74,7 @@ For quick UI work outside the extension, serve the folder (`python3 -m http.serv
 | `src/dom.js`, `src/widgets.js`, `src/appearance.js` | DOM helpers, shared widgets, theme application. |
 | `icons/` | Extension icons. |
 | `tests/core.test.js` | Node tests for `src/core.js`. |
+
+## License
+
+MIT — see [LICENSE](LICENSE).

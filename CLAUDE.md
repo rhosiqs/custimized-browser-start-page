@@ -38,6 +38,7 @@ The UI is designed in the claude.ai Design canvas "Browser Start Page" (https://
 - Version format is `vX.Y.Z`, tracked with annotated git tags on the release commit. Claude chooses and bumps the version.
 - Release tags go only on commits in `plugin`: merge the release branch into `plugin` first, then tag (the old `v0.1.0` stays on the archived web line).
 - The `version` in `manifest.json` (the extension version) and in `package.json` must equal the tag without the `v`.
+- The version badge at the top of `README.md` must show the new tag on every release.
 - Every version gets release notes: a section in `CHANGELOG.md`, with the same notes in the annotated tag message.
 - One bug → one patch bump. Don't spread a single fix over several patch versions. New features or behavior changes bump the minor version.
 - `plugin` is the main branch, and `archive/*` tags hold old lines (`archive/main` is the abandoned web version). Do work on a branch, and **ask the user before merging into or pushing `plugin`, or pushing tags**.
