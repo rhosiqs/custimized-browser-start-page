@@ -22,6 +22,7 @@ export function applyAppearance(settings) {
 
   const stage = document.getElementById('stage');
   const bg = settings.background;
+  const colors = bg[isDark(settings) ? 'dark' : 'light'];
   stage.classList.remove('bg-solid', 'bg-gradient', 'bg-image');
   stage.style.removeProperty('--solid');
   stage.style.removeProperty('--grad-from');
@@ -32,10 +33,10 @@ export function applyAppearance(settings) {
     stage.style.backgroundImage = `url("${bg.image}")`;
   } else if (bg.type === 'gradient') {
     stage.classList.add('bg-gradient');
-    stage.style.setProperty('--grad-from', bg.from);
-    stage.style.setProperty('--grad-to', bg.to);
+    stage.style.setProperty('--grad-from', colors.from);
+    stage.style.setProperty('--grad-to', colors.to);
   } else {
     stage.classList.add('bg-solid');
-    if (bg.solid) stage.style.setProperty('--solid', bg.solid);
+    if (colors.solid) stage.style.setProperty('--solid', colors.solid);
   }
 }

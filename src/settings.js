@@ -3,14 +3,18 @@ import {
   ACCENTS, BACKGROUND_IMAGE_LIMIT, BLOCKS, FORMATS, SEARCH_BOXES, SHORTCUT_IMAGE_LIMIT,
   ZONE_ABBREVIATION_LIST, clockLabel, clone, colorOf, createId, firstGraphemes, isValidEngineUrl, isValidTimeZone, moveItem, normalizeHttpUrl, serialize, zoneFromAbbreviation
 } from './core.js';
-import { applyAppearance } from './appearance.js';
+import { applyAppearance, isDark } from './appearance.js';
 import { h, icon, readImageFile, segmented, showModal } from './dom.js';
 import { pickImportFile } from './import-review.js';
 import { clearHistory, store, update } from './state.js';
 import { colorChoice, launcherMark, sortHandle, swatchPicker, toast } from './widgets.js';
 
 const TABS = ['Appearance', 'Search', 'Clocks', 'Launchers', 'Layout', 'Data'];
-const PRESETS = ['#f3f2f2', '#eae9e9', '#fff3e4', '#ffe3bf', '#e8f3ea', '#1d1c1b'];
+// Background presets per theme; the first two are the picker's base colors.
+const PRESETS = {
+  light: ['#f3f2f2', '#eae9e9', '#fff3e4', '#ffe3bf', '#e8f3ea'],
+  dark: ['#1d1c1b', '#282725', '#3a270d', '#2b2117', '#213324']
+};
 
 export function openSettings({ tab = 'Appearance', launcherId = null, addLauncher = false } = {}) {
   const ui = { tab, engineBox: 'web', format: 'json', expanded: launcherId, saved: clone(store.settings) };
@@ -92,6 +96,7 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
       // ---------- Appearance ----------
       const appearanceTab = () => {
         const bg = draft.background;
+        const shown = bg[isDark(draft) ? 'dark' : 'light'];
         const grid = h('div.form-grid', {},
           h('span.field-label', { id: 'lbl-theme' }, 'Theme'),
           segmented({
@@ -109,17 +114,17 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
           segmented({
             labelledBy: 'lbl-bg', value: bg.type,
             options: [
-              { value: 'solid', content: [h('span.bg-preview', { 'aria-hidden': 'true', style: { background: bg.solid || 'var(--bg)' } }), 'Solid'] },
-              { value: 'gradient', content: [h('span.bg-preview', { 'aria-hidden': 'true', style: { background: `linear-gradient(165deg, ${bg.from}, ${bg.to})` } }), 'Gradient'] },
+              { value: 'solid', content: [h('span.bg-preview', { 'aria-hidden': 'true', style: { background: shown.solid || 'var(--bg)' } }), 'Solid'] },
+              { value: 'gradient', content: [h('span.bg-preview', { 'aria-hidden': 'true', style: { background: `linear-gradient(165deg, ${shown.from}, ${shown.to})` } }), 'Gradient'] },
               { value: 'image', content: [h('span.bg-preview', { 'aria-hidden': 'true', style: { background: 'repeating-linear-gradient(45deg, var(--surface) 0 8px, var(--control) 8px 9px)' } }), 'Image'] }
             ],
             onChange: (value) => change(() => { bg.type = value; })
           })
         );
         if (bg.type === 'solid') {
-          grid.append(...colorPicker('solid', 'Color'));
+          grid.append(...colorRow('light', ['solid']), ...colorRow('dark', ['solid']));
         } else if (bg.type === 'gradient') {
-          grid.append(...colorPicker('from', 'Start'), ...colorPicker('to', 'End'));
+          grid.append(...colorRow('light', ['from', 'to']), ...colorRow('dark', ['from', 'to']));
         } else {
           const note = h('span.note', { 'aria-live': 'polite' }, bg.image ? 'Image stored in this browser.' : 'No image yet. JPG, PNG, WebP or GIF up to 3 MB.');
           grid.append(
@@ -146,17 +151,20 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
         return grid;
       };
 
-      const colorPicker = (key, label) => {
-        const bg = draft.background;
+      // One row per theme: the solid color, or the gradient's start and end.
+      const colorRow = (theme, keys) => {
+        const colors = draft.background[theme];
+        const name = theme === 'light' ? 'Light' : 'Dark';
+        const part = { solid: '', from: ' start', to: ' end' };
         return [
-          h('span.field-label', {}, label),
+          h('span.field-label', {}, name),
           h('div.inline', {},
-            colorChoice({
-              label, value: bg[key],
-              options: PRESETS.map((hex) => ({ value: hex, label: hex, fill: hex })),
-              onChange: (value) => change(() => { bg[key] = value; })
-            }),
-            key === 'solid' && bg.solid ? h('button.btn.small', { type: 'button', onclick: () => change(() => { bg.solid = ''; }) }, 'Use theme color') : null)
+            ...keys.map((key) => colorChoice({
+              label: `${name} theme${part[key] || ' color'}`, value: colors[key],
+              options: PRESETS[theme].map((hex) => ({ value: hex, label: hex, fill: hex })),
+              onChange: (value) => change(() => { colors[key] = value; })
+            })),
+            keys[0] === 'solid' && colors.solid ? h('button.btn.small', { type: 'button', onclick: () => change(() => { colors.solid = ''; }) }, 'Use theme color') : null)
         ];
       };
 

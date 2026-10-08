@@ -91,10 +91,22 @@ test('relativeZone describes day and offset', () => {
   assert.equal(relativeZone(date, 'UTC', 'UTC'), 'Today · same time');
 });
 
+test('v7 moves a shared background color to the theme it suits', () => {
+  const dark = normalizeSettings({ version: 6, background: { type: 'solid', solid: '#333333' } }).settings.background;
+  assert.equal(dark.dark.solid, '#333333');
+  assert.equal(dark.light.solid, '', 'light theme keeps its page color');
+  const light = normalizeSettings({ version: 6, background: { type: 'gradient', from: '#fff3e4', to: '#ffe3bf' } }).settings.background;
+  assert.deepEqual(light.light, { solid: '', from: '#fff3e4', to: '#ffe3bf' });
+  assert.deepEqual(light.dark, defaultSettings().background.dark);
+  const kept = normalizeSettings({ version: 7, background: { type: 'solid', light: { solid: '#eae9e9' }, dark: { solid: '#282725' } } }).settings.background;
+  assert.equal(kept.light.solid, '#eae9e9');
+  assert.equal(kept.dark.solid, '#282725');
+});
+
 test('normalizeSettings repairs and reports bad imports', () => {
   const { settings, report } = normalizeSettings({
     theme: 'dark',
-    background: { type: 'solid', solid: '#B68235' },
+    background: { type: 'solid', dark: { solid: '#B68235' } },
     shortcuts: [
       { name: 'arXiv', url: 'arxiv.org', category: 'Research', color: 'gold' },
       { name: 'GitHub', url: 'https://github.com' },
@@ -105,7 +117,7 @@ test('normalizeSettings repairs and reports bad imports', () => {
     clocks: { world: [{ city: 'Mars', tz: 'Mars/Olympus' }, { tz: 'Asia/Taipei' }] }
   });
   assert.equal(settings.theme, 'dark');
-  assert.equal(settings.background.solid, '#b68235');
+  assert.equal(settings.background.dark.solid, '#b68235');
   assert.deepEqual(settings.shortcuts.map((s) => s.url), ['https://arxiv.org/', 'https://github.com/']);
   assert.equal(settings.shortcuts[1].category, '', 'category is optional');
   assert.deepEqual(settings.clocks.world, [{ city: '', tz: 'Asia/Taipei' }]);

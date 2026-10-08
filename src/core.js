@@ -1,6 +1,6 @@
 // Pure logic shared by the new tab page and the Node tests: no DOM, no chrome.* calls.
 
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 export const HISTORY_LIMIT = 30;
 export const SHORTCUT_IMAGE_LIMIT = 512 * 1024;
 export const BACKGROUND_IMAGE_LIMIT = 3 * 1024 * 1024;
@@ -104,7 +104,13 @@ export function defaultSettings() {
     version: SCHEMA_VERSION,
     theme: 'system',
     accent: 'green',
-    background: { type: 'solid', solid: '', from: '#f3f2f2', to: '#e8f3ea', image: '' },
+    // Each theme keeps its own colors; an empty solid follows the theme's page color.
+    background: {
+      type: 'solid',
+      image: '',
+      light: { solid: '', from: '#f3f2f2', to: '#e8f3ea' },
+      dark: { solid: '', from: '#1d1c1b', to: '#213324' }
+    },
     engines: clone(DEFAULT_ENGINES),
     clocks: {
       showSeconds: true,
@@ -394,13 +400,25 @@ const HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
 
 // Text color for a #rrggbb fill: whichever of the page's ink and paper colors contrasts more (WCAG luminance).
 export function readableOn(hex) {
+  const lum = luminance(hex);
+  // Luminance of #201f1d is 0.0137 and of #f3f2f2 is 0.887.
+  return (lum + 0.05) / 0.0637 >= 0.937 / (lum + 0.05) ? '#201f1d' : '#f3f2f2';
+}
+
+// WCAG relative luminance of a #rrggbb color.
+export function luminance(hex) {
   const channel = (i) => {
     const c = parseInt(hex.slice(i, i + 2), 16) / 255;
     return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
   };
-  const lum = 0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5);
-  // Luminance of #201f1d is 0.0137 and of #f3f2f2 is 0.887.
-  return (lum + 0.05) / 0.0637 >= 0.937 / (lum + 0.05) ? '#201f1d' : '#f3f2f2';
+  return 0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5);
+}
+
+// Below this luminance readableOn picks light text, so the color belongs to the dark theme.
+const DARK_LUMINANCE = 0.1943;
+
+export function isDarkColor(hex) {
+  return luminance(hex) < DARK_LUMINANCE;
 }
 
 // A tile or launcher color is a SWATCHES key or a custom #rrggbb. Returns { label, fill, fg }.
@@ -453,16 +471,33 @@ export function normalizeSettings(input, { fallback = defaultSettings() } = {}) 
   if (src.background && typeof src.background === 'object') {
     const bg = src.background;
     out.background.type = pick(bg.type, BACKGROUNDS, out.background.type);
-    for (const key of ['solid', 'from', 'to']) {
-      if (bg[key] === '' && key === 'solid') out.background.solid = '';
-      else if (bg[key] !== undefined) {
-        const hex = normalizeHex(bg[key]);
-        if (hex) {
-          if (hex !== bg[key]) report.fixed.push({ item: `Color “${bg[key]}”`, result: hex });
-          out.background[key] = hex;
-        } else {
-          report.skipped.push({ item: `Background color “${text(bg[key], 40)}”`, reason: 'not a #HEX color' });
+    const readColors = (from, slot) => {
+      for (const key of ['solid', 'from', 'to']) {
+        if (from[key] === '' && key === 'solid') slot.solid = '';
+        else if (from[key] !== undefined) {
+          const hex = normalizeHex(from[key]);
+          if (hex) {
+            if (hex !== from[key]) report.fixed.push({ item: `Color “${from[key]}”`, result: hex });
+            slot[key] = hex;
+          } else {
+            report.skipped.push({ item: `Background color “${text(from[key], 40)}”`, reason: 'not a #HEX color' });
+          }
         }
+      }
+    };
+    for (const theme of ['light', 'dark']) {
+      if (bg[theme] && typeof bg[theme] === 'object') readColors(bg[theme], out.background[theme]);
+    }
+    // Before v7 one set of colors served both themes. Move a custom solid color, and a changed
+    // gradient, to the theme it suits; the other theme keeps its defaults.
+    if (version < 7 && !bg.light && !bg.dark) {
+      const legacy = { solid: '', from: '#f3f2f2', to: '#e8f3ea' };
+      readColors(bg, legacy);
+      if (legacy.solid) out.background[isDarkColor(legacy.solid) ? 'dark' : 'light'].solid = legacy.solid;
+      if (legacy.from !== '#f3f2f2' || legacy.to !== '#e8f3ea') {
+        const slot = out.background[luminance(legacy.from) + luminance(legacy.to) < 2 * DARK_LUMINANCE ? 'dark' : 'light'];
+        slot.from = legacy.from;
+        slot.to = legacy.to;
       }
     }
     if (bg.image) {

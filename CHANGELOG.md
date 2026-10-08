@@ -2,6 +2,12 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.7.0 — 2026-10-08
+
+### Changed
+- The light and dark themes each keep their own background colors. Settings › Appearance shows a Light and a Dark row for the solid color or the gradient, each with presets for that theme, so switching themes no longer leaves light text on a light background or dark text on a dark one.
+- An existing custom background color moves to the theme it suits (a dark color to the dark theme, a light one to the light theme); the other theme uses its default.
+
 ## v1.6.3 — 2026-10-08
 
 ### Changed
