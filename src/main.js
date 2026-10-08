@@ -52,7 +52,7 @@ function tick() {
   if (!clockEls.local) return;
   const now = new Date();
   const { showSeconds, hour12 } = store.settings.clocks;
-  // Hours and minutes large; seconds (when on) set smaller beside them; in 12-hour mode AM over PM on the left.
+  // Hours and minutes large; seconds (when on) set smaller beside them; in 12-hour mode the current period on the left (AM at the top, PM at the bottom).
   const local = clockParts(now, localTz, hour12);
   clockEls.local.textContent = local.hm;
   clockEls.seconds.textContent = showSeconds ? `:${local.ss}` : '';

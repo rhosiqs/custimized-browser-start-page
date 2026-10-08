@@ -2,6 +2,11 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.8.1 — 2026-10-08
+
+### Changed
+- In 12-hour mode the main clock shows only the current period. AM sits at the top, its letters level with the top of the digits; PM sits at the bottom, on the digits' baseline.
+
 ## v1.8.0 — 2026-10-08
 
 ### Added
