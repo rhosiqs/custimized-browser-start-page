@@ -30,7 +30,7 @@ export function applyAppearance(settings) {
   stage.style.backgroundImage = '';
   if (bg.type === 'image' && bg.image) {
     stage.classList.add('bg-image');
-    stage.style.backgroundImage = `url("${bg.image}")`;
+    stage.style.backgroundImage = `url("${cssString(bg.image)}")`;
   } else if (bg.type === 'gradient') {
     stage.classList.add('bg-gradient');
     stage.style.setProperty('--grad-from', colors.from);
@@ -39,4 +39,9 @@ export function applyAppearance(settings) {
     stage.classList.add('bg-solid');
     if (colors.solid) stage.style.setProperty('--solid', colors.solid);
   }
+}
+
+// Escapes a value for a double-quoted CSS string (defense in depth; core.js already validates images).
+function cssString(value) {
+  return String(value).replace(/[\\"]/g, '\\$&').replace(/[\n\r\f]/g, (c) => `\\${c.charCodeAt(0).toString(16)} `);
 }

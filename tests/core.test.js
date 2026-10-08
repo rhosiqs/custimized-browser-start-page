@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  FORMATS, SWATCHES, clockLabel, colorOf, iconTone, clockParts, countItems, firstGraphemes, zoneAbbreviation, zoneFromAbbreviation, defaultSettings, detectFormat, historyMatches, isValidEngineUrl, mergeSettings, moveItem,
+  FORMATS, SWATCHES, clockLabel, colorOf, iconTone, clockParts, countItems, firstGraphemes, zoneAbbreviation, zoneFromAbbreviation, defaultSettings, detectFormat, historyMatches, isImageDataUrl, isValidEngineUrl, mergeSettings, moveItem,
   normalizeDoi, normalizeHex, normalizeHttpUrl, normalizeSettings, parseBackup, readableOn, recordHistory, relativeZone, routeQuery, serialize
 } from '../src/core.js';
 
@@ -126,6 +126,20 @@ test('normalizeSettings repairs and reports bad imports', () => {
   assert.ok(report.skipped.some((s) => s.reason.startsWith('javascript:')));
   assert.ok(report.skipped.some((s) => s.reason === 'missing a name'));
   assert.ok(report.skipped.some((s) => s.reason === 'unknown time zone'));
+});
+
+test('background images must be a whole base64 data URL', () => {
+  const valid = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+  const breakout = 'data:image/png;base64,AA"), url("https://attacker.example/beacon';
+  assert.equal(isImageDataUrl(valid, 1024), true);
+  assert.equal(isImageDataUrl(breakout, 1024), false);
+  assert.equal(isImageDataUrl('data:image/png;base64,', 1024), false);
+  assert.equal(isImageDataUrl('data:image/png;base64,AA AA', 1024), false);
+  assert.equal(normalizeSettings({ background: { type: 'image', image: valid } }).settings.background.image, valid);
+  const { settings, report } = normalizeSettings({ background: { type: 'image', image: breakout } });
+  assert.notEqual(settings.background.image, breakout);
+  assert.ok(!settings.background.image.includes('attacker'));
+  assert.ok(report.skipped.some((s) => s.item === 'Background image'));
 });
 
 test('normalizeSettings keeps defaults for missing sections and valid engines', () => {

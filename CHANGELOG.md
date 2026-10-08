@@ -2,6 +2,11 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.8.2 — 2026-10-08
+
+### Security
+- An embedded image (background, shortcut or launcher icon) is accepted only when the whole value is a base64 image data URL. A crafted backup could previously append text after the image data, break out of the page background's CSS `url()` and make the page load an image from another site. Such values are now dropped on import and on load, and the background value is also escaped before it goes into the CSS.
+
 ## v1.8.1 — 2026-10-08
 
 ### Changed

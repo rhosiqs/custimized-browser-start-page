@@ -449,8 +449,9 @@ function clampInt(value, min, max, fallback) {
   return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
 }
 
-function isImageDataUrl(value, limit) {
-  return typeof value === 'string' && /^data:image\/(png|jpeg|webp|gif|svg\+xml);base64,/i.test(value) && value.length <= limit * 1.4;
+// The whole value must be one base64 data URL, so it can't break out of CSS url("…").
+export function isImageDataUrl(value, limit) {
+  return typeof value === 'string' && /^data:image\/(png|jpeg|webp|gif|svg\+xml);base64,[A-Za-z0-9+/]+={0,2}$/i.test(value) && value.length <= limit * 1.4;
 }
 
 function text(value, max = 120) {
