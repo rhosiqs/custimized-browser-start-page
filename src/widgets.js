@@ -1,24 +1,33 @@
 // Reusable pieces built on dom.js: shortcut badges, color pickers, listbox dropdowns, toasts.
-import { SWATCHES, colorOf, firstGraphemes, iconTone, initialOf, normalizeHex, readableOn } from './core.js';
+import { SWATCHES, colorOf, firstGraphemes, iconTone, letterOf, normalizeHex, readableOn } from './core.js';
 import { grip, h, icon } from './dom.js';
 import { faviconUrl, siteIconSources } from './storage.js';
 
-// Round icon for a shortcut or launcher link: uploaded image, site favicon, or colored initial.
-// color: null leaves the letter's colors to the stylesheet (launcher links).
-export function badge({ name, url, color = 'green', icon: mode = 'site', image = '' }, className = '') {
-  const swatch = color === null ? null : colorOf(color);
+// Round icon for a shortcut, launcher link or profile, from its icon object (see normalizeIcon in core.js):
+// a site's logo (walking the favicon sources), an image from the web or uploaded, an emoji, or a solid color with
+// a letter. A picture that fails to load falls back to the letter. No icon object means the site's logo with the
+// stylesheet's colors; icon.color '' also leaves the colors to the stylesheet (profiles).
+export function badge({ name, url, icon: spec }, className = '') {
+  const ic = spec || { kind: 'site', color: '' };
+  if (ic.kind === 'none') return h('span.badge.empty', { 'aria-hidden': 'true', class: className });
+  const swatch = ic.color ? colorOf(ic.color) : null;
+  const el = h('span.badge', { 'aria-hidden': 'true', class: className });
+  const base = `badge${className ? ` ${className}` : ''}`;
   const letter = () => {
-    el.className = `badge${className ? ` ${className}` : ''}`;
-    if (swatch) {
+    el.className = `${base}${ic.kind === 'emoji' ? ' plain' : ''}`;
+    delete el.dataset.tone;
+    if (swatch && ic.kind !== 'emoji') {
       el.style.background = swatch.fill;
       el.style.color = swatch.fg;
     }
-    el.replaceChildren(initialOf(name));
+    el.replaceChildren(ic.kind === 'color' && !ic.letter ? '' : letterOf(name, ic.text));
   };
-  const el = h('span.badge', { 'aria-hidden': 'true', class: className });
-  const sources = mode === 'site' && url ? siteIconSources(url) : [];
-  if (mode === 'upload' && image) {
-    el.append(h('img', { src: image, alt: '', draggable: 'false' }));
+  const sources = ic.kind === 'site' ? siteIconSources(ic.url || url || '') : [];
+  const picture = ic.kind === 'upload' ? ic.data : ic.kind === 'image' ? ic.url : '';
+  if (picture) {
+    const img = h('img', { src: picture, alt: '', draggable: 'false', referrerpolicy: 'no-referrer' });
+    img.onerror = letter;
+    el.append(img);
   } else if (sources.length) {
     el.classList.add('site');
     const img = h('img', { alt: '', draggable: 'false' });
@@ -42,22 +51,30 @@ export function badge({ name, url, color = 'green', icon: mode = 'site', image =
   return el;
 }
 
+// The colors behind a launcher's face (--fill and --fg): its icon color, or a plain disc for an emoji.
+export function launcherFaceStyle(icon) {
+  if (icon.kind === 'emoji') return { '--fill': 'var(--surface)', '--fg': 'var(--ink)' };
+  const swatch = colorOf(icon.color);
+  return { '--fill': swatch.fill, '--fg': swatch.fg };
+}
+
 // What a launcher button shows: an image filling the circle (uploaded or linked), a website's icon on a
-// light disc, or its label (letters or emoji). A web icon that fails to load shows the label instead.
+// light disc, or its letters or emoji. A picture that fails to load shows the letters instead.
 export function launcherMark(group) {
+  const ic = group.icon;
+  const letters = letterOf(group.name, ic.text);
   // Emoji are wider than letters: three in a row only fit the 40px circle at a smaller size.
-  const tight = firstGraphemes(group.icon, 2) !== group.icon && /\p{Extended_Pictographic}/u.test(group.icon);
-  const label = () => h(`span.launcher-label${tight ? '.tight' : ''}`, {}, group.icon);
-  const mode = group.iconMode || (group.image ? 'upload' : 'label');
-  if (mode === 'upload' && group.image) return h('img.launcher-img', { src: group.image, alt: '', draggable: 'false' });
-  if (mode === 'url' && group.iconUrl) {
+  const tight = firstGraphemes(letters, 2) !== letters && /\p{Extended_Pictographic}/u.test(letters);
+  const label = () => h(`span.launcher-label${tight ? '.tight' : ''}`, {}, letters);
+  if (ic.kind === 'upload' && ic.data) return h('img.launcher-img', { src: ic.data, alt: '', draggable: 'false' });
+  if (ic.kind === 'image' && ic.url) {
     const img = h('img.launcher-img', { alt: '', draggable: 'false', referrerpolicy: 'no-referrer' });
     img.onerror = () => img.replaceWith(label());
-    img.src = group.iconUrl;
+    img.src = ic.url;
     return img;
   }
-  const sources = mode === 'site' ? siteIconSources(group.iconUrl || group.links[0]?.url || '') : [];
-  if (!sources.length) return label();
+  const sources = ic.kind === 'site' ? siteIconSources(ic.url || group.links[0]?.url || '') : [];
+  if (!sources.length) return ic.kind === 'color' && !ic.letter ? null : label();
   const disc = h('span.launcher-site');
   const img = h('img', { alt: '', draggable: 'false' });
   const tryNext = (index) => {
@@ -74,6 +91,11 @@ export function launcherMark(group) {
   disc.append(img);
   tryNext(0);
   return disc;
+}
+
+// A button around an icon: clicking the icon itself opens the icon picker. Pass the badge or launcher face as `mark`.
+export function iconButton({ mark, label, onclick }, props = {}) {
+  return h('button.icon-pick', { type: 'button', 'aria-label': label, title: 'Change icon', onclick, ...props }, mark);
 }
 
 // Chrome's favicon cache answers unknown pages with a generic globe; detect it by comparing pixels.

@@ -102,6 +102,7 @@ function viewTile(item, alignRight) {
 }
 
 function removeShortcut(item) {
+  if (item.shared && !window.confirm(`${item.name} shows on all profiles. Remove it from every profile?`)) return;
   update((settings) => { settings.shortcuts = settings.shortcuts.filter((s) => s.id !== item.id); });
   toast(`Removed ${item.name}`);
 }
@@ -181,10 +182,11 @@ function makeDraggable(wrap, item) {
 
 // Quick edit: name, URL, category and color without leaving the grid.
 function popover(item, alignRight) {
-  const draft = { ...item };
+  const draft = { ...item, icon: { ...item.icon } };
   const titleId = `pop-${item.id}`;
   const preview = h('span', {});
-  const refreshPreview = () => preview.replaceChildren(badge({ ...draft, icon: draft.icon === 'site' ? 'letter' : draft.icon }));
+  // The preview skips the network: a site logo shows as the letter on the chosen color.
+  const refreshPreview = () => preview.replaceChildren(badge({ ...draft, icon: draft.icon.kind === 'site' ? { ...draft.icon, kind: 'color', letter: true } : draft.icon }));
   const name = h('input.input.compact', { type: 'text', value: item.name, oninput: () => { draft.name = name.value; refreshPreview(); validate(); } });
   const url = h('input.input.compact', { type: 'url', value: item.url, oninput: () => { draft.url = url.value; validate(); } });
   const msg = h('span.msg.bad', { hidden: true, 'aria-live': 'polite' });
@@ -216,7 +218,7 @@ function popover(item, alignRight) {
     if (save.disabled) return;
     update((settings) => {
       const target = settings.shortcuts.find((s) => s.id === item.id);
-      if (target) Object.assign(target, { name: draft.name.trim(), url: check.url, category: draft.category, color: draft.color });
+      if (target) Object.assign(target, { name: draft.name.trim(), url: check.url, category: draft.category, icon: { ...target.icon, color: draft.icon.color } });
     });
     view.popoverId = null;
     view.focusAfter = `[data-edit="${item.id}"]`;
@@ -236,7 +238,7 @@ function popover(item, alignRight) {
     h('label', {}, 'URL', url),
     msg,
     h('div', { style: { display: 'flex', flexDirection: 'column', gap: '4px' } }, h('span.field-label', { id: categoryLabel, style: { fontSize: '13px' } }, 'Category'), category.el),
-    swatchPicker({ value: draft.color, size: 'small', onChange: (color) => { draft.color = color; refreshPreview(); } }),
+    swatchPicker({ value: draft.icon.color, size: 'small', onChange: (color) => { draft.icon.color = color; refreshPreview(); } }),
     h('div.actions', {},
       h('button.icon-btn.small', { type: 'button', 'aria-label': `Delete ${item.name}`, title: 'Delete', onclick: () => { view.popoverId = null; removeShortcut(item); } }, icon('trash', 16)),
       h('button.btn.small', { type: 'button', style: { marginRight: 'auto' }, onclick: () => { view.popoverId = null; render(); openShortcutEditor(item.id); } }, 'More…'),

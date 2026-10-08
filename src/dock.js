@@ -1,11 +1,11 @@
 // Bottom launcher dock: the profile switcher on the left; hover or focus previews a launcher group's links,
 // click pins it; plus theme and settings buttons.
-import { colorOf, hostOf, profileMark } from './core.js';
+import { hostOf, profileIcon } from './core.js';
 import { h, icon } from './dom.js';
 import { activeProfile, createProfile, store, switchProfile, update } from './state.js';
 import { openSettings } from './settings.js';
 import { isDark } from './appearance.js';
-import { badge, launcherMark } from './widgets.js';
+import { badge, launcherFaceStyle, launcherMark } from './widgets.js';
 
 const view = { open: null, pinned: false, profiles: false };
 
@@ -43,15 +43,16 @@ function setProfilesOpen(open) {
 // The current profile's name on the left of the dock; its menu switches, adds or manages profiles.
 function profileSwitcher() {
   const current = activeProfile();
-  const mark = profileMark(current);
-  const button = h(`button.profile-btn${mark ? '' : '.no-mark'}`, {
+  const mark = profileIcon(current);
+  const hasMark = mark.kind !== 'none';
+  const button = h(`button.profile-btn${hasMark ? '' : '.no-mark'}`, {
     type: 'button',
     'aria-label': `Profile: ${current.name}. Switch profile`,
     'aria-expanded': String(view.profiles),
     'aria-controls': 'profile-menu',
     onclick: () => setProfilesOpen(!view.profiles)
   },
-  mark ? h('span.profile-mark', { 'aria-hidden': 'true' }, mark) : null,
+  hasMark ? badge({ name: current.name, url: '', icon: mark }, 'profile-mark') : null,
   h('span.profile-name', {}, current.name),
   icon('chevronUp', 14, 2));
 
@@ -68,7 +69,7 @@ function profileSwitcher() {
           'aria-current': on ? 'true' : null,
           onclick: pickAndClose(() => switchProfile(profile.id))
         },
-        h('span.badge', { 'aria-hidden': 'true' }, profileMark(profile)),
+        badge({ name: profile.name, url: '', icon: profileIcon(profile) }, 'profile'),
         h('span.name', {}, profile.name),
         on ? h('span.host', {}, 'In use') : null);
       }),
@@ -101,7 +102,6 @@ function setOpen(id, pinned) {
 }
 
 function launcher(group) {
-  const swatch = colorOf(group.color);
   const open = view.open === group.id;
   const flyoutId = `flyout-${group.id}`;
   const button = h('button.launcher-btn.launcher-face', {
@@ -109,7 +109,7 @@ function launcher(group) {
     'aria-label': `${group.name} links`,
     'aria-expanded': String(open),
     'aria-controls': flyoutId,
-    style: { '--fill': swatch.fill, '--fg': swatch.fg },
+    style: launcherFaceStyle(group.icon),
     onmouseenter: () => { if (!view.pinned) setOpen(group.id, false); },
     onfocus: () => { if (!view.pinned) setOpen(group.id, false); },
     onclick: () => (view.open === group.id && view.pinned ? setOpen(null, false) : setOpen(group.id, true))

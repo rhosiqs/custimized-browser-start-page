@@ -1,8 +1,10 @@
-// Full shortcut editor dialog (add or edit): name, URL, icon source, category, color.
-import { SHORTCUT_IMAGE_LIMIT, categoriesOf, createId, hostOf, normalizeHttpUrl } from './core.js';
-import { h, icon, readImageFile, segmented, showModal } from './dom.js';
+// Full shortcut editor dialog (add or edit): name, URL, category, whether it shows on all profiles. The icon is
+// changed by clicking it in the preview, which opens the icon picker.
+import { categoriesOf, createId, hostOf, normalizeHttpUrl, siteIcon } from './core.js';
+import { h, icon, showModal } from './dom.js';
+import { openIconPicker } from './icon-picker.js';
 import { store, update } from './state.js';
-import { badge, dropdown, swatchPicker, toast } from './widgets.js';
+import { badge, dropdown, iconButton, toast } from './widgets.js';
 
 const NEW_CATEGORY = '\u0000new';
 
@@ -15,9 +17,8 @@ export function openShortcutEditor(id, { category = '', shortcuts, commit } = {}
   const existing = id ? list.find((s) => s.id === id) : null;
   const categories = categoriesOf(list);
   const draft = existing ? { ...existing } : {
-    id: createId('sc'), name: '', url: '', category, color: 'green', icon: 'site', image: ''
+    id: createId('sc'), name: '', url: '', category, icon: siteIcon()
   };
-  let fileMsg = '';
 
   showModal({
     labelledBy: 'ed-title',
@@ -32,39 +33,6 @@ export function openShortcutEditor(id, { category = '', shortcuts, commit } = {}
         oninput: () => { draft.url = url.value; refresh(); }
       });
       const save = h('button.btn.primary', { type: 'button' }, 'Save');
-
-      // Icon source
-      const iconExtras = h('div.inline');
-      const fileNote = h('span.note', { 'aria-live': 'polite' });
-      const iconSlot = h('div');
-      const renderIconModes = () => {
-        iconSlot.replaceChildren(segmented({
-          labelledBy: 'sc-icon-lbl',
-          className: 'round',
-          value: draft.icon,
-          options: [{ value: 'site', label: 'Website icon' }, { value: 'letter', label: 'Letter' }, { value: 'upload', label: 'Upload image' }],
-          onChange: (mode) => { draft.icon = mode; renderIconModes(); refresh(); }
-        }));
-        const upload = draft.icon === 'upload';
-        iconExtras.replaceChildren(...[iconSlot, upload ? h('label.btn.file-btn.round.small', {}, icon('upload', 14, 2.2), 'Choose image',
-          h('input', {
-            type: 'file', accept: 'image/png,image/jpeg,image/webp,image/svg+xml,image/gif', 'aria-describedby': 'sc-file-note',
-            onchange: async (event) => {
-              const file = event.target.files?.[0];
-              if (!file) return;
-              try {
-                draft.image = await readImageFile(file, SHORTCUT_IMAGE_LIMIT);
-                fileMsg = file.name;
-              } catch (error) {
-                draft.image = '';
-                fileMsg = error.message;
-              }
-              refresh();
-            }
-          })) : null].filter(Boolean));
-        fileNote.hidden = !upload;
-      };
-      fileNote.id = 'sc-file-note';
 
       // Category, with a free-text field for a new one
       const newCategory = h('input.input.compact', {
@@ -94,23 +62,46 @@ export function openShortcutEditor(id, { category = '', shortcuts, commit } = {}
       const refresh = () => {
         const check = normalizeHttpUrl(draft.url);
         const host = check.ok ? hostOf(check.url) : '';
-        const shown = draft.icon === 'upload' && !draft.image ? { ...draft, icon: 'letter' } : draft;
-        const note = draft.icon === 'upload'
-          ? (draft.image ? 'custom image' : 'no image yet, showing the initial')
-          : draft.icon === 'site' ? `icon from ${host || 'the site'}` : 'letter on color';
+        const note = {
+          site: `icon from ${host || 'the site'}`, image: 'image from the web', upload: 'uploaded image', emoji: 'emoji', color: 'solid color'
+        }[draft.icon.kind];
+        // The icon is a button: clicking it opens the icon picker.
         preview.replaceChildren(
-          badge({ ...shown, url: check.ok ? check.url : '' }),
+          iconButton({
+            mark: badge({ name: draft.name, url: check.ok ? check.url : '', icon: draft.icon }),
+            label: `Change icon of ${draft.name.trim() || 'this shortcut'}`,
+            onclick: () => openIconPicker({
+              icon: draft.icon, name: draft.name || 'Untitled', url: check.ok ? check.url : '', subject: draft.name.trim(),
+              onApply: (next) => { draft.icon = next; refresh(); preview.querySelector('.icon-pick')?.focus(); }
+            })
+          }),
           h('div', { style: { display: 'flex', flexDirection: 'column', minWidth: 0 } },
             h('span.name', {}, draft.name.trim() || 'Untitled'),
-            h('span.note', {}, `${draft.category || 'No category'} · ${note}`))
+            h('span.note', {}, `${draft.category || 'No category'} · ${note} · click the icon to change it`))
         );
         urlMsg.className = `msg ${check.ok ? 'ok' : draft.url.trim() ? 'bad' : ''}`;
         urlMsg.replaceChildren(icon(check.ok ? 'check' : 'alert', 14, 2.2), check.ok ? `Saved as ${check.url}` : check.msg);
         url.setAttribute('aria-invalid', String(!check.ok && draft.url.trim() !== ''));
-        fileNote.textContent = fileMsg || 'PNG, JPG, WebP, SVG or GIF, up to 512 KB. Stored in this browser.';
         save.disabled = !check.ok || !draft.name.trim();
         return check;
       };
+
+      // Shown on every profile: edits and deleting apply everywhere (the content is stored once, see joinShared).
+      const sharedNote = h('span.note');
+      const sharedSwitch = h('div.field-group', {},
+        h('button.switch', {
+          type: 'button', role: 'switch', 'aria-checked': String(Boolean(draft.shared)), 'aria-describedby': 'sc-shared-note',
+          style: { alignSelf: 'flex-start' },
+          onclick: () => { draft.shared = !draft.shared; sharedSwitch.querySelector('.switch').setAttribute('aria-checked', String(draft.shared)); showSharedNote(); }
+        }, h('span.track', { 'aria-hidden': 'true' }, h('span.knob')), 'Show on all profiles'),
+        sharedNote);
+      sharedNote.id = 'sc-shared-note';
+      const showSharedNote = () => {
+        sharedNote.textContent = draft.shared
+          ? 'This shortcut appears on every profile. Changes and deleting it apply to all of them.'
+          : 'Off: this shortcut belongs to the profile in use only.';
+      };
+      showSharedNote();
 
       save.addEventListener('click', () => {
         const check = refresh();
@@ -119,10 +110,9 @@ export function openShortcutEditor(id, { category = '', shortcuts, commit } = {}
           ...draft,
           name: draft.name.trim(),
           url: check.url,
-          category: draft.category.trim(),
-          image: draft.icon === 'upload' ? draft.image : ''
+          category: draft.category.trim()
         };
-        if (next.icon === 'upload' && !next.image) next.icon = 'letter';
+        if (!next.shared) delete next.shared;
         apply((items) => {
           const index = items.findIndex((s) => s.id === next.id);
           if (index >= 0) items[index] = next;
@@ -139,7 +129,6 @@ export function openShortcutEditor(id, { category = '', shortcuts, commit } = {}
         }
       });
 
-      renderIconModes();
       dialog.append(
         h('div.dialog-head', {},
           h('div.titles', {}, h('span.kicker', {}, 'SHORTCUT'), h('h1', { id: 'ed-title' }, existing ? 'Edit shortcut' : 'Add shortcut')),
@@ -148,16 +137,13 @@ export function openShortcutEditor(id, { category = '', shortcuts, commit } = {}
           preview,
           h('div.field-group', {}, h('label.field-label', { for: 'sc-name' }, 'Name'), name),
           h('div.field-group', {}, h('label.field-label', { for: 'sc-url' }, 'URL'), url, urlMsg),
-          h('div.editor-row', {},
-            h('div.grow', {}, h('span.field-label', { id: 'sc-icon-lbl' }, 'Icon'), iconExtras, fileNote),
-            h('div.dropdown', { style: { alignItems: 'flex-end' } }, h('span.field-label', { id: 'sc-cat-lbl' }, 'Category'), categoryPicker.el, newCategory)),
-          h('fieldset.plain', {}, h('legend', {}, 'Color'),
-            swatchPicker({ value: draft.color, onChange: (color) => { draft.color = color; refresh(); } }),
-            h('span.note', {}, 'Used for the letter icon and as the fallback when no image is available.'))),
+          h('div.field-group', {}, h('span.field-label', { id: 'sc-cat-lbl' }, 'Category'), categoryPicker.el, newCategory),
+          sharedSwitch),
         h('div.dialog-foot', {},
           existing ? h('button.btn.outline', {
             type: 'button',
             onclick: () => {
+              if (existing.shared && !window.confirm(`Delete ${existing.name} from every profile?`)) return;
               apply((items) => { items.splice(items.findIndex((s) => s.id === existing.id), 1); });
               close();
               if (!inSettings) toast(`Deleted ${existing.name}`);

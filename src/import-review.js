@@ -1,5 +1,5 @@
 // Import flow: pick a backup file, show what will change and what was repaired or skipped, then merge or replace.
-import { FORMATS, countItems, detectFormat, mergeSettings, normalizeSettings, parseBackup } from './core.js';
+import { FORMATS, countItems, detectFormat, keepSharedFrom, mergeSettings, normalizeSettings, parseBackup, stripShared } from './core.js';
 import { h, icon, showModal } from './dom.js';
 import { store, update } from './state.js';
 import { toast } from './widgets.js';
@@ -34,9 +34,10 @@ export function reviewImport({ name, size, source }) {
     error = err.message;
   }
   // Replace starts from defaults; merge starts from the current settings so sections missing from the file stay as they are.
+  // A file never changes what is shared: its items come in as ordinary ones for this profile.
   const replaced = raw ? normalizeSettings(raw) : { settings: null, report: { fixed: [], skipped: [] } };
   const { report } = replaced;
-  const incoming = replaced.settings;
+  const incoming = replaced.settings && stripShared(replaced.settings);
   const counts = countItems(raw ? {
     ...raw,
     shortcuts: Array.isArray(raw.shortcuts) ? incoming.shortcuts : undefined,
@@ -75,7 +76,10 @@ export function reviewImport({ name, size, source }) {
       const apply = h('button.btn.primary', {
         type: 'button', disabled: Boolean(error) || !total,
         onclick: () => {
-          const next = mode === 'replace' ? incoming : mergeSettings(store.settings, normalizeSettings(raw, { fallback: store.settings }).settings);
+          // Replace keeps the shortcuts and launchers that show on all profiles, which belong to every profile.
+          const next = mode === 'replace'
+            ? keepSharedFrom(incoming, store.settings)
+            : mergeSettings(store.settings, stripShared(normalizeSettings(raw, { fallback: store.settings }).settings));
           update(next);
           close();
           toast(mode === 'replace' ? 'Settings replaced from file' : 'Import merged');

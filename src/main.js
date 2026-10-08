@@ -5,7 +5,7 @@ import { closeDockPopups, renderDock } from './dock.js';
 import { h, isModalOpen } from './dom.js';
 import { closeSearchPopups, focusWebSearch, searchBlock } from './search.js';
 import { closeShortcutPopover, shortcutsBlock } from './shortcuts.js';
-import { initStore, profilesFromOtherTab, replaceFromOtherTab, store, subscribe } from './state.js';
+import { initStore, profilesFromOtherTab, reloadFromOtherTab, store, subscribe } from './state.js';
 import { onStorageChanged } from './storage.js';
 
 const DESIGN_WIDTH = 1440;
@@ -124,10 +124,12 @@ async function start() {
       // An open dialog keeps editing the profile it opened on.
       profilesFromOtherTab(profiles, { keepActive: isModalOpen() });
     },
-    onSettings: (profileId, settings) => {
-      if (profileId !== store.profiles.active || JSON.stringify(settings) === JSON.stringify(store.settings)) return;
-      // Don't swap settings underneath an open dialog; the next change after it closes will catch up.
-      if (!isModalOpen()) replaceFromOtherTab(settings);
+    // Don't swap settings underneath an open dialog; the next change after it closes will catch up.
+    onSettings: (profileId) => {
+      if (profileId === store.profiles.active && !isModalOpen()) reloadFromOtherTab();
+    },
+    onShared: () => {
+      if (!isModalOpen()) reloadFromOtherTab();
     }
   });
   wireGlobalEvents();

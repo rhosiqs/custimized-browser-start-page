@@ -1,14 +1,15 @@
 // Settings dialog. Edits stay in a draft until Save; appearance changes preview live and revert on Discard or close.
 import {
-  ACCENTS, BACKGROUND_IMAGE_LIMIT, BLOCKS, FORMATS, PROFILE_NAME_MAX, SEARCH_BOXES, SHORTCUT_IMAGE_LIMIT,
-  ZONE_ABBREVIATION_LIST, clockLabel, clone, colorOf, createId, firstGraphemes, hostOf, profileMark, isValidEngineUrl, isValidTimeZone, moveItem, normalizeHttpUrl, serialize, zoneFromAbbreviation
+  ACCENTS, BACKGROUND_IMAGE_LIMIT, BLOCKS, FORMATS, PROFILE_NAME_MAX, SEARCH_BOXES,
+  ZONE_ABBREVIATION_LIST, blankLauncher, clockLabel, clone, createId, hostOf, profileIcon, isValidEngineUrl, isValidTimeZone, moveItem, normalizeHttpUrl, serialize, zoneFromAbbreviation
 } from './core.js';
 import { applyAppearance, isDark } from './appearance.js';
 import { h, icon, readImageFile, segmented, showModal } from './dom.js';
+import { openIconPicker } from './icon-picker.js';
 import { pickImportFile } from './import-review.js';
 import { openShortcutEditor } from './shortcut-editor.js';
 import { activeProfile, clearHistory, createProfile, deleteProfile, renameProfile, setProfileIcon, store, switchProfile, update } from './state.js';
-import { badge, colorChoice, launcherMark, sortHandle, swatchPicker, toast } from './widgets.js';
+import { badge, colorChoice, iconButton, launcherFaceStyle, launcherMark, sortHandle, toast } from './widgets.js';
 
 const TABS = ['Profiles', 'Appearance', 'Search', 'Clocks', 'Shortcuts', 'Launchers', 'Layout', 'Data'];
 // Background presets per theme; the first two are the picker's base colors.
@@ -21,7 +22,7 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
   const ui = { tab, engineBox: 'web', format: 'json', expanded: launcherId, saved: clone(store.settings) };
   let draft = clone(store.settings);
   if (addLauncher) {
-    const fresh = { id: createId('ln'), name: 'New launcher', icon: 'N', color: 'green', iconMode: 'label', iconUrl: '', image: '', links: [] };
+    const fresh = blankLauncher();
     draft.launchers.push(fresh);
     ui.expanded = fresh.id;
   }
@@ -120,41 +121,21 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
               showProfile();
             }
           });
-          // Letter uses the name's first character; Custom shows what is typed; None hides it in the dock.
-          const pending = ui.customIcon === profile.id;
-          const mode = pending ? 'custom' : profile.icon || 'letter';
-          const iconText = h('input.input.compact', {
-            type: 'text', value: profile.iconText || '', placeholder: profileMark({ name: profile.name }), dataset: { profileIcon: profile.id }, 'aria-label': `${profile.name} icon text`,
-            onchange: () => {
-              // Clearing the text falls back to the letter.
-              const value = iconText.value.trim();
-              ui.customIcon = null;
-              setProfileIcon(profile.id, value ? 'custom' : 'letter', value);
-              renderPanel();
-            }
+          // The icon is a button: clicking it opens the icon picker. Icon changes apply at once, like the other profile actions.
+          const mark = profileIcon(profile);
+          const pickIcon = iconButton({
+            mark: badge({ name: profile.name, url: '', icon: mark }, `profile${on ? ' on' : ''}`),
+            label: `Change icon of the ${profile.name} profile`,
+            onclick: () => openIconPicker({
+              icon: mark, name: profile.name, allowNone: true, neutral: true, requireUrl: true,
+              onApply: (next) => { setProfileIcon(profile.id, next); renderPanel(); document.querySelector(`[data-profile-icon="${profile.id}"]`)?.focus(); },
+              onReset: () => { setProfileIcon(profile.id, null); renderPanel(); document.querySelector(`[data-profile-icon="${profile.id}"]`)?.focus(); }
+            })
           });
-          const iconChoice = h('div.profile-icon', {},
-            segmented({
-              label: `${profile.name} icon`, value: mode, className: 'small',
-              options: [{ value: 'letter', label: 'Letter' }, { value: 'custom', label: 'Custom' }, { value: 'none', label: 'None' }],
-              onChange: (value) => {
-                if (value === mode) return;
-                // Custom needs text before it sticks; until then the field waits for it.
-                ui.customIcon = null;
-                if (value === 'custom' && !profile.iconText) {
-                  ui.customIcon = profile.id;
-                  renderPanel();
-                  document.querySelector(`[data-profile-icon="${profile.id}"]`)?.focus();
-                  return;
-                }
-                setProfileIcon(profile.id, value, profile.iconText);
-                renderPanel();
-              }
-            }),
-            mode === 'custom' ? iconText : null);
+          pickIcon.dataset.profileIcon = profile.id;
           return h('li.profile-row', {},
-            h(`span.badge.profile${on ? '.on' : ''}`, { 'aria-hidden': 'true' }, profileMark(profile)),
-            h('span.grow', {}, name, iconChoice),
+            pickIcon,
+            h('span.grow', {}, name),
             on
               ? h('span.note', {}, 'In use, editing now')
               : h('button.btn.quiet-outline', { type: 'button', 'aria-label': `Use ${profile.name} profile`, onclick: () => loadProfile(() => switchProfile(profile.id)) }, 'Use'),
@@ -169,7 +150,7 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
             }, icon('trash', 16)));
         });
         return [
-          h('span.note', {}, 'Each profile has its own appearance, search engines, clocks, shortcuts, launchers and layout. The other tabs edit the profile in use. Search history is shared.'),
+          h('span.note', {}, 'Each profile has its own appearance, search engines, clocks, shortcuts, launchers and layout. The other tabs edit the profile in use. Search history is shared, and so is any shortcut or launcher set to show on all profiles. Click a profile\'s icon to change it.'),
           h('ul.list', {}, ...items),
           h('div.inline', {},
             h('button.btn.primary', { type: 'button', onclick: () => loadProfile(() => createProfile()) }, 'New profile'),
@@ -389,12 +370,23 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
         });
         const items = list.map((item, i) => h('li', { dataset: { sortRow: '' } },
           sortHandle({ item, index: i, count: list.length, label: item.name, onMove: (from, to) => change(() => { draft.shortcuts = moveItem(list, from, to); }) }),
-          badge(item),
-          h('span.grow', {}, h('span.title', {}, item.name), h('span.sub', {}, `${item.category || 'No category'} · ${hostOf(item.url)}`)),
+          // Clicking the icon opens the icon picker; the change waits for Save like the rest of the draft.
+          iconButton({
+            mark: badge(item),
+            label: `Change icon of ${item.name}`,
+            onclick: () => openIconPicker({
+              icon: item.icon, name: item.name, url: item.url,
+              onApply: (next) => { change(() => { item.icon = next; }); panel.querySelector(`[data-icon-id="${CSS.escape(item.id)}"]`)?.focus(); }
+            })
+          }, { dataset: { iconId: item.id } }),
+          h('span.grow', {}, h('span.title', {}, item.name), h('span.sub', {}, `${item.category || 'No category'} · ${hostOf(item.url)}${item.shared ? ' · All profiles' : ''}`)),
           h('button.btn.quiet-outline', { type: 'button', 'aria-label': `Edit ${item.name} shortcut`, dataset: { editId: item.id }, onclick: () => edit(item.id) }, 'Edit'),
           h('button.icon-btn', {
             type: 'button', 'aria-label': `Remove ${item.name} shortcut`, title: 'Remove shortcut',
-            onclick: () => change(() => { draft.shortcuts = draft.shortcuts.filter((s) => s.id !== item.id); })
+            onclick: () => {
+              if (item.shared && !window.confirm(`${item.name} shows on all profiles. Remove it from every profile?`)) return;
+              change(() => { draft.shortcuts = draft.shortcuts.filter((s) => s.id !== item.id); });
+            }
           }, icon('trash', 16))));
         return [
           h('span.note', {}, 'Shortcuts show below the search boxes. Edit opens the same editor as the page; changes apply when you save.'),
@@ -409,15 +401,25 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
           const expanded = ui.expanded === group.id;
           const row = h(`li${expanded ? '.expanded' : ''}`, { dataset: { sortRow: '' } },
             sortHandle({ item: group, index: i, count: groups.length, label: group.name, onMove: (from, to) => change(() => { draft.launchers = moveItem(groups, from, to); }) }),
-            h('span.badge.launcher-face', { 'aria-hidden': 'true', style: { width: '40px', height: '40px', fontSize: '13px', '--fill': colorOf(group.color).fill, '--fg': colorOf(group.color).fg } }, launcherMark(group)),
-            h('span.grow', {}, h('span.title', {}, group.name), h('span.sub', {}, `${group.links.length} link${group.links.length === 1 ? '' : 's'}`)),
+            iconButton({
+              mark: h('span.badge.launcher-face', { 'aria-hidden': 'true', style: { width: '40px', height: '40px', fontSize: '13px', ...launcherFaceStyle(group.icon) } }, launcherMark(group)),
+              label: `Change icon of ${group.name}`,
+              onclick: () => openIconPicker({
+                icon: group.icon, name: group.name, url: group.links[0]?.url || '',
+                onApply: (next) => { change(() => { group.icon = next; }); panel.querySelector(`[data-icon-id="${CSS.escape(group.id)}"]`)?.focus(); }
+              })
+            }, { dataset: { iconId: group.id } }),
+            h('span.grow', {}, h('span.title', {}, group.name), h('span.sub', {}, `${group.links.length} link${group.links.length === 1 ? '' : 's'}${group.shared ? ' · All profiles' : ''}`)),
             h('button.btn.quiet-outline', {
               type: 'button', 'aria-expanded': String(expanded), 'aria-label': `${expanded ? 'Close' : 'Edit'} ${group.name} launcher`,
               onclick: () => change(() => { ui.expanded = expanded ? null : group.id; })
             }, expanded ? 'Close' : 'Edit'),
             expanded ? h('button.icon-btn', {
               type: 'button', 'aria-label': `Remove ${group.name} launcher`, title: 'Remove launcher',
-              onclick: () => change(() => { draft.launchers = draft.launchers.filter((g) => g.id !== group.id); ui.expanded = null; })
+              onclick: () => {
+                if (group.shared && !window.confirm(`${group.name} shows on all profiles. Remove it from every profile?`)) return;
+                change(() => { draft.launchers = draft.launchers.filter((g) => g.id !== group.id); ui.expanded = null; });
+              }
             }, icon('trash', 16)) : null,
             expanded ? launcherEditor(group) : null);
           return row;
@@ -428,7 +430,7 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
           h('button.btn.primary', {
             type: 'button', style: { alignSelf: 'flex-start' },
             onclick: () => change(() => {
-              const fresh = { id: createId('ln'), name: 'New launcher', icon: 'N', color: 'green', iconMode: 'label', iconUrl: '', image: '', links: [] };
+              const fresh = blankLauncher();
               draft.launchers.push(fresh);
               ui.expanded = fresh.id;
             })
@@ -439,53 +441,6 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
       const launcherEditor = (group) => {
         const idBase = `ln-${group.id}`;
         const name = h('input.input.compact', { id: `${idBase}-name`, type: 'text', value: group.name, style: { width: '160px' }, oninput: () => { group.name = name.value; touch(); } });
-        // Up to 3 characters as people see them, so an emoji counts as one.
-        const mark = h('input.input.compact', {
-          id: `${idBase}-icon`, type: 'text', value: group.icon, style: { width: '72px' }, 'aria-describedby': `${idBase}-icon-note`,
-          oninput: () => { group.icon = firstGraphemes(mark.value.trim(), 3) || group.name.charAt(0).toUpperCase(); touch(); },
-          onchange: () => { mark.value = group.icon; }
-        });
-        const mode = group.iconMode || (group.image ? 'upload' : 'label');
-        const notes = {
-          label: 'Letters or an emoji, up to 3.',
-          site: 'Shows the website\'s icon. Leave the address empty to use the first link. The label shows if no icon is found.',
-          url: 'Paste the address of an image online (PNG, SVG, ICO…). It fills the launcher; the label shows if it fails to load.',
-          upload: group.image ? 'The image fills the launcher in place of the label.' : 'Choose an image (up to 512 KB). It fills the launcher in place of the label.'
-        };
-        const imageMsg = h('span.note.hint-line', { id: `${idBase}-icon-note`, 'aria-live': 'polite' }, notes[mode]);
-        // The address field is shared by Website and Image link; a valid address is stored in full form on leaving it.
-        const iconAddress = (placeholder, labelText) => {
-          const input = h('input.input.compact', {
-            id: `${idBase}-icon-url`, type: 'url', value: group.iconUrl, placeholder, spellcheck: 'false', 'aria-label': labelText,
-            'aria-describedby': `${idBase}-icon-note`, style: { width: '300px' },
-            'aria-invalid': String(Boolean(group.iconUrl) && !normalizeHttpUrl(group.iconUrl).ok),
-            oninput: () => { group.iconUrl = input.value.trim(); input.setAttribute('aria-invalid', String(Boolean(group.iconUrl) && !normalizeHttpUrl(group.iconUrl).ok)); touch(); },
-            onchange: () => { const check = normalizeHttpUrl(group.iconUrl); if (check.ok) change(() => { group.iconUrl = check.url; }); }
-          });
-          return input;
-        };
-        const uploadControls = () => h('div.inline', { style: { gap: '8px' } },
-          h('label.btn.file-btn.round.small', {}, icon('upload', 14, 2.2), group.image ? 'Change image' : 'Choose image',
-            h('input', {
-              type: 'file', accept: 'image/png,image/jpeg,image/webp,image/svg+xml,image/gif', 'aria-describedby': `${idBase}-icon-note`,
-              onchange: async (event) => {
-                const file = event.target.files?.[0];
-                if (!file) return;
-                try {
-                  const image = await readImageFile(file, SHORTCUT_IMAGE_LIMIT);
-                  change(() => { group.image = image; group.iconMode = 'upload'; });
-                } catch (error) {
-                  imageMsg.textContent = error.message;
-                }
-              }
-            })),
-          group.image ? h('button.btn.small', { type: 'button', onclick: () => change(() => { group.image = ''; }) }, icon('trash', 14), 'Remove image') : null);
-        const iconSource = {
-          label: () => null,
-          site: () => iconAddress(group.links[0]?.url || 'example.com', `${group.name} website for the icon`),
-          url: () => iconAddress('https://example.com/logo.png', `${group.name} image address`),
-          upload: uploadControls
-        }[mode]();
         const links = group.links.map((link, i) => {
           const linkName = h('input.input.tight', { type: 'text', value: link.name, 'aria-label': 'Link name', oninput: () => { link.name = linkName.value; touch(); } });
           const linkUrl = h('input.input.tight', {
@@ -498,21 +453,18 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
             linkName, linkUrl,
             h('button.icon-btn.small', { type: 'button', 'aria-label': `Remove ${link.name}`, onclick: () => change(() => { group.links = group.links.filter((l) => l !== link); }) }, icon('close', 14, 2.2)));
         });
-        // Labels sit beside their controls and the icon hint is one small line, to keep the editor short.
+        // The icon is changed by clicking it in the launcher's row above.
+        const sharedNote = h('span.note', { id: `${idBase}-shared-note` }, group.shared
+          ? 'Appears on every profile. Changes and removing it apply to all of them.'
+          : 'Off: this launcher belongs to the profile in use only.');
         return h('div.launcher-editor', {},
           h('div.inline', { style: { gap: '20px' } },
             h('div.inline', {}, h('label.field-label', { for: `${idBase}-name` }, 'Name'), name),
-            h('div.inline', {}, h('label.field-label', { for: `${idBase}-icon` }, 'Label'), mark),
-            h('div.inline', {}, h('span.field-label', {}, 'Color'), swatchPicker({ value: group.color, size: 'small', label: `${group.name} color`, onChange: (color) => change(() => { group.color = color; }) }))),
-          h('div.inline', { style: { gap: '12px' } },
-            h('span.field-label', { id: `${idBase}-icon-mode` }, 'Icon'),
-            segmented({
-              labelledBy: `${idBase}-icon-mode`, value: mode,
-              options: [{ value: 'label', label: 'Label' }, { value: 'site', label: 'Website' }, { value: 'url', label: 'Image link' }, { value: 'upload', label: 'Upload' }],
-              onChange: (value) => change(() => { group.iconMode = value; })
-            }),
-            iconSource),
-          imageMsg,
+            h('button.switch', {
+              type: 'button', role: 'switch', 'aria-checked': String(Boolean(group.shared)), 'aria-describedby': `${idBase}-shared-note`,
+              onclick: () => change(() => { if (group.shared) delete group.shared; else group.shared = true; })
+            }, h('span.track', { 'aria-hidden': 'true' }, h('span.knob')), 'Show on all profiles')),
+          sharedNote,
           h('div.inline', { style: { justifyContent: 'space-between', marginTop: '4px' } },
             h('span.field-label', {}, 'Links'),
             h('button.btn.outline.small', {

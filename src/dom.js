@@ -161,3 +161,29 @@ export function readImageFile(file, limit) {
     reader.readAsDataURL(file);
   });
 }
+
+// Reads a user-chosen image for an icon: type and size checks, then scaled down so its longer side is at most
+// `size` pixels, so a stored icon stays small. Returns a data URL (WebP, else PNG, keeping transparency).
+export function readIconImage(file, size, { maxBytes = 5 * 1024 * 1024 } = {}) {
+  return new Promise((resolve, reject) => {
+    if (!/^image\/(png|jpeg|webp|svg\+xml|gif)$/.test(file.type)) return reject(new Error('That file is not a supported image.'));
+    if (file.size > maxBytes) return reject(new Error(`That image is over ${maxBytes / 1024 / 1024} MB.`));
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('That image could not be read.')); };
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      // An SVG without its own size reports 0; draw it at the target size.
+      const width = img.naturalWidth || size;
+      const height = img.naturalHeight || size;
+      const scale = Math.min(1, size / Math.max(width, height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(width * scale));
+      canvas.height = Math.max(1, Math.round(height * scale));
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      const webp = canvas.toDataURL('image/webp', 0.92);
+      resolve(webp.startsWith('data:image/webp') ? webp : canvas.toDataURL('image/png'));
+    };
+    img.src = url;
+  });
+}
