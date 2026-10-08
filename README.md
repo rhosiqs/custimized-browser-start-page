@@ -1,7 +1,7 @@
 # Start Page — Chrome New Tab Extension
 
 <p>
-  <img alt="Version" src="https://img.shields.io/badge/version-v1.10.0-blue">
+  <img alt="Version" src="https://img.shields.io/badge/version-v1.10.1-blue">
   <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green">
 </p>
 
@@ -9,7 +9,7 @@ A Chrome extension (Manifest V3) that replaces the new tab page with a calm, loc
 
 <img src="docs/screenshot.png" alt="Start Page new tab screenshot" width="720">
 
-*The new tab page with default settings.*
+*The new tab page with default settings. A fresh install starts with Calendar and YouTube shortcuts and Google, Gmail and Google Drive launchers.*
 
 ## Features
 

@@ -2,6 +2,11 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.10.1 — 2026-10-08
+
+### Changed
+- A fresh install (and a new blank profile) now starts with two shortcuts, Calendar and YouTube, and three launchers, Google, Gmail and Google Drive, instead of the longer starter lists. Saved settings are not changed.
+
 ## v1.10.0 — 2026-10-08
 
 ### Added
