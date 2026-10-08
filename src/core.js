@@ -115,7 +115,7 @@ export function defaultSettings() {
         { city: '', tz: 'America/New_York' }
       ]
     },
-    layout: { blocks: ['clocks', 'search', 'shortcuts'], rows: 2, perRow: 8 },
+    layout: { blocks: ['clocks', 'search', 'shortcuts'], rows: 2, perRow: 8, showCategories: true },
     shortcuts: DEFAULT_SHORTCUTS.map(([name, url, category, color], index) => ({
       id: `sc-${index + 1}`, name, url: new URL(url).href, category, color, icon: 'site', image: ''
     })),
@@ -505,6 +505,7 @@ export function normalizeSettings(input, { fallback = defaultSettings() } = {}) 
     out.layout.blocks = unique;
     out.layout.rows = clampInt(src.layout.rows, 1, 4, out.layout.rows);
     out.layout.perRow = clampInt(src.layout.perRow, 4, 12, out.layout.perRow);
+    out.layout.showCategories = src.layout.showCategories !== false;
   }
 
   if (Array.isArray(src.shortcuts)) {
@@ -532,7 +533,7 @@ export function normalizeSettings(input, { fallback = defaultSettings() } = {}) 
         id: text(item.id, 60) || createId('sc'),
         name,
         url: url.url,
-        category: text(item.category, 30) || 'General',
+        category: text(item.category, 30),
         color: pick(item.color, Object.keys(SWATCHES), 'green'),
         icon: icon === 'upload' && !image ? 'letter' : icon,
         image

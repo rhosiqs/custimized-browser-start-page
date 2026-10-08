@@ -7,7 +7,7 @@ import { applyAppearance } from './appearance.js';
 import { h, icon, readImageFile, segmented, showModal } from './dom.js';
 import { pickImportFile } from './import-review.js';
 import { clearHistory, store, update } from './state.js';
-import { launcherMark, swatchPicker, toast } from './widgets.js';
+import { launcherMark, sortHandle, swatchPicker, toast } from './widgets.js';
 
 const TABS = ['Appearance', 'Search', 'Clocks', 'Launchers', 'Layout', 'Data'];
 const PRESETS = ['#f3f2f2', '#eae9e9', '#fff3e4', '#ffe3bf', '#e8f3ea', '#1d1c1b'];
@@ -205,10 +205,8 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
             type: 'text', 'aria-label': 'Engine name', value: engine.name, style: { fontWeight: 700 },
             oninput: () => { engine.name = name.value; name.setAttribute('aria-invalid', String(!engine.name.trim())); refreshNote(); touch(); }
           });
-          return h(`div.engine-row${group.default === engine.id ? '.is-default' : ''}`, {},
-            h('div', { style: { display: 'flex' } },
-              h('button.icon-btn.small', { type: 'button', 'aria-label': `Move ${engine.name} up`, disabled: i === 0, onclick: () => change(() => { group.list = moveItem(list, i, i - 1); }) }, icon('chevronUp', 14, 2.2)),
-              h('button.icon-btn.small', { type: 'button', 'aria-label': `Move ${engine.name} down`, disabled: i === list.length - 1, onclick: () => change(() => { group.list = moveItem(list, i, i + 1); }) }, icon('chevronDown', 14, 2.2))),
+          return h(`div.engine-row${group.default === engine.id ? '.is-default' : ''}`, { dataset: { sortRow: '' } },
+            sortHandle({ item: engine, index: i, count: list.length, label: engine.name, onMove: (from, to) => change(() => { group.list = moveItem(list, from, to); }) }),
             h('input', {
               type: 'radio', name: `default-${box}`, 'aria-label': `Make ${engine.name} the default`, checked: group.default === engine.id,
               onchange: () => change(() => { group.default = engine.id; })
@@ -238,7 +236,7 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
               }
             }, icon('plus', 14, 2.2), 'Add engine')),
           h('div.engine-table', {},
-            h('div.engine-row.head', { 'aria-hidden': 'true' }, h('span', {}, 'ORDER'), h('span', {}, 'DEFAULT'), h('span', {}, 'NAME'), h('span', {}, 'URL · %s = your search'), h('span')),
+            h('div.engine-row.head', { 'aria-hidden': 'true' }, h('span'), h('span', {}, 'DEFAULT'), h('span', {}, 'NAME'), h('span', {}, 'URL · %s = your search'), h('span')),
             ...rows),
           note
         ];
@@ -286,9 +284,8 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
               'aria-label': `Label for ${clock.tz}; leave empty to show the zone name`, style: { width: '180px', fontWeight: 700 },
               oninput: () => { clock.city = city.value; touch(); }
             });
-            return h('li', {},
-              h('button.icon-btn.small', { type: 'button', 'aria-label': `Move ${shown} up`, disabled: i === 0, onclick: () => change(() => { draft.clocks.world = moveItem(world, i, i - 1); }) }, icon('chevronUp', 14, 2.2)),
-              h('button.icon-btn.small', { type: 'button', 'aria-label': `Move ${shown} down`, disabled: i === world.length - 1, onclick: () => change(() => { draft.clocks.world = moveItem(world, i, i + 1); }) }, icon('chevronDown', 14, 2.2)),
+            return h('li', { dataset: { sortRow: '' } },
+              sortHandle({ item: clock, index: i, count: world.length, label: shown, onMove: (from, to) => change(() => { draft.clocks.world = moveItem(world, from, to); }) }),
               city,
               h('span.sub', { style: { flex: 1, fontSize: '13px', color: 'var(--muted)' } }, clock.tz),
               h('button.icon-btn', { type: 'button', 'aria-label': `Remove ${shown}`, onclick: () => change(() => { draft.clocks.world = world.filter((c) => c !== clock); }) }, icon('close')));
@@ -309,16 +306,18 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
         const groups = draft.launchers;
         const items = groups.map((group, i) => {
           const expanded = ui.expanded === group.id;
-          const row = h(`li${expanded ? '.expanded' : ''}`, {},
-            h('div', { style: { display: 'flex', flexDirection: 'column' } },
-              h('button.icon-btn.small', { type: 'button', 'aria-label': `Move ${group.name} up`, disabled: i === 0, onclick: () => change(() => { draft.launchers = moveItem(groups, i, i - 1); }) }, icon('chevronUp', 14, 2.2)),
-              h('button.icon-btn.small', { type: 'button', 'aria-label': `Move ${group.name} down`, disabled: i === groups.length - 1, onclick: () => change(() => { draft.launchers = moveItem(groups, i, i + 1); }) }, icon('chevronDown', 14, 2.2))),
+          const row = h(`li${expanded ? '.expanded' : ''}`, { dataset: { sortRow: '' } },
+            sortHandle({ item: group, index: i, count: groups.length, label: group.name, onMove: (from, to) => change(() => { draft.launchers = moveItem(groups, from, to); }) }),
             h('span.badge', { 'aria-hidden': 'true', style: { width: '40px', height: '40px', fontSize: '13px', background: SWATCHES[group.color].fill, color: SWATCHES[group.color].fg } }, launcherMark(group)),
             h('span.grow', {}, h('span.title', {}, group.name), h('span.sub', {}, `${group.links.length} link${group.links.length === 1 ? '' : 's'}`)),
             h('button.btn.quiet-outline', {
               type: 'button', 'aria-expanded': String(expanded), 'aria-label': `${expanded ? 'Close' : 'Edit'} ${group.name} launcher`,
               onclick: () => change(() => { ui.expanded = expanded ? null : group.id; })
             }, expanded ? 'Close' : 'Edit'),
+            expanded ? h('button.icon-btn', {
+              type: 'button', 'aria-label': `Remove ${group.name} launcher`, title: 'Remove launcher',
+              onclick: () => change(() => { draft.launchers = draft.launchers.filter((g) => g.id !== group.id); ui.expanded = null; })
+            }, icon('trash', 16)) : null,
             expanded ? launcherEditor(group) : null);
           return row;
         });
@@ -338,7 +337,7 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
 
       const launcherEditor = (group) => {
         const idBase = `ln-${group.id}`;
-        const name = h('input.input.compact', { id: `${idBase}-name`, type: 'text', value: group.name, oninput: () => { group.name = name.value; touch(); } });
+        const name = h('input.input.compact', { id: `${idBase}-name`, type: 'text', value: group.name, style: { width: '160px' }, oninput: () => { group.name = name.value; touch(); } });
         // Up to 3 characters as people see them, so an emoji counts as one.
         const mark = h('input.input.compact', {
           id: `${idBase}-icon`, type: 'text', value: group.icon, style: { width: '72px' }, 'aria-describedby': `${idBase}-icon-note`,
@@ -352,7 +351,7 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
           url: 'Paste the address of an image online (PNG, SVG, ICO…). It fills the launcher; the label shows if it fails to load.',
           upload: group.image ? 'The image fills the launcher in place of the label.' : 'Choose an image (up to 512 KB). It fills the launcher in place of the label.'
         };
-        const imageMsg = h('span.note', { id: `${idBase}-icon-note`, 'aria-live': 'polite' }, notes[mode]);
+        const imageMsg = h('span.note.hint-line', { id: `${idBase}-icon-note`, 'aria-live': 'polite' }, notes[mode]);
         // The address field is shared by Website and Image link; a valid address is stored in full form on leaving it.
         const iconAddress = (placeholder, labelText) => {
           const input = h('input.input.compact', {
@@ -393,43 +392,36 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
             oninput: () => { link.url = linkUrl.value; linkUrl.setAttribute('aria-invalid', String(!normalizeHttpUrl(link.url).ok)); touch(); },
             onchange: () => { const check = normalizeHttpUrl(link.url); if (check.ok) { link.url = check.url; linkUrl.value = check.url; touch(); } }
           });
-          return h('div.link-row', {},
-            h('div', { style: { display: 'flex' } },
-              h('button.icon-btn.small', { type: 'button', 'aria-label': `Move ${link.name} up`, disabled: i === 0, onclick: () => change(() => { group.links = moveItem(group.links, i, i - 1); }) }, icon('chevronUp', 14, 2.2)),
-              h('button.icon-btn.small', { type: 'button', 'aria-label': `Move ${link.name} down`, disabled: i === group.links.length - 1, onclick: () => change(() => { group.links = moveItem(group.links, i, i + 1); }) }, icon('chevronDown', 14, 2.2))),
+          return h('div.link-row', { dataset: { sortRow: '' } },
+            sortHandle({ item: link, index: i, count: group.links.length, label: link.name || 'link', onMove: (from, to) => change(() => { group.links = moveItem(group.links, from, to); }) }),
             linkName, linkUrl,
             h('button.icon-btn.small', { type: 'button', 'aria-label': `Remove ${link.name}`, onclick: () => change(() => { group.links = group.links.filter((l) => l !== link); }) }, icon('close', 14, 2.2)));
         });
+        // Labels sit beside their controls and the icon hint is one small line, to keep the editor short.
         return h('div.launcher-editor', {},
-          h('div.inline', { style: { gap: '16px' } },
-            h('div.field-group', {}, h('label.field-label', { for: `${idBase}-name` }, 'Name'), name),
-            h('div.field-group', {}, h('label.field-label', { for: `${idBase}-icon` }, 'Label'), mark),
-            h('div.field-group', {}, h('span.field-label', {}, 'Color'), swatchPicker({ value: group.color, size: 'small', label: `${group.name} color`, onChange: (color) => change(() => { group.color = color; }) }))),
-          h('div.inline', { style: { gap: '16px', alignItems: 'flex-end' } },
-            h('div.field-group', {},
-              h('span.field-label', { id: `${idBase}-icon-mode` }, 'Icon'),
-              segmented({
-                labelledBy: `${idBase}-icon-mode`, value: mode,
-                options: [{ value: 'label', label: 'Label' }, { value: 'site', label: 'Website' }, { value: 'url', label: 'Image link' }, { value: 'upload', label: 'Upload' }],
-                onChange: (value) => change(() => { group.iconMode = value; })
-              })),
+          h('div.inline', { style: { gap: '20px' } },
+            h('div.inline', {}, h('label.field-label', { for: `${idBase}-name` }, 'Name'), name),
+            h('div.inline', {}, h('label.field-label', { for: `${idBase}-icon` }, 'Label'), mark),
+            h('div.inline', {}, h('span.field-label', {}, 'Color'), swatchPicker({ value: group.color, size: 'small', label: `${group.name} color`, onChange: (color) => change(() => { group.color = color; }) }))),
+          h('div.inline', { style: { gap: '12px' } },
+            h('span.field-label', { id: `${idBase}-icon-mode` }, 'Icon'),
+            segmented({
+              labelledBy: `${idBase}-icon-mode`, value: mode,
+              options: [{ value: 'label', label: 'Label' }, { value: 'site', label: 'Website' }, { value: 'url', label: 'Image link' }, { value: 'upload', label: 'Upload' }],
+              onChange: (value) => change(() => { group.iconMode = value; })
+            }),
             iconSource),
           imageMsg,
-          h('span.field-label', {}, 'Links'),
-          ...(links.length ? links : [h('p.note', {}, 'No links yet.')]),
-          h('div.inline', {},
+          h('div.inline', { style: { justifyContent: 'space-between', marginTop: '4px' } },
+            h('span.field-label', {}, 'Links'),
             h('button.btn.outline.small', {
               type: 'button',
               onclick: () => {
                 change(() => { group.links.push({ name: '', url: '' }); });
                 panel.querySelector('.launcher-editor .link-row:last-of-type input')?.focus();
               }
-            }, icon('plus', 14, 2.2), 'Add link'),
-            h('span', { style: { flex: 1 } }),
-            h('button.btn.small', {
-              type: 'button',
-              onclick: () => change(() => { draft.launchers = draft.launchers.filter((g) => g.id !== group.id); ui.expanded = null; })
-            }, icon('trash', 14), 'Remove launcher'))
+            }, icon('plus', 14, 2.2), 'Add link')),
+          ...(links.length ? links : [h('p.note', {}, 'No links yet.')])
         );
       };
 
@@ -446,11 +438,10 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
         });
         return [
           h('span.note', {}, 'Order of blocks in the main column. The launcher dock stays at the bottom.'),
-          h('ol.block-list', {}, ...blocks.map((block, i) => h('li', {},
+          h('ol.block-list', {}, ...blocks.map((block, i) => h('li', { dataset: { sortRow: '' } },
+            sortHandle({ item: block, index: i, count: blocks.length, label: BLOCKS[block], onMove: (from, to) => change(() => { draft.layout.blocks = moveItem(blocks, from, to); }) }),
             h('span.num', {}, String(i + 1).padStart(2, '0')),
-            h('span.title', {}, BLOCKS[block]),
-            h('button.icon-btn', { type: 'button', 'aria-label': `Move ${BLOCKS[block]} up`, disabled: i === 0, onclick: () => change(() => { draft.layout.blocks = moveItem(blocks, i, i - 1); }) }, icon('chevronUp')),
-            h('button.icon-btn', { type: 'button', 'aria-label': `Move ${BLOCKS[block]} down`, disabled: i === blocks.length - 1, onclick: () => change(() => { draft.layout.blocks = moveItem(blocks, i, i + 1); }) }, icon('chevronDown'))))),
+            h('span.title', {}, BLOCKS[block])))),
           h('div.form-grid', { style: { gap: '12px 16px', paddingTop: '14px', borderTop: '1px solid var(--divider)' } },
             h('span.field-label', { id: 'lbl-rows' }, 'Shortcut rows'),
             h('div.inline', { style: { gap: '10px' } },
@@ -462,7 +453,12 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
               h('label.note', { for: 'g-rows' }, 'or'),
               rows),
             h('label.field-label', { for: 'g-cols' }, 'Per row'),
-            h('div.inline', { style: { gap: '10px' } }, cols, h('span.note', {}, `Up to ${draft.layout.rows * draft.layout.perRow} shortcuts per page`)))
+            h('div.inline', { style: { gap: '10px' } }, cols, h('span.note', {}, `Up to ${draft.layout.rows * draft.layout.perRow} shortcuts per page`)),
+            h('span.field-label', {}, 'Categories'),
+            h('button.switch', {
+              type: 'button', role: 'switch', 'aria-checked': String(draft.layout.showCategories), style: { justifySelf: 'start' },
+              onclick: () => change(() => { draft.layout.showCategories = !draft.layout.showCategories; })
+            }, h('span.track', { 'aria-hidden': 'true' }, h('span.knob')), 'Show the category row above shortcuts'))
         ];
       };
 

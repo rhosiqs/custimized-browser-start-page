@@ -10,7 +10,7 @@ export function openShortcutEditor(id, { category = '' } = {}) {
   const existing = id ? store.settings.shortcuts.find((s) => s.id === id) : null;
   const categories = categoriesOf(store.settings.shortcuts);
   const draft = existing ? { ...existing } : {
-    id: createId('sc'), name: '', url: '', category: category || categories[0] || 'General', color: 'green', icon: 'site', image: ''
+    id: createId('sc'), name: '', url: '', category, color: 'green', icon: 'site', image: ''
   };
   let fileMsg = '';
 
@@ -65,7 +65,8 @@ export function openShortcutEditor(id, { category = '' } = {}) {
         type: 'text', placeholder: 'New category name', 'aria-label': 'New category name', hidden: true,
         oninput: () => { draft.category = newCategory.value.trim(); refresh(); }
       });
-      const categoryOptions = [...new Set([...categories, draft.category].filter(Boolean))].map((c) => ({ value: c, label: c }));
+      // A category is optional; uncategorized shortcuts show under All only.
+      const categoryOptions = [{ value: '', label: 'No category' }, ...[...new Set([...categories, draft.category].filter(Boolean))].map((c) => ({ value: c, label: c }))];
       const categoryPicker = dropdown({
         labelId: 'sc-cat-lbl',
         value: draft.category,
@@ -101,7 +102,7 @@ export function openShortcutEditor(id, { category = '' } = {}) {
         urlMsg.replaceChildren(icon(check.ok ? 'check' : 'alert', 14, 2.2), check.ok ? `Saved as ${check.url}` : check.msg);
         url.setAttribute('aria-invalid', String(!check.ok && draft.url.trim() !== ''));
         fileNote.textContent = fileMsg || 'PNG, JPG, WebP, SVG or GIF, up to 512 KB. Stored in this browser.';
-        save.disabled = !check.ok || !draft.name.trim() || !draft.category.trim();
+        save.disabled = !check.ok || !draft.name.trim();
         return check;
       };
 

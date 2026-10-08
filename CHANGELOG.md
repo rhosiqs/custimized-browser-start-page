@@ -2,6 +2,16 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.5.0 — 2026-10-08
+
+### Added
+- Settings → Layout → Categories turns the category row above the shortcuts on or off. With it off, all shortcuts show.
+
+### Changed
+- A shortcut's category is optional. The editors offer "No category", and uncategorized shortcuts show under All.
+- Settings lists (search engines, world clocks, launchers, launcher links, block order) reorder by dragging a grip handle instead of up and down arrow buttons. The arrow keys still move a focused handle.
+- The launcher editor is shorter: labels sit beside their fields, the icon hint is one small line, Add link sits beside the Links heading, and Remove launcher is a trash button next to Close.
+
 ## v1.4.3 — 2026-10-08
 
 ### Changed

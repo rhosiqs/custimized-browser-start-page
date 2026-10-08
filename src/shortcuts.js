@@ -24,7 +24,7 @@ export function closeShortcutPopover(keep) {
 function render() {
   const { shortcuts, layout } = store.settings;
   const categories = categoriesOf(shortcuts);
-  if (view.category !== 'All' && !categories.includes(view.category)) view.category = 'All';
+  if (view.category !== 'All' && (!layout.showCategories || !categories.includes(view.category))) view.category = 'All';
   const shown = shortcuts.filter((s) => view.category === 'All' || s.category === view.category);
   const perRow = layout.perRow;
   const cap = layout.rows * perRow;
@@ -32,7 +32,8 @@ function render() {
   view.page = Math.min(view.page, pages - 1);
   const visible = shown.slice(view.page * cap, view.page * cap + cap);
 
-  const chips = h('div.chips', { role: 'group', 'aria-label': 'Filter by category' },
+  // With the category row turned off, the empty .chips still pushes the buttons to the right.
+  const chips = !layout.showCategories ? h('div.chips') : h('div.chips', { role: 'group', 'aria-label': 'Filter by category' },
     ...['All', ...categories].map((name) => h('button.chip', {
       type: 'button',
       'aria-pressed': String(view.category === name),
@@ -202,7 +203,7 @@ function popover(item, alignRight) {
     labelId: categoryLabel,
     value: draft.category,
     align: 'start',
-    options: categories.map((c) => ({ value: c, label: c })),
+    options: [{ value: '', label: 'No category' }, ...categories.map((c) => ({ value: c, label: c }))],
     onChange: (value) => { draft.category = value; }
   });
 

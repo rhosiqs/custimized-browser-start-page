@@ -84,7 +84,7 @@ test('normalizeSettings repairs and reports bad imports', () => {
   assert.equal(settings.theme, 'dark');
   assert.equal(settings.background.solid, '#b68235');
   assert.deepEqual(settings.shortcuts.map((s) => s.url), ['https://arxiv.org/', 'https://github.com/']);
-  assert.equal(settings.shortcuts[1].category, 'General');
+  assert.equal(settings.shortcuts[1].category, '', 'category is optional');
   assert.deepEqual(settings.clocks.world, [{ city: '', tz: 'Asia/Taipei' }]);
   assert.ok(report.fixed.some((f) => f.item.includes('had no scheme')));
   assert.ok(report.fixed.some((f) => f.item.includes('listed twice')));
@@ -296,4 +296,10 @@ test('iconTone flags all-light and all-dark icons on transparent backgrounds', (
   assert.equal(iconTone(icon([217, 119, 87])), '');
   assert.equal(iconTone(icon([255, 255, 255], 16)), '', 'opaque squares keep their own background');
   assert.equal(iconTone(icon([0, 0, 0], 0)), '');
+});
+
+test('layout.showCategories defaults on and keeps an explicit off', () => {
+  assert.equal(normalizeSettings({}).settings.layout.showCategories, true);
+  assert.equal(normalizeSettings({ layout: { rows: 2 } }).settings.layout.showCategories, true);
+  assert.equal(normalizeSettings({ layout: { showCategories: false } }).settings.layout.showCategories, false);
 });

@@ -1,6 +1,6 @@
 // Reusable pieces built on dom.js: shortcut badges, swatch pickers, listbox dropdowns, toasts.
 import { SWATCHES, firstGraphemes, iconTone, initialOf } from './core.js';
-import { h, icon } from './dom.js';
+import { grip, h, icon } from './dom.js';
 import { faviconUrl, siteIconSources } from './storage.js';
 
 // Round icon for a shortcut or launcher link: uploaded image, site favicon, or colored initial.
@@ -118,6 +118,73 @@ async function isChromeDefaultIcon(img) {
   });
   const reference = await defaultIconPixels;
   return Boolean(reference) && iconPixels(img) === reference;
+}
+
+// Drag handle for a vertical list row (the row carries data-sort-row). Dragging the handle moves the row;
+// arrow keys move it one place. onMove(from, to) changes the list and re-renders synchronously, after which
+// the handle of the moved item takes focus again. item: the list entry (an object or a string) it moves.
+const sortKeys = new WeakMap();
+let sortKeyCount = 0;
+function sortKeyOf(item) {
+  if (item === null || typeof item !== 'object') return `v:${item}`;
+  if (!sortKeys.has(item)) sortKeys.set(item, `o:${(sortKeyCount += 1)}`);
+  return sortKeys.get(item);
+}
+export function sortHandle({ item, index, count, label, onMove }) {
+  const key = sortKeyOf(item);
+  const refocus = () => document.querySelector(`.sort-handle[data-sort-key="${CSS.escape(key)}"]`)?.focus();
+  const handle = h('button.sort-handle', {
+    type: 'button',
+    'aria-label': `Reorder ${label}: drag, or use the arrow keys`,
+    title: 'Drag to reorder',
+    dataset: { sortKey: key },
+    onkeydown: (event) => {
+      const delta = { ArrowUp: -1, ArrowDown: 1 }[event.key];
+      if (!delta) return;
+      event.preventDefault();
+      const to = index + delta;
+      if (to < 0 || to >= count) return;
+      onMove(index, to);
+      refocus();
+    }
+  }, grip());
+
+  handle.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0 || !event.isPrimary) return;
+    const row = handle.closest('[data-sort-row]');
+    if (!row) return;
+    event.preventDefault();
+    const others = [...row.parentElement.children].filter((el) => el !== row && el.matches('[data-sort-row]'));
+    const startY = event.clientY;
+    // The stage is scaled to the window; screen pixels become design pixels for the transform.
+    const scale = row.getBoundingClientRect().height / row.offsetHeight || 1;
+    let to = index;
+    const clear = () => others.forEach((el) => el.classList.remove('drop-before', 'drop-after'));
+    const onPointerMove = (e) => {
+      row.classList.add('sorting');
+      row.style.transform = `translateY(${(e.clientY - startY) / scale}px)`;
+      to = others.filter((el) => { const r = el.getBoundingClientRect(); return e.clientY > r.top + r.height / 2; }).length;
+      clear();
+      if (to === index) return;
+      if (to < others.length) others[to].classList.add('drop-before');
+      else others[others.length - 1]?.classList.add('drop-after');
+    };
+    const finish = (commit) => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onCancel);
+      row.classList.remove('sorting');
+      row.style.transform = '';
+      clear();
+      if (commit && to !== index) { onMove(index, to); refocus(); }
+    };
+    const onUp = () => finish(true);
+    const onCancel = () => finish(false);
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onCancel);
+  });
+  return handle;
 }
 
 export function swatchPicker({ value, onChange, size = '', label = 'Color' }) {
