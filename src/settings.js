@@ -1,7 +1,7 @@
 // Settings dialog. Edits stay in a draft until Save; appearance changes preview live and revert on Discard or close.
 import {
   ACCENTS, BACKGROUND_IMAGE_LIMIT, BLOCKS, FORMATS, PROFILE_NAME_MAX, SEARCH_BOXES,
-  ZONE_ABBREVIATION_LIST, blankLauncher, clockLabel, clone, createId, hostOf, profileIcon, isValidEngineUrl, isValidTimeZone, moveItem, normalizeHttpUrl, serialize, zoneFromAbbreviation
+  ZONE_ABBREVIATION_LIST, blankLauncher, changedSharedItems, clockLabel, clone, createId, hostOf, sharedEditPrompt, profileIcon, isValidEngineUrl, isValidTimeZone, moveItem, normalizeHttpUrl, serialize, zoneFromAbbreviation
 } from './core.js';
 import { applyAppearance, isDark } from './appearance.js';
 import { h, icon, readImageFile, segmented, showModal } from './dom.js';
@@ -560,6 +560,9 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
         if (problems()) return;
         // Launcher links typed without a scheme are stored as full https URLs.
         draft.launchers.forEach((g) => { g.links = g.links.map((l) => ({ name: l.name.trim(), url: normalizeHttpUrl(l.url).url })); g.name = g.name.trim(); });
+        // Changes to items shown on all profiles reach every profile, so ask first (removals asked when clicked).
+        const sharedNames = changedSharedItems(ui.saved, draft);
+        if (sharedNames.length && !window.confirm(sharedEditPrompt(sharedNames))) return;
         update(draft);
         ui.saved = clone(store.settings);
         draft = clone(store.settings);

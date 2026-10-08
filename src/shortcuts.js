@@ -1,5 +1,5 @@
 // Shortcut grid: category filter, paging, quick-edit popover, drag reordering, and edit mode with keyboard reordering.
-import { categoriesOf, moveItem, normalizeHttpUrl } from './core.js';
+import { categoriesOf, changedSharedItems, moveItem, normalizeHttpUrl, sharedEditPrompt } from './core.js';
 import { grip, h, icon } from './dom.js';
 import { store, update } from './state.js';
 import { openShortcutEditor } from './shortcut-editor.js';
@@ -216,6 +216,11 @@ function popover(item, alignRight) {
   save.addEventListener('click', () => {
     const check = validate();
     if (save.disabled) return;
+    if (item.shared) {
+      const next = { ...item, name: draft.name.trim(), url: check.url, category: draft.category, icon: { ...item.icon, color: draft.icon.color } };
+      const names = changedSharedItems({ shortcuts: [item] }, { shortcuts: [next] });
+      if (names.length && !window.confirm(sharedEditPrompt(names))) return;
+    }
     update((settings) => {
       const target = settings.shortcuts.find((s) => s.id === item.id);
       if (target) Object.assign(target, { name: draft.name.trim(), url: check.url, category: draft.category, icon: { ...target.icon, color: draft.icon.color } });

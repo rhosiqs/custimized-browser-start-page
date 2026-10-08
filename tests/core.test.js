@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  DEFAULT_PROFILE_ID, FORMATS, SWATCHES, clone, colorIcon, defaultProfiles, joinShared, keepSharedFrom, letterOf, nextProfileName, normalizeIcon, normalizeProfiles, normalizeShared, profileIcon, splitShared, stripShared, siteIcon, profileOfSettingsKey, profileSettingsKey, clockLabel, colorOf, iconTone, clockParts, countItems, firstGraphemes, zoneAbbreviation, zoneFromAbbreviation, defaultSettings, detectFormat, historyMatches, isImageDataUrl, isValidEngineUrl, mergeSettings, moveItem,
+  DEFAULT_PROFILE_ID, FORMATS, SWATCHES, changedSharedItems, clone, sharedEditPrompt, colorIcon, defaultProfiles, joinShared, keepSharedFrom, letterOf, nextProfileName, normalizeIcon, normalizeProfiles, normalizeShared, profileIcon, splitShared, stripShared, siteIcon, profileOfSettingsKey, profileSettingsKey, clockLabel, colorOf, iconTone, clockParts, countItems, firstGraphemes, zoneAbbreviation, zoneFromAbbreviation, defaultSettings, detectFormat, historyMatches, isImageDataUrl, isValidEngineUrl, mergeSettings, moveItem,
   normalizeDoi, normalizeHex, normalizeHttpUrl, normalizeSettings, parseBackup, readableOn, recordHistory, relativeZone, routeQuery, serialize
 } from '../src/core.js';
 
@@ -373,7 +373,7 @@ test('icons of every kind survive every export format', () => {
   settings.shortcuts[2].icon = { kind: 'image', color: 'gold', text: '', url: 'https://example.com/logo.png' };
   settings.shortcuts[3].icon = { kind: 'color', color: '#112233', letter: false, text: '' };
   settings.launchers[0].icon = { kind: 'site', color: 'green', text: 'G', url: 'https://github.com/' };
-  settings.launchers[1].icon = { kind: 'emoji', text: '🧑‍🔬📚' };
+  settings.launchers.push({ id: 'ln-2', name: 'Lab', icon: { kind: 'emoji', text: '🧑‍🔬📚' }, links: [{ name: 'Lab', url: 'https://lab.example/' }] });
   for (const format of Object.keys(FORMATS)) {
     const text = serialize(settings, format);
     assert.deepEqual(normalizeSettings(parseBackup(text, detectFormat(`x.${FORMATS[format].ext}`, text))).settings, settings, format);
@@ -497,9 +497,27 @@ test('v8 gives the dark theme #333333 unless a later save chose the theme color'
 const sharedSample = () => {
   const settings = defaultSettings();
   settings.shortcuts[1].shared = true;
-  settings.launchers[2].shared = true;
+  settings.launchers[0].shared = true;
   return settings;
 };
+
+test('changedSharedItems names shared items whose content or flag changed, not removed or local ones', () => {
+  const prev = sharedSample();
+  assert.deepEqual(changedSharedItems(prev, clone(prev)), []);
+  const next = clone(prev);
+  next.shortcuts[0].name = 'Local edit';
+  next.launchers[0].links.push({ name: 'Maps', url: 'https://maps.google.com/' });
+  delete next.shortcuts[1].shared;
+  assert.deepEqual(changedSharedItems(prev, next), ['YouTube', 'Google']);
+  const removed = clone(prev);
+  removed.shortcuts.splice(1, 1);
+  assert.deepEqual(changedSharedItems(prev, removed), []);
+  assert.equal(sharedEditPrompt(['YouTube']), '"YouTube" shows on all profiles. Save the changes for every profile?');
+});
+
+test('a fresh install has only the Google launcher', () => {
+  assert.deepEqual(defaultSettings().launchers.map((l) => l.name), ['Google']);
+});
 
 test('normalizeSettings keeps the shared flag on shortcuts and launchers only when true', () => {
   const { settings } = normalizeSettings({ ...defaultSettings(), shortcuts: [{ ...defaultSettings().shortcuts[0], shared: true }, { ...defaultSettings().shortcuts[1], shared: 'yes' }] });
@@ -512,10 +530,10 @@ test('splitShared leaves a stub in the profile and moves the content to the shar
   const settings = sharedSample();
   const { profile, shared } = splitShared(settings);
   assert.deepEqual(profile.shortcuts[1], { id: 'sc-2', shared: true });
-  assert.deepEqual(profile.launchers[2], { id: 'ln-3', shared: true });
+  assert.deepEqual(profile.launchers[0], { id: 'ln-1', shared: true });
   assert.equal(profile.shortcuts.length, settings.shortcuts.length, 'order is kept');
   assert.deepEqual(shared.shortcuts, [settings.shortcuts[1]]);
-  assert.deepEqual(shared.launchers, [settings.launchers[2]]);
+  assert.deepEqual(shared.launchers, [settings.launchers[0]]);
   assert.equal(settings.shortcuts[1].name, 'YouTube', 'the input is not changed');
 });
 
@@ -607,7 +625,7 @@ test('imported files never change what is shared: stripShared, merge and replace
   assert.ok(stripShared(file).shortcuts.every((s) => !('shared' in s)));
   const merged = mergeSettings(current, stripShared(file));
   assert.equal(merged.shortcuts.find((s) => s.id === 'sc-2').shared, true, 'a replaced shortcut stays shared');
-  assert.equal(merged.launchers.find((l) => l.id === 'ln-3').shared, true);
+  assert.equal(merged.launchers.find((l) => l.id === 'ln-1').shared, true);
   const replacement = stripShared(defaultSettings());
   replacement.shortcuts = [replacement.shortcuts[0]];
   const replaced = keepSharedFrom(replacement, current);

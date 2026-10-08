@@ -1,6 +1,6 @@
 // Full shortcut editor dialog (add or edit): name, URL, category, whether it shows on all profiles. The icon is
 // changed by clicking it in the preview, which opens the icon picker.
-import { categoriesOf, createId, hostOf, normalizeHttpUrl, siteIcon } from './core.js';
+import { categoriesOf, changedSharedItems, createId, hostOf, normalizeHttpUrl, sharedEditPrompt, siteIcon } from './core.js';
 import { h, icon, showModal } from './dom.js';
 import { openIconPicker } from './icon-picker.js';
 import { store, update } from './state.js';
@@ -113,6 +113,11 @@ export function openShortcutEditor(id, { category = '', shortcuts, commit } = {}
           category: draft.category.trim()
         };
         if (!next.shared) delete next.shared;
+        // From the page this saves at once, so ask here; inside Settings its own Save asks.
+        if (!inSettings && existing) {
+          const names = changedSharedItems({ shortcuts: [existing] }, { shortcuts: [next] });
+          if (names.length && !window.confirm(sharedEditPrompt(names))) return;
+        }
         apply((items) => {
           const index = items.findIndex((s) => s.id === next.id);
           if (index >= 0) items[index] = next;
