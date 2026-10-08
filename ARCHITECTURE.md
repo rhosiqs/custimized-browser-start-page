@@ -22,7 +22,7 @@ newtab.html ─ main.js ─┬─ state.js ── storage.js ── chrome.stora
 
 ## Rendering and layout
 
-The page reproduces the design canvas’s stage rule: the 1440×810 design is scaled with `transform: scale()` to fit the window, so the page never scrolls. Dialogs render inside the stage (not the browser top layer) so they scale with it; while one is open the rest of the stage is `inert`. `showModal({ nested: true })` stacks a dialog over the open one (the shortcut editor over Settings); any other dialog closes the stack first, and closing one closes those above it.
+The page reproduces the design canvas’s stage rule: the 1440×810 design is scaled with `transform: scale()` to fit the window, so the page never scrolls. Dialogs render inside the stage (not the browser top layer) so they scale with it; while one is open the rest of the stage is `inert`. A new tab focuses the web search box, but Chrome keeps the caret in the address bar; `main.js` sets `page-focused` on the root only while the page has focus, and the search box ring needs it (or hover). `showModal({ nested: true })` stacks a dialog over the open one (the shortcut editor over Settings); any other dialog closes the stack first, and closing one closes those above it.
 
 ## Settings flow
 

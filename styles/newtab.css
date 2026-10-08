@@ -176,7 +176,10 @@ input:focus-visible { outline-offset: 2px; }
   border-radius: 999px;
   background: var(--bg);
 }
-.field:focus-within { outline: 2px solid var(--acc); outline-offset: 2px; }
+/* The ring shows on hover, or while the caret is really in the box. A new tab keeps the caret in the address bar,
+   so the page's own focus (it holds the web search box) shows no ring until the page itself has focus. */
+.field:hover,
+.page-focused .field:focus-within { outline: 2px solid var(--acc); outline-offset: 2px; }
 .field input {
   flex: 1;
   min-width: 0;

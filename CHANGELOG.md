@@ -2,6 +2,11 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.8.3 — 2026-10-08
+
+### Fixed
+- A new tab no longer shows the green ring around the web search box while the cursor is still in the address bar. The ring shows when the pointer is over a search box, or once the cursor is really in it.
+
 ## v1.8.2 — 2026-10-08
 
 ### Security

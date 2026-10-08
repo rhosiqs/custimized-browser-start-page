@@ -78,8 +78,18 @@ function render() {
   renderDock(document.getElementById('dock'));
 }
 
+// Chrome keeps the caret in the address bar on a new tab even though the web search box holds the page's focus,
+// so the box's focus ring follows whether the page itself has focus.
+function trackPageFocus() {
+  document.documentElement.classList.toggle('page-focused', document.hasFocus());
+}
+
 function wireGlobalEvents() {
   window.addEventListener('resize', fitStage);
+  window.addEventListener('focus', trackPageFocus);
+  window.addEventListener('blur', trackPageFocus);
+  document.addEventListener('focusin', trackPageFocus);
+  trackPageFocus();
 
   // A press outside an open popup (engine menu, suggestions, flyout, tile editor) closes it.
   document.addEventListener('mousedown', (event) => {
