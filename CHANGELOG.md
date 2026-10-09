@@ -2,6 +2,11 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.12.1 — 2026-10-09
+
+### Fixed
+- The shortcut editor no longer prefills a name such as "0" for an address that is an IP number (for example `http://127.0.0.1:8766/` or an IPv6 address). With nothing readable to guess from, the name stays empty unless the page's own name can be read.
+
 ## v1.12.0 — 2026-10-09
 
 ### Added

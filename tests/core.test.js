@@ -710,6 +710,11 @@ test('nameFromUrl derives a readable name from the host', () => {
   assert.equal(nameFromUrl('https://www.bbc.co.uk/news'), 'Bbc');
   assert.equal(nameFromUrl('http://localhost:3000'), 'Localhost');
   assert.equal(nameFromUrl('not a url'), '');
+  assert.equal(nameFromUrl('http://127.0.0.1:8766/'), '');
+  assert.equal(nameFromUrl('http://192.168.1.20/'), '');
+  assert.equal(nameFromUrl('http://[::1]:3000/'), '');
+  assert.equal(nameFromUrl('https://[2001:db8::1]/'), '');
+  assert.equal(nameFromUrl('https://123.example.com/'), 'Example');
 });
 
 test('backupFileName is <date>-<profile name or all>.<extension> with a file-safe name', () => {
