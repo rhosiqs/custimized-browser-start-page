@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   DEFAULT_PROFILE_ID, FORMATS, SWATCHES, changedSharedItems, clone, emptyShared, sharedEditPrompt, colorIcon, defaultProfiles, joinShared, keepSharedFrom, letterOf, nextProfileName, normalizeIcon, normalizeProfiles, normalizeShared, profileIcon, splitShared, stripShared, siteIcon, profileOfSettingsKey, profileSettingsKey, clockLabel, colorOf, iconTone, clockParts, countItems, firstGraphemes, zoneAbbreviation, zoneFromAbbreviation, defaultSettings, detectFormat, historyMatches, isImageDataUrl, isValidEngineUrl, mergeSettings, moveItem,
-  normalizeDoi, normalizeHex, normalizeHttpUrl, normalizeSettings, parseBackup, readableOn, recordHistory, relativeZone, routeQuery, serialize
+  nameFromUrl, normalizeDoi, normalizeHex, pageNameFromHtml, normalizeHttpUrl, normalizeSettings, parseBackup, readableOn, recordHistory, relativeZone, routeQuery, serialize
 } from '../src/core.js';
 
 const google = { id: 'google', name: 'Google', url: 'https://www.google.com/search?q=%s' };
@@ -693,4 +693,21 @@ test('changes to shared engines are named; imports leave them alone', () => {
   const incoming = stripShared(defaultSettings());
   assert.equal(keepSharedFrom(incoming, prev).engines.ai.shared, true);
   assert.equal(mergeSettings(prev, incoming).engines.ai.shared, true);
+});
+
+test('pageNameFromHtml prefers og:site_name, then the title, and decodes entities', () => {
+  assert.equal(pageNameFromHtml('<head><title>Dogs &amp; Cats | Home</title><meta property="og:site_name" content="Pets Inc"></head>'), 'Pets Inc');
+  assert.equal(pageNameFromHtml("<meta content='Site &#39;X&#39;' name=\"og:site_name\">"), "Site 'X'");
+  assert.equal(pageNameFromHtml('<TITLE lang="en">\n  Dogs &amp; Cats\n  &#x1F600;  </TITLE>'), 'Dogs & Cats 😀');
+  assert.equal(pageNameFromHtml('<meta name="description" content="x"><p>no title</p>'), '');
+  assert.equal(pageNameFromHtml(undefined), '');
+  assert.equal(pageNameFromHtml(`<title>${'a'.repeat(100)}</title>`).length, 60);
+});
+
+test('nameFromUrl derives a readable name from the host', () => {
+  assert.equal(nameFromUrl('https://www.github.com/x'), 'Github');
+  assert.equal(nameFromUrl('https://calendar.google.com/'), 'Google');
+  assert.equal(nameFromUrl('https://www.bbc.co.uk/news'), 'Bbc');
+  assert.equal(nameFromUrl('http://localhost:3000'), 'Localhost');
+  assert.equal(nameFromUrl('not a url'), '');
 });

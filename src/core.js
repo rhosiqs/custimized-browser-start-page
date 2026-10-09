@@ -152,6 +152,44 @@ export function hostOf(url) {
   }
 }
 
+const HTML_ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
+
+function decodeEntities(value) {
+  return value.replace(/&(?:#(\d{1,7})|#x([0-9a-f]{1,6})|([a-z]+));/gi, (match, dec, hex, named) => {
+    if (named) return HTML_ENTITIES[named.toLowerCase()] ?? match;
+    const code = dec ? Number(dec) : parseInt(hex, 16);
+    try { return String.fromCodePoint(code); } catch { return match; }
+  });
+}
+
+// A website's own name from its page source: the og:site_name meta tag, else the <title>. Returns '' when neither
+// is there. Entities are decoded, whitespace collapsed and the result cut to 60 characters.
+export function pageNameFromHtml(html) {
+  const source = String(html ?? '');
+  let site = '';
+  for (const tag of source.match(/<meta\b[^>]*>/gi) || []) {
+    const attrs = {};
+    for (const [, key, quoted, double, single] of tag.matchAll(/([a-z:_-]+)\s*=\s*("([^"]*)"|'([^']*)'|[^\s>]+)/gi)) {
+      attrs[key.toLowerCase()] = double ?? single ?? quoted;
+    }
+    if ((attrs.property || attrs.name || '').toLowerCase() === 'og:site_name' && attrs.content) { site = attrs.content; break; }
+  }
+  const title = source.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] || '';
+  const clean = (value) => decodeEntities(value).replace(/\s+/g, ' ').trim().slice(0, 60);
+  return clean(site) || clean(title);
+}
+
+// A readable name from an address alone, used when the page can't be read: "calendar.google.com" → "Google".
+export function nameFromUrl(url) {
+  let host = '';
+  try { host = new URL(url).hostname.replace(/^www\./, ''); } catch { /* not an address */ }
+  const labels = host.split('.').filter(Boolean);
+  if (labels.length > 1) labels.pop();
+  if (labels.length > 1 && ['co', 'com', 'org', 'net', 'gov', 'edu', 'ac'].includes(labels[labels.length - 1])) labels.pop();
+  const label = labels[labels.length - 1] || '';
+  return label ? label[0].toUpperCase() + label.slice(1) : '';
+}
+
 export function normalizeDoi(raw) {
   const match = String(raw ?? '').trim().match(/^(?:doi:\s*|(?:https?:\/\/)?(?:dx\.)?doi\.org\/)?(10\.\d{4,9}\/\S+)$/i);
   return match ? match[1] : '';
