@@ -1066,6 +1066,61 @@ export function detectFormat(fileName = '', source = '') {
   return 'text';
 }
 
+// A backup file holds one or more profiles: { startPageBundle: 1, profiles: [{ name, icon?, settings }] }. Files from
+// before v1.12.0 are one bare settings object, which reads as a single profile.
+export const BUNDLE_VERSION = 1;
+export const BUNDLE_PROFILE_LIMIT = 50;
+
+// entries: [{ name, icon?, settings }].
+export function buildBackup(entries) {
+  return {
+    startPageBundle: BUNDLE_VERSION,
+    profiles: entries.map(({ name, icon, settings }) => ({ name, ...(icon ? { icon } : {}), settings }))
+  };
+}
+
+// The profiles inside a parsed backup: [{ name, icon?, raw }] where raw is that profile's settings (not yet
+// normalized). A bare settings object becomes one profile called fallbackName. Entries without settings are skipped.
+export function readBackup(parsed, fallbackName = 'Imported') {
+  if (parsed && typeof parsed === 'object' && Array.isArray(parsed.profiles) && parsed.startPageBundle !== undefined) {
+    const out = [];
+    for (const item of parsed.profiles.slice(0, BUNDLE_PROFILE_LIMIT)) {
+      if (!item || typeof item.settings !== 'object' || !item.settings || Array.isArray(item.settings)) continue;
+      const name = text(item.name, PROFILE_NAME_MAX) || `Profile ${out.length + 1}`;
+      out.push({ name, ...(item.icon && typeof item.icon === 'object' ? { icon: item.icon } : {}), raw: item.settings });
+    }
+    return out;
+  }
+  return [{ name: text(fallbackName, PROFILE_NAME_MAX) || 'Imported', raw: parsed }];
+}
+
+// "2026-10-09" in the given date's local time.
+function dateStamp(date) {
+  const two = (n) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${two(date.getMonth() + 1)}-${two(date.getDate())}`;
+}
+
+// <date>-<profile name or all>.<extension>, e.g. 2026-10-09-Work.json or 2026-10-09-all.json. profileName null means
+// all profiles. Characters that file systems reject, and spaces, become dashes.
+export function backupFileName({ date = new Date(), profileName = null, extension = 'json' } = {}) {
+  const scope = profileName === null
+    ? 'all'
+    : String(profileName).replace(/[\\/:*?"<>|\u0000-\u001f\s]+/g, '-').replace(/-{2,}/g, '-').replace(/^[-.]+|[-.]+$/g, '').slice(0, 40).replace(/-+$/, '') || 'profile';
+  return `${dateStamp(date)}-${scope}.${extension}`;
+}
+
+// A profile name not yet taken (case-insensitive): "Work", then "Work (2)", "Work (3)"…, within the length limit.
+export function uniqueProfileName(name, taken) {
+  const used = new Set([...taken].map((n) => n.toLowerCase()));
+  const base = text(name, PROFILE_NAME_MAX) || 'Profile';
+  if (!used.has(base.toLowerCase())) return base;
+  for (let n = 2; ; n += 1) {
+    const suffix = ` (${n})`;
+    const candidate = `${base.slice(0, PROFILE_NAME_MAX - suffix.length).trimEnd()}${suffix}`;
+    if (!used.has(candidate.toLowerCase())) return candidate;
+  }
+}
+
 // Parses an export from any format into a plain object (not yet normalized).
 export function parseBackup(source, format) {
   const body = String(source ?? '').trim();

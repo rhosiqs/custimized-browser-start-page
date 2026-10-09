@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  DEFAULT_PROFILE_ID, FORMATS, SWATCHES, changedSharedItems, clone, emptyShared, sharedEditPrompt, colorIcon, defaultProfiles, joinShared, keepSharedFrom, letterOf, nextProfileName, normalizeIcon, normalizeProfiles, normalizeShared, profileIcon, splitShared, stripShared, siteIcon, profileOfSettingsKey, profileSettingsKey, clockLabel, colorOf, iconTone, clockParts, countItems, firstGraphemes, zoneAbbreviation, zoneFromAbbreviation, defaultSettings, detectFormat, historyMatches, isImageDataUrl, isValidEngineUrl, mergeSettings, moveItem,
+  DEFAULT_PROFILE_ID, FORMATS, backupFileName, buildBackup, readBackup, uniqueProfileName, SWATCHES, changedSharedItems, clone, emptyShared, sharedEditPrompt, colorIcon, defaultProfiles, joinShared, keepSharedFrom, letterOf, nextProfileName, normalizeIcon, normalizeProfiles, normalizeShared, profileIcon, splitShared, stripShared, siteIcon, profileOfSettingsKey, profileSettingsKey, clockLabel, colorOf, iconTone, clockParts, countItems, firstGraphemes, zoneAbbreviation, zoneFromAbbreviation, defaultSettings, detectFormat, historyMatches, isImageDataUrl, isValidEngineUrl, mergeSettings, moveItem,
   nameFromUrl, normalizeDoi, normalizeHex, pageNameFromHtml, normalizeHttpUrl, normalizeSettings, parseBackup, readableOn, recordHistory, relativeZone, routeQuery, serialize
 } from '../src/core.js';
 
@@ -710,4 +710,45 @@ test('nameFromUrl derives a readable name from the host', () => {
   assert.equal(nameFromUrl('https://www.bbc.co.uk/news'), 'Bbc');
   assert.equal(nameFromUrl('http://localhost:3000'), 'Localhost');
   assert.equal(nameFromUrl('not a url'), '');
+});
+
+test('backupFileName is <date>-<profile name or all>.<extension> with a file-safe name', () => {
+  const date = new Date(2026, 9, 9, 23, 59);
+  assert.equal(backupFileName({ date, profileName: 'Work', extension: 'json' }), '2026-10-09-Work.json');
+  assert.equal(backupFileName({ date, profileName: null, extension: 'yaml' }), '2026-10-09-all.yaml');
+  assert.equal(backupFileName({ date, profileName: 'My: Home / Lab?', extension: 'txt' }), '2026-10-09-My-Home-Lab.txt');
+  assert.equal(backupFileName({ date, profileName: '  ..  ', extension: 'toml' }), '2026-10-09-profile.toml');
+  assert.equal(backupFileName({ date: new Date(2026, 0, 5), profileName: '工作' }), '2026-01-05-工作.json');
+  assert.ok(backupFileName({ date, profileName: 'x'.repeat(80) }).length <= '2026-10-09-.json'.length + 40);
+});
+
+test('buildBackup and readBackup round-trip profiles and read a bare settings file as one profile', () => {
+  const work = defaultSettings();
+  work.theme = 'dark';
+  const icon = { kind: 'emoji', text: 'W' };
+  const bundle = buildBackup([{ name: 'Work', icon, settings: work }, { name: 'Home', settings: defaultSettings() }]);
+  const parsed = parseBackup(serialize(bundle, 'yaml'), 'yaml');
+  const read = readBackup(parsed);
+  assert.deepEqual(read.map((p) => p.name), ['Work', 'Home']);
+  assert.deepEqual(read[0].icon, icon);
+  assert.equal('icon' in read[1], false);
+  assert.equal(read[0].raw.theme, 'dark');
+  // A file from before profiles is a single profile named after the fallback.
+  const bare = readBackup(defaultSettings(), 'old-backup');
+  assert.equal(bare.length, 1);
+  assert.equal(bare[0].name, 'old-backup');
+  assert.equal(bare[0].raw.version, defaultSettings().version);
+  // Broken entries are skipped; unnamed ones are numbered.
+  const odd = readBackup({ startPageBundle: 1, profiles: [null, { name: 'A' }, { settings: {} }, { name: 'B', settings: [] }] });
+  assert.deepEqual(odd.map((p) => p.name), ['Profile 1']);
+});
+
+test('uniqueProfileName adds a number only when the name is taken', () => {
+  assert.equal(uniqueProfileName('Work', ['Home']), 'Work');
+  assert.equal(uniqueProfileName('Work', ['work']), 'Work (2)');
+  assert.equal(uniqueProfileName('Work', ['Work', 'Work (2)']), 'Work (3)');
+  const long = 'x'.repeat(40);
+  const name = uniqueProfileName(long, ['x'.repeat(32)]);
+  assert.equal(name.length, 32);
+  assert.ok(name.endsWith(' (2)'));
 });

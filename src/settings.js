@@ -1,14 +1,14 @@
 // Settings dialog. Edits stay in a draft until Save; appearance changes preview live and revert on Discard or close.
 import {
   ACCENTS, BACKGROUND_IMAGE_LIMIT, BLOCKS, FORMATS, PROFILE_NAME_MAX, SEARCH_BOXES,
-  ZONE_ABBREVIATION_LIST, blankLauncher, changedSharedItems, clockLabel, clone, createId, hostOf, sharedEditPrompt, profileIcon, isValidEngineUrl, isValidTimeZone, moveItem, normalizeHttpUrl, serialize, zoneFromAbbreviation
+  ZONE_ABBREVIATION_LIST, blankLauncher, changedSharedItems, clockLabel, clone, createId, hostOf, sharedEditPrompt, profileIcon, isValidEngineUrl, isValidTimeZone, moveItem, normalizeHttpUrl, backupFileName, serialize, zoneFromAbbreviation
 } from './core.js';
 import { applyAppearance, isDark } from './appearance.js';
 import { h, icon, readImageFile, segmented, showModal } from './dom.js';
 import { openIconPicker } from './icon-picker.js';
 import { pickImportFile } from './import-review.js';
 import { openShortcutEditor } from './shortcut-editor.js';
-import { activeProfile, clearHistory, createProfile, deleteProfile, renameProfile, setProfileIcon, store, switchProfile, update } from './state.js';
+import { activeProfile, backupOf, clearHistory, createProfile, deleteProfile, renameProfile, setProfileIcon, store, switchProfile, update } from './state.js';
 import { badge, colorChoice, iconButton, launcherFaceStyle, launcherMark, sortHandle, toast } from './widgets.js';
 
 const TABS = ['Profiles', 'Appearance', 'Search', 'Clocks', 'Shortcuts', 'Launchers', 'Layout', 'Data'];
@@ -19,7 +19,7 @@ const PRESETS = {
 };
 
 export function openSettings({ tab = 'Appearance', launcherId = null, addLauncher = false } = {}) {
-  const ui = { tab, engineBox: 'web', format: 'json', expanded: launcherId, saved: clone(store.settings) };
+  const ui = { tab, engineBox: 'web', format: 'json', scope: 'current', expanded: launcherId, saved: clone(store.settings) };
   let draft = clone(store.settings);
   if (addLauncher) {
     const fresh = blankLauncher();
@@ -525,9 +525,17 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
       // ---------- Data ----------
       const dataTab = () => {
         const meta = FORMATS[ui.format];
-        const fileName = `start-page-${activeProfile().name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'profile'}.${meta.ext}`;
+        const all = ui.scope === 'all' && store.profiles.list.length > 1;
+        const fileName = backupFileName({ profileName: all ? null : activeProfile().name, extension: meta.ext });
         return [
-          h('span.note', {}, `Everything is stored in this browser. Export a backup of the ${activeProfile().name} profile, or import one into it.`),
+          h('span.note', {}, 'Everything is stored in this browser. Export a backup of the profile in use or of all profiles, or import one.'),
+          h('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px' } },
+            h('span.field-label', { id: 'lbl-scope' }, 'Export'),
+            segmented({
+              labelledBy: 'lbl-scope', value: all ? 'all' : 'current', className: 'wide',
+              options: [{ value: 'current', label: `Current profile (${activeProfile().name})` }, { value: 'all', label: `All profiles (${store.profiles.list.length})` }],
+              onChange: (value) => change(() => { ui.scope = value; })
+            })),
           h('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px' } },
             h('span.field-label', { id: 'lbl-fmt' }, 'Export format'),
             segmented({
@@ -538,8 +546,8 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
           h('div.inline', {},
             h('button.btn.primary', {
               type: 'button',
-              onclick: () => {
-                const blob = new Blob([serialize(store.settings, ui.format)], { type: meta.mime });
+              onclick: async () => {
+                const blob = new Blob([serialize(await backupOf(all ? 'all' : 'current'), ui.format)], { type: meta.mime });
                 const link = h('a', { href: URL.createObjectURL(blob), download: fileName });
                 document.body.append(link);
                 link.click();
@@ -555,7 +563,7 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
                 pickImportFile();
               }
             }, 'Import file…')),
-          h('span.note', {}, dirty() ? 'Export uses your saved settings. Save first to include unsaved changes.' : 'Imports accept JSON, YAML, TOML or text, and are checked before anything changes.'),
+          h('span.note', {}, dirty() ? 'Export uses your saved settings. Save first to include unsaved changes.' : 'Imports accept JSON, YAML, TOML or text, and are checked before anything changes. A file with several profiles lets you choose which to import.'),
           h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', paddingTop: '14px', borderTop: '1px solid var(--divider)' } },
             h('span', { style: { display: 'flex', flexDirection: 'column' } }, h('span.field-label', {}, 'Search history'), h('span.note', {}, 'Used for suggestions, kept on this device.')),
             h('button.btn.outline', { type: 'button', onclick: () => { clearHistory(); toast('Search history cleared'); } }, 'Clear history'))
