@@ -45,7 +45,7 @@ npm run pack   # writes dist/start-page.zip
 Settings and search history are stored in `chrome.storage.local` on this device and leave it only when you export them. Permissions:
 
 - `storage` — save settings and history.
-- `host_permissions` (all `http(s)` sites) — only so the shortcut editor can read the title of the address you type, to prefill the name. It makes one request to that address, without cookies or referrer, and reads nothing else; if it fails, a name is guessed from the address.
+- `optional_host_permissions` (all `http(s)` sites) — not granted at install, so updating never disables the extension. The shortcut editor offers a "Read names from websites" button; if you allow it, the editor reads the title of the address you type to prefill the name (one request to that address, without cookies or referrer, nothing else is read). Without it, a name is guessed from the address.
 - `favicon` — show website icons from Chrome’s local favicon cache (no request to Google). When Chrome has no icon for a site yet, the page tries that site’s own `/favicon.ico` and `/apple-touch-icon.png`, then shows a letter.
 
 Fonts (Nunito, Noto Sans TC) are bundled in `fonts/`, so the page loads them from disk. Network requests happen only for Datamuse suggestions in the Web box, the page you enter in the shortcut editor (for its name), icon files from your shortcut and launcher sites (as above), image links you set as icons (loaded without a referrer), and the destinations you open.
@@ -66,7 +66,7 @@ For quick UI work outside the extension, serve the folder (`python3 -m http.serv
 
 | Path | Purpose |
 | --- | --- |
-| `manifest.json` | Extension manifest: new tab override, permissions (including page reading for the name prefill), icons. |
+| `manifest.json` | Extension manifest: new tab override, permissions (including the optional page reading for the name prefill), icons. |
 | `newtab.html` | Page shell: stage, main column, dock. |
 | `styles/newtab.css` | Design tokens (light/dark, accents) and all component styles. |
 | `src/main.js` | Entry: loads settings, renders blocks, stage scaling, page-wide keys, cross-tab sync. |
