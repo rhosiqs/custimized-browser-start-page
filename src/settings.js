@@ -287,6 +287,13 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
                 panel.querySelector('.engine-row:last-child input[type="text"]')?.select();
               }
             }, icon('plus', 14, 2.2), 'Add engine')),
+          h('button.switch', {
+            type: 'button', role: 'switch', 'aria-checked': String(Boolean(group.shared)), 'aria-describedby': 'engines-shared-note', style: { alignSelf: 'flex-start' },
+            onclick: () => change(() => { if (group.shared) delete group.shared; else group.shared = true; })
+          }, h('span.track', { 'aria-hidden': 'true' }, h('span.knob')), `Use these ${SEARCH_BOXES[box].kicker} engines and the default on all profiles`),
+          h('span.note', { id: 'engines-shared-note' }, group.shared
+            ? 'Every profile uses this list and default for this box. Changes here apply to all of them.'
+            : 'Off: this list and default belong to the profile in use only.'),
           h('div.engine-table', {},
             h('div.engine-row.head', { 'aria-hidden': 'true' }, h('span'), h('span', {}, 'DEFAULT'), h('span', {}, 'NAME'), h('span', {}, 'URL · %s = your search'), h('span')),
             ...rows),

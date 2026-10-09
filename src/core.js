@@ -590,6 +590,7 @@ export function normalizeSettings(input, { fallback = defaultSettings() } = {}) 
   if (src.engines && typeof src.engines === 'object') {
     for (const box of Object.keys(SEARCH_BOXES)) {
       const group = src.engines[box];
+      if (group && group.shared === true) out.engines[box].shared = true;
       if (!group || !Array.isArray(group.list)) continue;
       const list = [];
       const seen = new Set();
@@ -737,6 +738,8 @@ export function mergeSettings(current, incoming) {
   }).concat(incoming.launchers.filter((l) => !launcherNames.has(nameKey(l))).map((l) => ({ ...l, id: createId('ln') })));
   const zones = new Set(current.clocks.world.map((c) => c.tz));
   merged.clocks.world = current.clocks.world.concat(incoming.clocks.world.filter((c) => !zones.has(c.tz)));
+  // Engines shown on all profiles stay as they are; a file never changes what is shared.
+  for (const box of Object.keys(SEARCH_BOXES)) if (current.engines[box]?.shared === true) merged.engines[box] = clone(current.engines[box]);
   return merged;
 }
 
@@ -758,7 +761,7 @@ export function countItems(source) {
 export const SHARED_KINDS = ['shortcuts', 'launchers'];
 
 export function emptyShared() {
-  return { shortcuts: [], launchers: [] };
+  return { shortcuts: [], launchers: [], engines: {} };
 }
 
 // Repairs the stored shared store: arrays of objects with a text id, each flagged shared.
@@ -772,6 +775,12 @@ export function normalizeShared(input) {
       seen.add(item.id);
       out[kind].push({ ...clone(item), shared: true });
     }
+  }
+  // A search box's engines and default engine, shared by every profile: { web: { list, default }, … }.
+  const engines = src.engines && typeof src.engines === 'object' ? src.engines : {};
+  for (const box of Object.keys(SEARCH_BOXES)) {
+    const group = engines[box];
+    if (group && typeof group === 'object' && Array.isArray(group.list) && group.list.length) out.engines[box] = { ...clone(group), shared: true };
   }
   return out;
 }
@@ -792,6 +801,13 @@ export function splitShared(settings) {
       shared[kind].push(clone(item));
       return { id: item.id, shared: true };
     });
+  }
+  // A search box marked shared keeps its engines and default in the shared store; the profile keeps a flag only.
+  for (const box of Object.keys(SEARCH_BOXES)) {
+    const group = settings.engines?.[box];
+    if (group?.shared !== true) continue;
+    shared.engines[box] = clone(group);
+    profile.engines[box] = { shared: true };
   }
   return { profile, shared };
 }
@@ -836,6 +852,16 @@ export function joinShared(rawSettings, rawShared) {
     for (const item of shared[kind]) if (!seen.has(item.id)) list.push(clone(item));
     base[kind] = list;
   }
+  // A shared search box replaces the profile's own; a flag whose shared engines are gone is dropped, so the box
+  // falls back to the defaults.
+  for (const box of Object.keys(SEARCH_BOXES)) {
+    if (shared.engines[box]) {
+      base.engines = { ...(base.engines && typeof base.engines === 'object' ? base.engines : {}), [box]: clone(shared.engines[box]) };
+    } else if (base.engines?.[box]?.shared === true) {
+      const { shared: flag, ...rest } = base.engines[box];
+      base.engines = { ...base.engines, [box]: rest };
+    }
+  }
   return base;
 }
 
@@ -850,6 +876,11 @@ export function changedSharedItems(prev, next) {
       if (JSON.stringify(item) !== JSON.stringify(after.get(item.id))) names.push(item.name);
     }
   }
+  for (const box of Object.keys(SEARCH_BOXES)) {
+    const before = prev?.engines?.[box];
+    if (before?.shared !== true) continue;
+    if (JSON.stringify(before) !== JSON.stringify(next?.engines?.[box])) names.push(`${SEARCH_BOXES[box].kicker} search engines`);
+  }
   return names;
 }
 
@@ -863,6 +894,7 @@ export function sharedEditPrompt(names) {
 export function stripShared(settings) {
   const out = clone(settings);
   for (const kind of SHARED_KINDS) out[kind] = (out[kind] || []).map((item) => { const { shared, ...rest } = item; return rest; });
+  for (const box of Object.keys(SEARCH_BOXES)) if (out.engines?.[box]) delete out.engines[box].shared;
   return out;
 }
 
@@ -887,6 +919,7 @@ export function keepSharedFrom(next, current) {
     }
     out[kind] = list.concat(kept.filter((item) => !placed.has(item.id)).map(clone));
   }
+  for (const box of Object.keys(SEARCH_BOXES)) if (current.engines?.[box]?.shared === true) out.engines[box] = clone(current.engines[box]);
   return out;
 }
 

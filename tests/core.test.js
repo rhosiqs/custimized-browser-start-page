@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  DEFAULT_PROFILE_ID, FORMATS, SWATCHES, changedSharedItems, clone, sharedEditPrompt, colorIcon, defaultProfiles, joinShared, keepSharedFrom, letterOf, nextProfileName, normalizeIcon, normalizeProfiles, normalizeShared, profileIcon, splitShared, stripShared, siteIcon, profileOfSettingsKey, profileSettingsKey, clockLabel, colorOf, iconTone, clockParts, countItems, firstGraphemes, zoneAbbreviation, zoneFromAbbreviation, defaultSettings, detectFormat, historyMatches, isImageDataUrl, isValidEngineUrl, mergeSettings, moveItem,
+  DEFAULT_PROFILE_ID, FORMATS, SWATCHES, changedSharedItems, clone, emptyShared, sharedEditPrompt, colorIcon, defaultProfiles, joinShared, keepSharedFrom, letterOf, nextProfileName, normalizeIcon, normalizeProfiles, normalizeShared, profileIcon, splitShared, stripShared, siteIcon, profileOfSettingsKey, profileSettingsKey, clockLabel, colorOf, iconTone, clockParts, countItems, firstGraphemes, zoneAbbreviation, zoneFromAbbreviation, defaultSettings, detectFormat, historyMatches, isImageDataUrl, isValidEngineUrl, mergeSettings, moveItem,
   normalizeDoi, normalizeHex, normalizeHttpUrl, normalizeSettings, parseBackup, readableOn, recordHistory, relativeZone, routeQuery, serialize
 } from '../src/core.js';
 
@@ -625,9 +625,9 @@ test('a starter launcher with the same name as a shared launcher gives way to it
 });
 
 test('normalizeShared repairs the stored shared items', () => {
-  assert.deepEqual(normalizeShared(undefined), { shortcuts: [], launchers: [] });
+  assert.deepEqual(normalizeShared(undefined), { shortcuts: [], launchers: [], engines: {} });
   const fixed = normalizeShared({ shortcuts: [{ id: 'a', name: 'A' }, { id: 'a', name: 'dup' }, null, { name: 'no id' }], launchers: 'x' });
-  assert.deepEqual(fixed, { shortcuts: [{ id: 'a', name: 'A', shared: true }], launchers: [] });
+  assert.deepEqual(fixed, { shortcuts: [{ id: 'a', name: 'A', shared: true }], launchers: [], engines: {} });
 });
 
 test('imported files never change what is shared: stripShared, merge and replace', () => {
@@ -649,4 +649,48 @@ test('imported files never change what is shared: stripShared, merge and replace
   assert.equal(kept.shortcuts.filter((s) => s.shared).length, 1);
   assert.equal(kept.shortcuts.length, clash.shortcuts.length, 'the starter twin of a shared shortcut gives way');
   assert.equal(kept.shortcuts[1].shared, true, 'and the shared one takes its place');
+});
+
+test('a search box marked shared keeps its engines in the shared store and follows every profile', () => {
+  const a = defaultSettings();
+  a.engines.web.shared = true;
+  a.engines.web.default = 'ddg';
+  const { profile, shared } = splitShared(a);
+  assert.deepEqual(profile.engines.web, { shared: true });
+  assert.equal(shared.engines.web.default, 'ddg');
+  assert.equal(profile.engines.ai.default, 'claude');
+  // Another profile with its own engines takes the shared box; the flag survives normalization.
+  const other = normalizeSettings(joinShared(defaultSettings(), shared)).settings;
+  assert.equal(other.engines.web.default, 'ddg');
+  assert.equal(other.engines.web.shared, true);
+  assert.equal(other.engines.ai.default, 'claude');
+  assert.equal('shared' in other.engines.ai, false);
+  // The saving profile gets the same view back.
+  assert.deepEqual(normalizeSettings(joinShared(profile, shared)).settings.engines.web, shared.engines.web);
+});
+
+test('a shared flag whose engines are gone falls back to the defaults', () => {
+  const raw = defaultSettings();
+  raw.engines.web = { shared: true };
+  const view = normalizeSettings(joinShared(raw, emptyShared())).settings;
+  assert.equal(view.engines.web.default, 'google');
+  assert.equal(view.engines.web.list.length, 3);
+  assert.equal('shared' in view.engines.web, false);
+});
+
+test('changes to shared engines are named; imports leave them alone', () => {
+  const prev = defaultSettings();
+  prev.engines.ai.shared = true;
+  const next = clone(prev);
+  assert.deepEqual(changedSharedItems(prev, next), []);
+  next.engines.ai.default = 'gemini';
+  assert.deepEqual(changedSharedItems(prev, next), ['AI search engines']);
+  const off = clone(prev);
+  delete off.engines.ai.shared;
+  assert.deepEqual(changedSharedItems(prev, off), ['AI search engines']);
+  // stripShared, keepSharedFrom and mergeSettings never change what is shared.
+  assert.equal('shared' in stripShared(prev).engines.ai, false);
+  const incoming = stripShared(defaultSettings());
+  assert.equal(keepSharedFrom(incoming, prev).engines.ai.shared, true);
+  assert.equal(mergeSettings(prev, incoming).engines.ai.shared, true);
 });

@@ -1,15 +1,19 @@
 // The three smart search boxes: engine menu, routing hint, suggestions, keyboard navigation.
 import { SEARCH_BOXES, historyMatches, routeQuery } from './core.js';
 import { h, icon } from './dom.js';
-import { rememberQuery, store, update } from './state.js';
+import { rememberQuery, store } from './state.js';
 import { navigate } from './widgets.js';
 
 const SUGGEST_URL = 'https://api.datamuse.com/sug?max=4&s=';
 const boxes = {};
 
+// A manual engine pick from the menu lasts for this page only (a new tab starts on the default again), so it is
+// kept here and never saved; the default itself is set in Settings → Search.
+const picks = {};
+
 function engineOf(box) {
   const group = store.settings.engines[box];
-  return group.list.find((e) => e.id === group.default) || group.list[0];
+  return group.list.find((e) => e.id === picks[box]) || group.list.find((e) => e.id === group.default) || group.list[0];
 }
 
 async function webSuggestions(query, signal) {
@@ -128,15 +132,17 @@ function createBox(box) {
   const openEngineMenu = () => {
     closeSuggestions();
     const group = store.settings.engines[box];
+    const current = engineOf(box);
     engineMenu.replaceChildren(
-      h('span.menu-head', { 'aria-hidden': 'true' }, 'DEFAULT ENGINE'),
+      h('span.menu-head', { 'aria-hidden': 'true' }, 'ENGINE FOR THIS TAB'),
       ...group.list.map((engine) => {
-        const on = engine.id === group.default;
+        const on = engine.id === current.id;
         return h('button.option', {
           type: 'button', role: 'option', tabindex: '-1', 'aria-selected': String(on),
           onclick: () => {
             closeEngineMenu(true);
-            update((draft) => { draft.engines[box].default = engine.id; });
+            picks[box] = engine.id;
+            refresh();
           }
         }, h('span.label', {}, engine.name), on ? h('span.tick', {}, icon('check', 16, 2.2)) : null);
       })
