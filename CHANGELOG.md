@@ -2,6 +2,24 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.12.0 — 2026-10-09
+
+### Added
+- Search engines can be shared: each search box (Web, AI, Academic) has a "use on all profiles" switch in Settings → Search. Its engine list and default then follow every profile, and saving a change to it asks for confirmation like other shared items.
+- The shortcut editor fills in the name from the website when you enter an address (the site's own name, else its page title; if the page can't be read, a name guessed from the address). A name you typed is never replaced. This needs the new permission to read pages (`host_permissions`).
+- Export can cover the current profile or all profiles (Settings → Data). A backup file now holds named profiles.
+- Importing a file with several profiles lists them, all chosen by default, so you can pick which to import.
+- A third import mode, "Separate as new profiles": each chosen profile becomes a new profile with its own name (a number is added if the name is taken, for example "Work (2)"), leaving the profile in use unchanged.
+- Add group: in the page's Edit mode (a "+ Group" button next to the category chips), in the quick-edit popover (category menu → New category…) and in Settings → Shortcuts. A group is a category, so it starts with its first shortcut.
+- Picture icons (site logo, image link, upload) have a Background choice in the icon picker: Auto, or any color.
+
+### Changed
+- Export file names are `<date>-<profile name or all>.<extension>`, for example `2026-10-09-Work.json` or `2026-10-09-all.json`.
+- A manual engine choice from the search box menu now lasts for that tab only; a new tab starts on the default engine again. Set the default in Settings → Search.
+- Picture icons no longer carry a forced color: a contrasting disc appears automatically only when the picture is all white or all black (now for uploads and image links too, not only site logos), and a background you pick always wins.
+- The Settings dialog is taller, so lists need less scrolling.
+- Backups from earlier versions (one bare settings object) still import. Backups written by this version need v1.12.0 or later.
+
 ## v1.11.0 — 2026-10-08
 
 ### Added
