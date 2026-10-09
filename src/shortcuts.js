@@ -5,6 +5,7 @@ import { store, update } from './state.js';
 import { openShortcutEditor } from './shortcut-editor.js';
 import { badge, dropdown, swatchPicker, toast } from './widgets.js';
 
+const NEW_CATEGORY = '\u0000new';
 const view = { category: 'All', page: 0, editing: false, popoverId: null, focusAfter: null };
 let section = null;
 
@@ -34,12 +35,18 @@ function render() {
   view.page = Math.min(view.page, pages - 1);
   const visible = shown.slice(view.page * cap, view.page * cap + cap);
 
+  // In Edit mode a group can be added: it starts with its first shortcut (a group is the category its shortcuts share).
+  const addGroup = view.editing ? h('button.chip.add-group', {
+    type: 'button', 'aria-label': 'Add group',
+    onclick: () => openShortcutEditor(null, { newGroup: true })
+  }, icon('plus', 12, 2.4), ' Group') : null;
   const chips = h('div.chips', { role: 'group', 'aria-label': 'Filter by category' },
     ...['All', ...categories].map((name) => h('button.chip', {
       type: 'button',
       'aria-pressed': String(view.category === name),
       onclick: () => { view.category = name; view.page = 0; render(); }
-    }, `${name} `, h('span.count', {}, name === 'All' ? shortcuts.length : shortcuts.filter((s) => s.category === name).length))));
+    }, `${name} `, h('span.count', {}, name === 'All' ? shortcuts.length : shortcuts.filter((s) => s.category === name).length))),
+    ...(addGroup ? [addGroup] : []));
 
   const pager = pages > 1 ? h('div.pager', { role: 'group', 'aria-label': 'Shortcut pages' },
     h('button.icon-btn.small', { type: 'button', 'aria-label': 'Previous page', disabled: view.page === 0, onclick: () => { view.page -= 1; render(); } }, icon('chevronLeft')),
@@ -205,12 +212,27 @@ function popover(item, alignRight) {
 
   const categoryLabel = `${titleId}-cat`;
   const categories = categoriesOf(store.settings.shortcuts);
+  // "New category…" adds a group: it exists once this shortcut is saved into it.
+  const newCategory = h('input.input.compact', {
+    type: 'text', placeholder: 'New category name', 'aria-label': 'New category name', hidden: true,
+    oninput: () => { draft.category = newCategory.value.trim(); }
+  });
   const category = dropdown({
     labelId: categoryLabel,
     value: draft.category,
     align: 'start',
-    options: [{ value: '', label: 'No category' }, ...categories.map((c) => ({ value: c, label: c }))],
-    onChange: (value) => { draft.category = value; }
+    options: [{ value: '', label: 'No category' }, ...categories.map((c) => ({ value: c, label: c })), { value: NEW_CATEGORY, label: 'New category…', action: true }],
+    onChange: (value) => {
+      if (value === NEW_CATEGORY) {
+        newCategory.hidden = false;
+        newCategory.value = '';
+        draft.category = '';
+        newCategory.focus();
+      } else {
+        newCategory.hidden = true;
+        draft.category = value;
+      }
+    }
   });
 
   save.addEventListener('click', () => {
@@ -242,7 +264,7 @@ function popover(item, alignRight) {
     h('label', {}, 'Name', name),
     h('label', {}, 'URL', url),
     msg,
-    h('div', { style: { display: 'flex', flexDirection: 'column', gap: '4px' } }, h('span.field-label', { id: categoryLabel, style: { fontSize: '13px' } }, 'Category'), category.el),
+    h('div', { style: { display: 'flex', flexDirection: 'column', gap: '4px' } }, h('span.field-label', { id: categoryLabel, style: { fontSize: '13px' } }, 'Category'), category.el, newCategory),
     swatchPicker({ value: draft.icon.color, size: 'small', onChange: (color) => { draft.icon.color = color; refreshPreview(); } }),
     h('div.actions', {},
       h('button.icon-btn.small', { type: 'button', 'aria-label': `Delete ${item.name}`, title: 'Delete', onclick: () => { view.popoverId = null; removeShortcut(item); } }, icon('trash', 16)),

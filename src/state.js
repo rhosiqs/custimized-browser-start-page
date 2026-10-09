@@ -1,6 +1,6 @@
 // The single in-memory copy of profiles, the active profile's settings and history; every change goes through
 // update() or a profile action so it is saved and re-rendered.
-import { PROFILE_NAME_MAX, clone, createId, defaultSettings, keepSharedFrom, nextProfileName, normalizeProfiles, recordHistory } from './core.js';
+import { PROFILE_NAME_MAX, buildBackup, clone, createId, defaultSettings, keepSharedFrom, nextProfileName, normalizeProfiles, recordHistory, uniqueProfileName } from './core.js';
 import { loadHistory, loadProfiles, loadSettings, removeSettings, saveHistory, saveProfiles, saveSettings } from './storage.js';
 
 const listeners = new Set();
@@ -75,6 +75,33 @@ export function createProfile({ copy = false } = {}) {
   store.settings = settings;
   notify();
   return profile;
+}
+
+// A backup of the profile in use or of every profile, as saved (see buildBackup). The profile in use comes from
+// memory, the others from storage.
+export async function backupOf(scope) {
+  const profiles = scope === 'all' ? store.profiles.list : [activeProfile()];
+  const entries = [];
+  for (const profile of profiles) {
+    const settings = profile.id === store.profiles.active ? clone(store.settings) : await loadSettings(profile.id);
+    entries.push({ name: profile.name, icon: profile.icon, settings });
+  }
+  return buildBackup(entries);
+}
+
+// Separate import: each entry { name, icon?, settings } (settings already normalized and without shared flags)
+// becomes a new profile with its own name, made unique if taken. The profile in use stays active. Like any new
+// profile, each one shows the items shown on all profiles. Returns the names given.
+export function importProfiles(entries) {
+  const list = [...store.profiles.list];
+  for (const entry of entries) {
+    const profile = { id: createId('pf'), name: uniqueProfileName(entry.name, list.map((p) => p.name)), ...(entry.icon ? { icon: entry.icon } : {}) };
+    saveSettings(profile.id, keepSharedFrom(entry.settings, store.settings));
+    list.push(profile);
+  }
+  setProfiles(normalizeProfiles({ ...store.profiles, list }));
+  notify();
+  return store.profiles.list.slice(store.profiles.list.length - entries.length).map((p) => p.name);
 }
 
 export function renameProfile(id, name) {

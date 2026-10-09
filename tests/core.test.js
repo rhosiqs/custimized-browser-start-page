@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  DEFAULT_PROFILE_ID, FORMATS, SWATCHES, changedSharedItems, clone, sharedEditPrompt, colorIcon, defaultProfiles, joinShared, keepSharedFrom, letterOf, nextProfileName, normalizeIcon, normalizeProfiles, normalizeShared, profileIcon, splitShared, stripShared, siteIcon, profileOfSettingsKey, profileSettingsKey, clockLabel, colorOf, iconTone, clockParts, countItems, firstGraphemes, zoneAbbreviation, zoneFromAbbreviation, defaultSettings, detectFormat, historyMatches, isImageDataUrl, isValidEngineUrl, mergeSettings, moveItem,
-  normalizeDoi, normalizeHex, normalizeHttpUrl, normalizeSettings, parseBackup, readableOn, recordHistory, relativeZone, routeQuery, serialize
+  DEFAULT_PROFILE_ID, FORMATS, backupFileName, buildBackup, readBackup, uniqueProfileName, SWATCHES, changedSharedItems, clone, emptyShared, sharedEditPrompt, colorIcon, defaultProfiles, joinShared, keepSharedFrom, letterOf, nextProfileName, normalizeIcon, normalizeProfiles, normalizeShared, profileIcon, splitShared, stripShared, siteIcon, profileOfSettingsKey, profileSettingsKey, clockLabel, colorOf, iconTone, clockParts, countItems, firstGraphemes, zoneAbbreviation, zoneFromAbbreviation, defaultSettings, detectFormat, historyMatches, isImageDataUrl, isValidEngineUrl, mergeSettings, moveItem,
+  nameFromUrl, normalizeDoi, normalizeHex, pageNameFromHtml, normalizeHttpUrl, normalizeSettings, parseBackup, readableOn, recordHistory, relativeZone, routeQuery, serialize
 } from '../src/core.js';
 
 const google = { id: 'google', name: 'Google', url: 'https://www.google.com/search?q=%s' };
@@ -329,6 +329,17 @@ test('shortcut icons saved before schema v9 keep their mode, image and color', (
   assert.ok(settings.shortcuts.every((s) => !('image' in s) && !('color' in s) && typeof s.icon === 'object'));
 });
 
+test('normalizeIcon stores a chosen picture background and never invents one', () => {
+  const png = 'data:image/png;base64,iVBORw0KGgo=';
+  assert.equal('bg' in normalizeIcon({ kind: 'upload', data: png }), false);
+  assert.equal('bg' in normalizeIcon({ kind: 'site', url: 'github.com', bg: '' }), false);
+  assert.equal(normalizeIcon({ kind: 'upload', data: png, bg: '#ABC' }).bg, '#aabbcc');
+  assert.equal(normalizeIcon({ kind: 'image', url: 'https://x.example/a.svg', bg: 'mint' }).bg, 'mint');
+  assert.equal('bg' in normalizeIcon({ kind: 'upload', data: png, bg: 'nonsense' }), false);
+  assert.equal('bg' in normalizeIcon({ kind: 'color', bg: 'mint' }), false);
+  assert.equal('bg' in normalizeIcon({ kind: 'emoji', text: 'x', bg: 'mint' }), false);
+});
+
 test('normalizeIcon keeps each kind\'s fields and falls back to a color icon when one is missing', () => {
   const png = 'data:image/png;base64,iVBORw0KGgo=';
   assert.deepEqual(normalizeIcon({ kind: 'site', url: 'github.com', color: '#ABC', text: 'abcd' }), { kind: 'site', color: '#aabbcc', text: 'abc', url: 'https://github.com/' });
@@ -614,9 +625,9 @@ test('a starter launcher with the same name as a shared launcher gives way to it
 });
 
 test('normalizeShared repairs the stored shared items', () => {
-  assert.deepEqual(normalizeShared(undefined), { shortcuts: [], launchers: [] });
+  assert.deepEqual(normalizeShared(undefined), { shortcuts: [], launchers: [], engines: {} });
   const fixed = normalizeShared({ shortcuts: [{ id: 'a', name: 'A' }, { id: 'a', name: 'dup' }, null, { name: 'no id' }], launchers: 'x' });
-  assert.deepEqual(fixed, { shortcuts: [{ id: 'a', name: 'A', shared: true }], launchers: [] });
+  assert.deepEqual(fixed, { shortcuts: [{ id: 'a', name: 'A', shared: true }], launchers: [], engines: {} });
 });
 
 test('imported files never change what is shared: stripShared, merge and replace', () => {
@@ -638,4 +649,106 @@ test('imported files never change what is shared: stripShared, merge and replace
   assert.equal(kept.shortcuts.filter((s) => s.shared).length, 1);
   assert.equal(kept.shortcuts.length, clash.shortcuts.length, 'the starter twin of a shared shortcut gives way');
   assert.equal(kept.shortcuts[1].shared, true, 'and the shared one takes its place');
+});
+
+test('a search box marked shared keeps its engines in the shared store and follows every profile', () => {
+  const a = defaultSettings();
+  a.engines.web.shared = true;
+  a.engines.web.default = 'ddg';
+  const { profile, shared } = splitShared(a);
+  assert.deepEqual(profile.engines.web, { shared: true });
+  assert.equal(shared.engines.web.default, 'ddg');
+  assert.equal(profile.engines.ai.default, 'claude');
+  // Another profile with its own engines takes the shared box; the flag survives normalization.
+  const other = normalizeSettings(joinShared(defaultSettings(), shared)).settings;
+  assert.equal(other.engines.web.default, 'ddg');
+  assert.equal(other.engines.web.shared, true);
+  assert.equal(other.engines.ai.default, 'claude');
+  assert.equal('shared' in other.engines.ai, false);
+  // The saving profile gets the same view back.
+  assert.deepEqual(normalizeSettings(joinShared(profile, shared)).settings.engines.web, shared.engines.web);
+});
+
+test('a shared flag whose engines are gone falls back to the defaults', () => {
+  const raw = defaultSettings();
+  raw.engines.web = { shared: true };
+  const view = normalizeSettings(joinShared(raw, emptyShared())).settings;
+  assert.equal(view.engines.web.default, 'google');
+  assert.equal(view.engines.web.list.length, 3);
+  assert.equal('shared' in view.engines.web, false);
+});
+
+test('changes to shared engines are named; imports leave them alone', () => {
+  const prev = defaultSettings();
+  prev.engines.ai.shared = true;
+  const next = clone(prev);
+  assert.deepEqual(changedSharedItems(prev, next), []);
+  next.engines.ai.default = 'gemini';
+  assert.deepEqual(changedSharedItems(prev, next), ['AI search engines']);
+  const off = clone(prev);
+  delete off.engines.ai.shared;
+  assert.deepEqual(changedSharedItems(prev, off), ['AI search engines']);
+  // stripShared, keepSharedFrom and mergeSettings never change what is shared.
+  assert.equal('shared' in stripShared(prev).engines.ai, false);
+  const incoming = stripShared(defaultSettings());
+  assert.equal(keepSharedFrom(incoming, prev).engines.ai.shared, true);
+  assert.equal(mergeSettings(prev, incoming).engines.ai.shared, true);
+});
+
+test('pageNameFromHtml prefers og:site_name, then the title, and decodes entities', () => {
+  assert.equal(pageNameFromHtml('<head><title>Dogs &amp; Cats | Home</title><meta property="og:site_name" content="Pets Inc"></head>'), 'Pets Inc');
+  assert.equal(pageNameFromHtml("<meta content='Site &#39;X&#39;' name=\"og:site_name\">"), "Site 'X'");
+  assert.equal(pageNameFromHtml('<TITLE lang="en">\n  Dogs &amp; Cats\n  &#x1F600;  </TITLE>'), 'Dogs & Cats 😀');
+  assert.equal(pageNameFromHtml('<meta name="description" content="x"><p>no title</p>'), '');
+  assert.equal(pageNameFromHtml(undefined), '');
+  assert.equal(pageNameFromHtml(`<title>${'a'.repeat(100)}</title>`).length, 60);
+});
+
+test('nameFromUrl derives a readable name from the host', () => {
+  assert.equal(nameFromUrl('https://www.github.com/x'), 'Github');
+  assert.equal(nameFromUrl('https://calendar.google.com/'), 'Google');
+  assert.equal(nameFromUrl('https://www.bbc.co.uk/news'), 'Bbc');
+  assert.equal(nameFromUrl('http://localhost:3000'), 'Localhost');
+  assert.equal(nameFromUrl('not a url'), '');
+});
+
+test('backupFileName is <date>-<profile name or all>.<extension> with a file-safe name', () => {
+  const date = new Date(2026, 9, 9, 23, 59);
+  assert.equal(backupFileName({ date, profileName: 'Work', extension: 'json' }), '2026-10-09-Work.json');
+  assert.equal(backupFileName({ date, profileName: null, extension: 'yaml' }), '2026-10-09-all.yaml');
+  assert.equal(backupFileName({ date, profileName: 'My: Home / Lab?', extension: 'txt' }), '2026-10-09-My-Home-Lab.txt');
+  assert.equal(backupFileName({ date, profileName: '  ..  ', extension: 'toml' }), '2026-10-09-profile.toml');
+  assert.equal(backupFileName({ date: new Date(2026, 0, 5), profileName: '工作' }), '2026-01-05-工作.json');
+  assert.ok(backupFileName({ date, profileName: 'x'.repeat(80) }).length <= '2026-10-09-.json'.length + 40);
+});
+
+test('buildBackup and readBackup round-trip profiles and read a bare settings file as one profile', () => {
+  const work = defaultSettings();
+  work.theme = 'dark';
+  const icon = { kind: 'emoji', text: 'W' };
+  const bundle = buildBackup([{ name: 'Work', icon, settings: work }, { name: 'Home', settings: defaultSettings() }]);
+  const parsed = parseBackup(serialize(bundle, 'yaml'), 'yaml');
+  const read = readBackup(parsed);
+  assert.deepEqual(read.map((p) => p.name), ['Work', 'Home']);
+  assert.deepEqual(read[0].icon, icon);
+  assert.equal('icon' in read[1], false);
+  assert.equal(read[0].raw.theme, 'dark');
+  // A file from before profiles is a single profile named after the fallback.
+  const bare = readBackup(defaultSettings(), 'old-backup');
+  assert.equal(bare.length, 1);
+  assert.equal(bare[0].name, 'old-backup');
+  assert.equal(bare[0].raw.version, defaultSettings().version);
+  // Broken entries are skipped; unnamed ones are numbered.
+  const odd = readBackup({ startPageBundle: 1, profiles: [null, { name: 'A' }, { settings: {} }, { name: 'B', settings: [] }] });
+  assert.deepEqual(odd.map((p) => p.name), ['Profile 1']);
+});
+
+test('uniqueProfileName adds a number only when the name is taken', () => {
+  assert.equal(uniqueProfileName('Work', ['Home']), 'Work');
+  assert.equal(uniqueProfileName('Work', ['work']), 'Work (2)');
+  assert.equal(uniqueProfileName('Work', ['Work', 'Work (2)']), 'Work (3)');
+  const long = 'x'.repeat(40);
+  const name = uniqueProfileName(long, ['x'.repeat(32)]);
+  assert.equal(name.length, 32);
+  assert.ok(name.endsWith(' (2)'));
 });

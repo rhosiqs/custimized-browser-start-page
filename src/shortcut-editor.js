@@ -1,6 +1,6 @@
 // Full shortcut editor dialog (add or edit): name, URL, category, whether it shows on all profiles. The icon is
 // changed by clicking it in the preview, which opens the icon picker.
-import { categoriesOf, changedSharedItems, createId, hostOf, normalizeHttpUrl, sharedEditPrompt, siteIcon } from './core.js';
+import { categoriesOf, changedSharedItems, createId, hostOf, nameFromUrl, normalizeHttpUrl, pageNameFromHtml, sharedEditPrompt, siteIcon } from './core.js';
 import { h, icon, showModal } from './dom.js';
 import { openIconPicker } from './icon-picker.js';
 import { store, update } from './state.js';
@@ -8,9 +8,26 @@ import { badge, dropdown, iconButton, toast } from './widgets.js';
 
 const NEW_CATEGORY = '\u0000new';
 
+const SITE_ORIGINS = { origins: ['http://*/*', 'https://*/*'] };
+const canAsk = typeof chrome !== 'undefined' && Boolean(chrome.permissions?.contains && chrome.permissions?.request);
+const hasSiteAccess = async () => { try { return canAsk && await chrome.permissions.contains(SITE_ORIGINS); } catch { return false; } };
+
+// Reads a page's own name (og:site_name or <title>) so the editor can prefill it. Needs the manifest's host
+// permission; any failure (blocked, offline, not HTML, too slow) is silent and gives ''.
+async function fetchSiteName(url, signal) {
+  try {
+    const response = await fetch(url, { signal, credentials: 'omit', referrerPolicy: 'no-referrer', redirect: 'follow' });
+    if (!response.ok || !/html/i.test(response.headers.get('content-type') || '')) return '';
+    return pageNameFromHtml((await response.text()).slice(0, 300000));
+  } catch {
+    return '';
+  }
+}
+
 // By default edits are saved at once. Settings passes its draft list and a commit that edits it
 // instead; the editor then opens over Settings and the change waits for its Save.
-export function openShortcutEditor(id, { category = '', shortcuts, commit } = {}) {
+// newGroup opens the editor with the new-category field ready, for "Add group" (a group exists once it holds a shortcut).
+export function openShortcutEditor(id, { category = '', shortcuts, commit, newGroup = false } = {}) {
   const inSettings = Boolean(commit);
   const list = shortcuts || store.settings.shortcuts;
   const apply = commit || ((fn) => update((settings) => fn(settings.shortcuts)));
@@ -27,23 +44,62 @@ export function openShortcutEditor(id, { category = '', shortcuts, commit } = {}
     build(dialog, close) {
       const preview = h('div.preview-card');
       const urlMsg = h('span.msg', { id: 'sc-url-msg', 'aria-live': 'polite' });
-      const name = h('input.input', { id: 'sc-name', type: 'text', value: draft.name, autofocus: true, oninput: () => { draft.name = name.value; refresh(); } });
+      // The name is prefilled from the website while the user hasn't typed one; typing a name stops that for good.
+      let nameTyped = Boolean(draft.name.trim());
+      let lookup = { timer: null, controller: null };
+      const nameNote = h('span.note', { id: 'sc-name-note', 'aria-live': 'polite' });
+      // Reading names needs an optional permission: until it is granted a button asks for it (inside the extension only).
+      const grant = h('button.btn.quiet-outline.small', { type: 'button', hidden: true, onclick: async () => {
+        let granted = false;
+        try { granted = await chrome.permissions.request(SITE_ORIGINS); } catch { /* not granted */ }
+        if (granted) { grant.hidden = true; lookUpName(); }
+      } }, 'Read names from websites');
+      if (canAsk) hasSiteAccess().then((has) => { grant.hidden = has; });
+      const name = h('input.input', {
+        id: 'sc-name', type: 'text', value: draft.name, autofocus: true, 'aria-describedby': 'sc-name-note',
+        oninput: () => { nameTyped = Boolean(name.value.trim()); nameNote.textContent = ''; draft.name = name.value; refresh(); }
+      });
+      const fillName = (value, note) => {
+        if (nameTyped || !value) return;
+        draft.name = value;
+        name.value = value;
+        nameNote.textContent = note;
+        refresh();
+      };
+      const lookUpName = () => {
+        clearTimeout(lookup.timer);
+        lookup.controller?.abort();
+        if (nameTyped) return;
+        const check = normalizeHttpUrl(url.value);
+        if (!check.ok || !new URL(check.url).hostname.includes('.')) return;
+        lookup.timer = setTimeout(async () => {
+          lookup.controller = new AbortController();
+          const timeout = setTimeout(() => lookup.controller.abort(), 6000);
+          const allowed = await hasSiteAccess();
+          grant.hidden = allowed || !canAsk;
+          const found = allowed ? await fetchSiteName(check.url, lookup.controller.signal) : '';
+          clearTimeout(timeout);
+          if (normalizeHttpUrl(url.value).url !== check.url) return;
+          if (found) fillName(found, 'Name taken from the website; edit it if you like.');
+          else fillName(nameFromUrl(check.url), 'Name guessed from the address; edit it if you like.');
+        }, 500);
+      };
       const url = h('input.input', {
         id: 'sc-url', type: 'url', value: draft.url, placeholder: 'example.com', 'aria-describedby': 'sc-url-msg',
-        oninput: () => { draft.url = url.value; refresh(); }
+        oninput: () => { draft.url = url.value; refresh(); lookUpName(); }
       });
       const save = h('button.btn.primary', { type: 'button' }, 'Save');
 
       // Category, with a free-text field for a new one
       const newCategory = h('input.input.compact', {
-        type: 'text', placeholder: 'New category name', 'aria-label': 'New category name', hidden: true,
+        type: 'text', placeholder: 'New category name', 'aria-label': 'New category name', hidden: !newGroup,
         oninput: () => { draft.category = newCategory.value.trim(); refresh(); }
       });
       // A category is optional; uncategorized shortcuts show under All only.
       const categoryOptions = [{ value: '', label: 'No category' }, ...[...new Set([...categories, draft.category].filter(Boolean))].map((c) => ({ value: c, label: c }))];
       const categoryPicker = dropdown({
         labelId: 'sc-cat-lbl',
-        value: draft.category,
+        value: newGroup ? NEW_CATEGORY : draft.category,
         options: [...categoryOptions, { value: NEW_CATEGORY, label: 'New category…', action: true }],
         onChange: (value) => {
           if (value === NEW_CATEGORY) {
@@ -82,7 +138,7 @@ export function openShortcutEditor(id, { category = '', shortcuts, commit } = {}
         urlMsg.className = `msg ${check.ok ? 'ok' : draft.url.trim() ? 'bad' : ''}`;
         urlMsg.replaceChildren(icon(check.ok ? 'check' : 'alert', 14, 2.2), check.ok ? `Saved as ${check.url}` : check.msg);
         url.setAttribute('aria-invalid', String(!check.ok && draft.url.trim() !== ''));
-        save.disabled = !check.ok || !draft.name.trim();
+        save.disabled = !check.ok || !draft.name.trim() || (newGroup && !draft.category.trim());
         return check;
       };
 
@@ -104,6 +160,8 @@ export function openShortcutEditor(id, { category = '', shortcuts, commit } = {}
       showSharedNote();
 
       save.addEventListener('click', () => {
+        clearTimeout(lookup.timer);
+        lookup.controller?.abort();
         const check = refresh();
         if (save.disabled) return;
         const next = {
@@ -136,11 +194,11 @@ export function openShortcutEditor(id, { category = '', shortcuts, commit } = {}
 
       dialog.append(
         h('div.dialog-head', {},
-          h('div.titles', {}, h('span.kicker', {}, 'SHORTCUT'), h('h1', { id: 'ed-title' }, existing ? 'Edit shortcut' : 'Add shortcut')),
+          h('div.titles', {}, h('span.kicker', {}, 'SHORTCUT'), h('h1', { id: 'ed-title' }, existing ? 'Edit shortcut' : newGroup ? 'Add group' : 'Add shortcut')),
           h('button.close-btn', { type: 'button', 'aria-label': 'Close', onclick: close }, icon('close'))),
         h('div.dialog-body', {},
           preview,
-          h('div.field-group', {}, h('label.field-label', { for: 'sc-name' }, 'Name'), name),
+          h('div.field-group', {}, h('label.field-label', { for: 'sc-name' }, 'Name'), name, h('div.inline', {}, nameNote, grant)),
           h('div.field-group', {}, h('label.field-label', { for: 'sc-url' }, 'URL'), url, urlMsg),
           h('div.field-group', {}, h('span.field-label', { id: 'sc-cat-lbl' }, 'Category'), categoryPicker.el, newCategory),
           sharedSwitch),
@@ -159,6 +217,7 @@ export function openShortcutEditor(id, { category = '', shortcuts, commit } = {}
           save)
       );
       refresh();
+      if (newGroup) queueMicrotask(() => newCategory.focus());
     }
   });
 }

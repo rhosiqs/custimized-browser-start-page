@@ -152,6 +152,44 @@ export function hostOf(url) {
   }
 }
 
+const HTML_ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
+
+function decodeEntities(value) {
+  return value.replace(/&(?:#(\d{1,7})|#x([0-9a-f]{1,6})|([a-z]+));/gi, (match, dec, hex, named) => {
+    if (named) return HTML_ENTITIES[named.toLowerCase()] ?? match;
+    const code = dec ? Number(dec) : parseInt(hex, 16);
+    try { return String.fromCodePoint(code); } catch { return match; }
+  });
+}
+
+// A website's own name from its page source: the og:site_name meta tag, else the <title>. Returns '' when neither
+// is there. Entities are decoded, whitespace collapsed and the result cut to 60 characters.
+export function pageNameFromHtml(html) {
+  const source = String(html ?? '');
+  let site = '';
+  for (const tag of source.match(/<meta\b[^>]*>/gi) || []) {
+    const attrs = {};
+    for (const [, key, quoted, double, single] of tag.matchAll(/([a-z:_-]+)\s*=\s*("([^"]*)"|'([^']*)'|[^\s>]+)/gi)) {
+      attrs[key.toLowerCase()] = double ?? single ?? quoted;
+    }
+    if ((attrs.property || attrs.name || '').toLowerCase() === 'og:site_name' && attrs.content) { site = attrs.content; break; }
+  }
+  const title = source.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] || '';
+  const clean = (value) => decodeEntities(value).replace(/\s+/g, ' ').trim().slice(0, 60);
+  return clean(site) || clean(title);
+}
+
+// A readable name from an address alone, used when the page can't be read: "calendar.google.com" → "Google".
+export function nameFromUrl(url) {
+  let host = '';
+  try { host = new URL(url).hostname.replace(/^www\./, ''); } catch { /* not an address */ }
+  const labels = host.split('.').filter(Boolean);
+  if (labels.length > 1) labels.pop();
+  if (labels.length > 1 && ['co', 'com', 'org', 'net', 'gov', 'edu', 'ac'].includes(labels[labels.length - 1])) labels.pop();
+  const label = labels[labels.length - 1] || '';
+  return label ? label[0].toUpperCase() + label.slice(1) : '';
+}
+
 export function normalizeDoi(raw) {
   const match = String(raw ?? '').trim().match(/^(?:doi:\s*|(?:https?:\/\/)?(?:dx\.)?doi\.org\/)?(10\.\d{4,9}\/\S+)$/i);
   return match ? match[1] : '';
@@ -453,13 +491,16 @@ function text(value, max = 120) {
 // ---------- Icons ----------
 
 // One icon model serves shortcuts, launchers and profiles. Fields by kind:
-//   site    { color, text, url }   the website's own logo; url '' means the item's own address
-//   image   { color, text, url }   an image from the web
-//   upload  { color, text, data }  an uploaded image (data URL)
+//   site    { color, text, url, bg? }   the website's own logo; url '' means the item's own address
+//   image   { color, text, url, bg? }   an image from the web
+//   upload  { color, text, data, bg? }  an uploaded image (data URL)
 //   emoji   { text }               an emoji or a few characters on a plain disc
 //   color   { color, letter, text } a solid color with a letter (text, else the name's first letter) or none
 //   none    { }                    nothing (profiles only)
 // color is a SWATCHES key or #rrggbb; for site, image and upload it shows behind the letter shown when the picture can't load.
+// bg (site, image, upload only) is the user's chosen background behind the picture, a SWATCHES key or #rrggbb. It is
+// stored only when chosen; without it the page picks a contrasting disc by itself when a picture is all white or all
+// black (iconTone), and otherwise shows the picture on the plain tile. Nothing is ever forced.
 export function siteIcon(color = 'green') {
   return { kind: 'site', color, text: '', url: '' };
 }
@@ -499,8 +540,10 @@ export function normalizeIcon(raw, { color = 'green', allowNone = false, require
   if (kind === 'emoji' && !letters) kind = 'color';
   if (kind === 'emoji') return { kind, text: letters };
   if (kind === 'color') return { kind, color: fill, letter: src.letter !== false, text: letters };
-  if (kind === 'upload') return { kind, color: fill, text: letters, data };
-  return { kind, color: fill, text: letters, url };
+  const bg = pickColor(src.bg, Object.keys(SWATCHES), '');
+  const withBg = bg ? { bg } : {};
+  if (kind === 'upload') return { kind, color: fill, text: letters, data, ...withBg };
+  return { kind, color: fill, text: letters, url, ...withBg };
 }
 
 // The letters an icon shows when it has no picture: its own text, else the name's first character (an emoji stays whole).
@@ -585,6 +628,7 @@ export function normalizeSettings(input, { fallback = defaultSettings() } = {}) 
   if (src.engines && typeof src.engines === 'object') {
     for (const box of Object.keys(SEARCH_BOXES)) {
       const group = src.engines[box];
+      if (group && group.shared === true) out.engines[box].shared = true;
       if (!group || !Array.isArray(group.list)) continue;
       const list = [];
       const seen = new Set();
@@ -732,6 +776,8 @@ export function mergeSettings(current, incoming) {
   }).concat(incoming.launchers.filter((l) => !launcherNames.has(nameKey(l))).map((l) => ({ ...l, id: createId('ln') })));
   const zones = new Set(current.clocks.world.map((c) => c.tz));
   merged.clocks.world = current.clocks.world.concat(incoming.clocks.world.filter((c) => !zones.has(c.tz)));
+  // Engines shown on all profiles stay as they are; a file never changes what is shared.
+  for (const box of Object.keys(SEARCH_BOXES)) if (current.engines[box]?.shared === true) merged.engines[box] = clone(current.engines[box]);
   return merged;
 }
 
@@ -753,7 +799,7 @@ export function countItems(source) {
 export const SHARED_KINDS = ['shortcuts', 'launchers'];
 
 export function emptyShared() {
-  return { shortcuts: [], launchers: [] };
+  return { shortcuts: [], launchers: [], engines: {} };
 }
 
 // Repairs the stored shared store: arrays of objects with a text id, each flagged shared.
@@ -767,6 +813,12 @@ export function normalizeShared(input) {
       seen.add(item.id);
       out[kind].push({ ...clone(item), shared: true });
     }
+  }
+  // A search box's engines and default engine, shared by every profile: { web: { list, default }, … }.
+  const engines = src.engines && typeof src.engines === 'object' ? src.engines : {};
+  for (const box of Object.keys(SEARCH_BOXES)) {
+    const group = engines[box];
+    if (group && typeof group === 'object' && Array.isArray(group.list) && group.list.length) out.engines[box] = { ...clone(group), shared: true };
   }
   return out;
 }
@@ -787,6 +839,13 @@ export function splitShared(settings) {
       shared[kind].push(clone(item));
       return { id: item.id, shared: true };
     });
+  }
+  // A search box marked shared keeps its engines and default in the shared store; the profile keeps a flag only.
+  for (const box of Object.keys(SEARCH_BOXES)) {
+    const group = settings.engines?.[box];
+    if (group?.shared !== true) continue;
+    shared.engines[box] = clone(group);
+    profile.engines[box] = { shared: true };
   }
   return { profile, shared };
 }
@@ -831,6 +890,16 @@ export function joinShared(rawSettings, rawShared) {
     for (const item of shared[kind]) if (!seen.has(item.id)) list.push(clone(item));
     base[kind] = list;
   }
+  // A shared search box replaces the profile's own; a flag whose shared engines are gone is dropped, so the box
+  // falls back to the defaults.
+  for (const box of Object.keys(SEARCH_BOXES)) {
+    if (shared.engines[box]) {
+      base.engines = { ...(base.engines && typeof base.engines === 'object' ? base.engines : {}), [box]: clone(shared.engines[box]) };
+    } else if (base.engines?.[box]?.shared === true) {
+      const { shared: flag, ...rest } = base.engines[box];
+      base.engines = { ...base.engines, [box]: rest };
+    }
+  }
   return base;
 }
 
@@ -845,6 +914,11 @@ export function changedSharedItems(prev, next) {
       if (JSON.stringify(item) !== JSON.stringify(after.get(item.id))) names.push(item.name);
     }
   }
+  for (const box of Object.keys(SEARCH_BOXES)) {
+    const before = prev?.engines?.[box];
+    if (before?.shared !== true) continue;
+    if (JSON.stringify(before) !== JSON.stringify(next?.engines?.[box])) names.push(`${SEARCH_BOXES[box].kicker} search engines`);
+  }
   return names;
 }
 
@@ -858,6 +932,7 @@ export function sharedEditPrompt(names) {
 export function stripShared(settings) {
   const out = clone(settings);
   for (const kind of SHARED_KINDS) out[kind] = (out[kind] || []).map((item) => { const { shared, ...rest } = item; return rest; });
+  for (const box of Object.keys(SEARCH_BOXES)) if (out.engines?.[box]) delete out.engines[box].shared;
   return out;
 }
 
@@ -882,6 +957,7 @@ export function keepSharedFrom(next, current) {
     }
     out[kind] = list.concat(kept.filter((item) => !placed.has(item.id)).map(clone));
   }
+  for (const box of Object.keys(SEARCH_BOXES)) if (current.engines?.[box]?.shared === true) out.engines[box] = clone(current.engines[box]);
   return out;
 }
 
@@ -988,6 +1064,61 @@ export function detectFormat(fileName = '', source = '') {
   if (/^startPage:\s*\|/m.test(source)) return 'yaml';
   if (/^start_page\s*=/m.test(source)) return 'toml';
   return 'text';
+}
+
+// A backup file holds one or more profiles: { startPageBundle: 1, profiles: [{ name, icon?, settings }] }. Files from
+// before v1.12.0 are one bare settings object, which reads as a single profile.
+export const BUNDLE_VERSION = 1;
+export const BUNDLE_PROFILE_LIMIT = 50;
+
+// entries: [{ name, icon?, settings }].
+export function buildBackup(entries) {
+  return {
+    startPageBundle: BUNDLE_VERSION,
+    profiles: entries.map(({ name, icon, settings }) => ({ name, ...(icon ? { icon } : {}), settings }))
+  };
+}
+
+// The profiles inside a parsed backup: [{ name, icon?, raw }] where raw is that profile's settings (not yet
+// normalized). A bare settings object becomes one profile called fallbackName. Entries without settings are skipped.
+export function readBackup(parsed, fallbackName = 'Imported') {
+  if (parsed && typeof parsed === 'object' && Array.isArray(parsed.profiles) && parsed.startPageBundle !== undefined) {
+    const out = [];
+    for (const item of parsed.profiles.slice(0, BUNDLE_PROFILE_LIMIT)) {
+      if (!item || typeof item.settings !== 'object' || !item.settings || Array.isArray(item.settings)) continue;
+      const name = text(item.name, PROFILE_NAME_MAX) || `Profile ${out.length + 1}`;
+      out.push({ name, ...(item.icon && typeof item.icon === 'object' ? { icon: item.icon } : {}), raw: item.settings });
+    }
+    return out;
+  }
+  return [{ name: text(fallbackName, PROFILE_NAME_MAX) || 'Imported', raw: parsed }];
+}
+
+// "2026-10-09" in the given date's local time.
+function dateStamp(date) {
+  const two = (n) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${two(date.getMonth() + 1)}-${two(date.getDate())}`;
+}
+
+// <date>-<profile name or all>.<extension>, e.g. 2026-10-09-Work.json or 2026-10-09-all.json. profileName null means
+// all profiles. Characters that file systems reject, and spaces, become dashes.
+export function backupFileName({ date = new Date(), profileName = null, extension = 'json' } = {}) {
+  const scope = profileName === null
+    ? 'all'
+    : String(profileName).replace(/[\\/:*?"<>|\u0000-\u001f\s]+/g, '-').replace(/-{2,}/g, '-').replace(/^[-.]+|[-.]+$/g, '').slice(0, 40).replace(/-+$/, '') || 'profile';
+  return `${dateStamp(date)}-${scope}.${extension}`;
+}
+
+// A profile name not yet taken (case-insensitive): "Work", then "Work (2)", "Work (3)"…, within the length limit.
+export function uniqueProfileName(name, taken) {
+  const used = new Set([...taken].map((n) => n.toLowerCase()));
+  const base = text(name, PROFILE_NAME_MAX) || 'Profile';
+  if (!used.has(base.toLowerCase())) return base;
+  for (let n = 2; ; n += 1) {
+    const suffix = ` (${n})`;
+    const candidate = `${base.slice(0, PROFILE_NAME_MAX - suffix.length).trimEnd()}${suffix}`;
+    if (!used.has(candidate.toLowerCase())) return candidate;
+  }
 }
 
 // Parses an export from any format into a plain object (not yet normalized).

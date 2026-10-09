@@ -10,9 +10,16 @@ import { faviconUrl, siteIconSources } from './storage.js';
 export function badge({ name, url, icon: spec }, className = '') {
   const ic = spec || { kind: 'site', color: '' };
   if (ic.kind === 'none') return h('span.badge.no-icon', { 'aria-hidden': 'true', class: className });
-  const swatch = ic.color ? colorOf(ic.color) : null;
+  const swatch = ic.bg || ic.color ? colorOf(ic.bg || ic.color) : null;
   const el = h('span.badge', { 'aria-hidden': 'true', class: className });
   const base = `badge${className ? ` ${className}` : ''}`;
+  // A background the user chose (ic.bg) sits behind the picture; without one the picture gets a contrasting disc
+  // only when it is all white or all black (markTone), and is otherwise left on the plain tile.
+  const chosenBg = () => {
+    if (!ic.bg) return;
+    el.classList.add('has-bg');
+    el.style.background = colorOf(ic.bg).fill;
+  };
   const letter = () => {
     el.className = `${base}${ic.kind === 'emoji' ? ' plain' : ''}`;
     delete el.dataset.tone;
@@ -27,6 +34,8 @@ export function badge({ name, url, icon: spec }, className = '') {
   if (picture) {
     const img = h('img', { src: picture, alt: '', draggable: 'false', referrerpolicy: 'no-referrer' });
     img.onerror = letter;
+    if (ic.bg) chosenBg();
+    else img.onload = () => markTone(el, img);
     el.append(img);
   } else if (sources.length) {
     el.classList.add('site');
@@ -39,6 +48,7 @@ export function badge({ name, url, icon: spec }, className = '') {
       img.onload = async () => {
         if (img.naturalWidth < 2) tryNext(index + 1);
         else if (source.chromeCache && await isChromeDefaultIcon(img)) tryNext(index + 1);
+        else if (ic.bg) { delete el.dataset.tone; chosenBg(); }
         else markTone(el, img);
       };
       img.src = source.src;
@@ -66,13 +76,24 @@ export function launcherMark(group) {
   // Emoji are wider than letters: three in a row only fit the 40px circle at a smaller size.
   const tight = firstGraphemes(letters, 2) !== letters && /\p{Extended_Pictographic}/u.test(letters);
   const label = () => h(`span.launcher-label${tight ? '.tight' : ''}`, {}, letters);
-  if (ic.kind === 'upload' && ic.data) return h('img.launcher-img', { src: ic.data, alt: '', draggable: 'false' });
-  if (ic.kind === 'image' && ic.url) {
-    const img = h('img.launcher-img', { alt: '', draggable: 'false', referrerpolicy: 'no-referrer' });
-    img.onerror = () => img.replaceWith(label());
-    img.src = ic.url;
-    return img;
-  }
+  // An uploaded or linked picture sits on a disc: the user's chosen background, else a contrasting one when the
+  // picture is all white or all black (markTone), else nothing.
+  const pictureDisc = (src, referrer) => {
+    const disc = h('span.launcher-site.picture');
+    const img = h('img', { alt: '', draggable: 'false', ...(referrer ? { referrerpolicy: 'no-referrer' } : {}) });
+    img.onerror = () => disc.replaceWith(label());
+    if (ic.bg) {
+      disc.classList.add('has-bg');
+      disc.style.background = colorOf(ic.bg).fill;
+    } else {
+      img.onload = () => markTone(disc, img);
+    }
+    img.src = src;
+    disc.append(img);
+    return disc;
+  };
+  if (ic.kind === 'upload' && ic.data) return pictureDisc(ic.data, false);
+  if (ic.kind === 'image' && ic.url) return pictureDisc(ic.url, true);
   const sources = ic.kind === 'site' ? siteIconSources(ic.url || group.links[0]?.url || '') : [];
   if (!sources.length) return ic.kind === 'color' && !ic.letter ? null : label();
   const disc = h('span.launcher-site');
@@ -84,6 +105,7 @@ export function launcherMark(group) {
     img.onload = async () => {
       if (img.naturalWidth < 2) tryNext(index + 1);
       else if (source.chromeCache && await isChromeDefaultIcon(img)) tryNext(index + 1);
+      else if (ic.bg) { delete disc.dataset.tone; disc.classList.add('has-bg'); disc.style.background = colorOf(ic.bg).fill; }
       else markTone(disc, img);
     };
     img.src = source.src;
@@ -296,14 +318,14 @@ export function colorChoice({ value, options, onChange, size = '', label = 'Colo
 }
 
 // A button that opens a listbox. options: [{ value, label }]. Arrow keys move, Enter picks, Escape closes.
-export function dropdown({ labelId, value, options, onChange, align = 'end', buttonClass = 'dropdown-btn' }) {
+export function dropdown({ labelId, value, options, onChange, align = 'start', buttonClass = 'dropdown-btn' }) {
   const wrap = h('div.dropdown-anchor', { style: { position: 'relative' } });
   const button = h(`button.${buttonClass}`, {
     type: 'button', 'aria-haspopup': 'listbox', 'aria-expanded': 'false', 'aria-labelledby': labelId
   });
   const menu = h('div.menu', {
     role: 'listbox', 'aria-labelledby': labelId, hidden: true,
-    style: { top: 'calc(100% + 6px)', zIndex: 30, width: '220px', [align === 'end' ? 'right' : 'left']: 0 }
+    style: { zIndex: 30, width: '220px' }
   });
   let current = value;
 
@@ -333,9 +355,35 @@ export function dropdown({ labelId, value, options, onChange, align = 'end', but
       }, h('span.label', {}, option.label), selected ? h('span.tick', {}, icon('check', 16, 2.2)) : null);
     }));
   };
+  // Sits under its button (start- or end-aligned with it), or above it when there is more room there, and is
+  // capped to the room in the nearest dialog body or the stage; it scrolls inside only as a last resort.
+  // Measurements are screen pixels, so they are divided by the stage's scale to get CSS pixels.
+  const place = () => {
+    const stage = document.getElementById('stage');
+    const scale = stage ? stage.getBoundingClientRect().width / stage.offsetWidth || 1 : 1;
+    const bounds = (wrap.closest('.dialog-body') || wrap.closest('.dialog') || stage || document.documentElement).getBoundingClientRect();
+    const spot = button.getBoundingClientRect();
+    const gap = 6;
+    const margin = 10;
+    const below = (bounds.bottom - spot.bottom) / scale - gap - margin;
+    const above = (spot.top - bounds.top) / scale - gap - margin;
+    menu.style.maxHeight = '';
+    const natural = menu.scrollHeight + 2;
+    const up = natural > below && above > below;
+    const room = Math.max(80, up ? above : below);
+    menu.style.maxHeight = `${Math.min(natural, room)}px`;
+    menu.style.overflowY = natural > room ? 'auto' : '';
+    menu.style.top = up ? 'auto' : `calc(100% + ${gap}px)`;
+    menu.style.bottom = up ? `calc(100% + ${gap}px)` : 'auto';
+    const left = button.offsetLeft;
+    const right = wrap.offsetWidth - left - button.offsetWidth;
+    menu.style.left = align === 'end' ? 'auto' : `${left}px`;
+    menu.style.right = align === 'end' ? `${right}px` : 'auto';
+  };
   const open = () => {
     renderMenu();
     menu.hidden = false;
+    place();
     button.setAttribute('aria-expanded', 'true');
     menu.children[Math.max(0, options.findIndex((o) => o.value === current))]?.focus();
   };

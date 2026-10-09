@@ -306,6 +306,7 @@ input:focus-visible { outline-offset: 2px; }
   font-size: 12px;
   font-weight: 700;
 }
+.chip.add-group { display: inline-flex; align-items: center; gap: 2px; border-style: dashed; }
 .chip[aria-pressed='true'] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
 .chip .count { font-weight: 400; opacity: 0.85; }
 .pager { display: flex; align-items: center; gap: 2px; margin-right: 6px; }
@@ -381,6 +382,8 @@ input:focus-visible { outline-offset: 2px; }
 .badge.no-icon { border: 1px dashed var(--control); }
 .badge img { width: 100%; height: 100%; object-fit: cover; }
 .badge.site img { width: 26px; height: 26px; object-fit: contain; }
+/* A picture on a chosen background, or on the contrasting disc picked for an all-white or all-black one, keeps a margin. */
+.badge:not(.site).has-bg img, .badge:not(.site)[data-tone] img { width: 72%; height: 72%; object-fit: contain; }
 .tile-edit {
   position: absolute;
   top: 2px;
@@ -494,6 +497,7 @@ input:focus-visible { outline-offset: 2px; }
 .launcher-img { width: 100%; height: 100%; object-fit: contain; }
 .launcher-site { width: 100%; height: 100%; display: grid; place-items: center; border-radius: 999px; }
 .launcher-site img { width: 100%; height: 100%; object-fit: contain; }
+.launcher-site.picture.has-bg img, .launcher-site.picture[data-tone] img { width: 72%; height: 72%; }
 :root.theme-light [data-tone='light'] { background: var(--ink); }
 :root.theme-dark [data-tone='dark'] { background: #f3f2f2; }
 .launcher-add {
@@ -678,6 +682,7 @@ input:focus-visible { outline-offset: 2px; }
   font-weight: 700;
 }
 .seg[aria-pressed='true'] { background: var(--ink); color: var(--bg); }
+.btn[aria-pressed='true'] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
 .seg-group.small .seg { min-height: 28px; padding: 0 10px; font-size: 13px; }
 
 .swatches { display: flex; gap: 4px; flex-wrap: wrap; }
@@ -756,7 +761,7 @@ fieldset.plain { margin: 0; padding: 0; border: 0; display: flex; flex-direction
 fieldset.plain legend { padding: 0; margin-bottom: 6px; font-size: 14px; font-weight: 700; }
 
 /* Settings */
-.settings { width: 760px; height: min(720px, calc(100% - 120px)); }
+.settings { width: 760px; height: calc(100% - 48px); max-height: calc(100% - 48px); }
 .settings .dialog-head { padding: 28px 36px 14px; border-bottom: 0; }
 .settings .dialog-head h1 { font-size: 32px; letter-spacing: 0.12em; }
 .tabs { display: flex; gap: 2px; padding: 0 28px; border-bottom: 1px solid var(--divider); }
