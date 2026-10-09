@@ -187,6 +187,8 @@ export function nameFromUrl(url) {
   if (labels.length > 1) labels.pop();
   if (labels.length > 1 && ['co', 'com', 'org', 'net', 'gov', 'edu', 'ac'].includes(labels[labels.length - 1])) labels.pop();
   const label = labels[labels.length - 1] || '';
+  // Nothing to guess from an IP address (IPv4 or IPv6) or a label of digits only.
+  if (/^[\d.]+$/.test(host) || host.includes(':') || /^\d+$/.test(label)) return '';
   return label ? label[0].toUpperCase() + label.slice(1) : '';
 }
 
