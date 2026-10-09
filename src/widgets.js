@@ -318,14 +318,14 @@ export function colorChoice({ value, options, onChange, size = '', label = 'Colo
 }
 
 // A button that opens a listbox. options: [{ value, label }]. Arrow keys move, Enter picks, Escape closes.
-export function dropdown({ labelId, value, options, onChange, align = 'end', buttonClass = 'dropdown-btn' }) {
+export function dropdown({ labelId, value, options, onChange, align = 'start', buttonClass = 'dropdown-btn' }) {
   const wrap = h('div.dropdown-anchor', { style: { position: 'relative' } });
   const button = h(`button.${buttonClass}`, {
     type: 'button', 'aria-haspopup': 'listbox', 'aria-expanded': 'false', 'aria-labelledby': labelId
   });
   const menu = h('div.menu', {
     role: 'listbox', 'aria-labelledby': labelId, hidden: true,
-    style: { top: 'calc(100% + 6px)', zIndex: 30, width: '220px', [align === 'end' ? 'right' : 'left']: 0 }
+    style: { zIndex: 30, width: '220px' }
   });
   let current = value;
 
@@ -355,9 +355,35 @@ export function dropdown({ labelId, value, options, onChange, align = 'end', but
       }, h('span.label', {}, option.label), selected ? h('span.tick', {}, icon('check', 16, 2.2)) : null);
     }));
   };
+  // Sits under its button (start- or end-aligned with it), or above it when there is more room there, and is
+  // capped to the room in the nearest dialog body or the stage; it scrolls inside only as a last resort.
+  // Measurements are screen pixels, so they are divided by the stage's scale to get CSS pixels.
+  const place = () => {
+    const stage = document.getElementById('stage');
+    const scale = stage ? stage.getBoundingClientRect().width / stage.offsetWidth || 1 : 1;
+    const bounds = (wrap.closest('.dialog-body') || wrap.closest('.dialog') || stage || document.documentElement).getBoundingClientRect();
+    const spot = button.getBoundingClientRect();
+    const gap = 6;
+    const margin = 10;
+    const below = (bounds.bottom - spot.bottom) / scale - gap - margin;
+    const above = (spot.top - bounds.top) / scale - gap - margin;
+    menu.style.maxHeight = '';
+    const natural = menu.scrollHeight + 2;
+    const up = natural > below && above > below;
+    const room = Math.max(80, up ? above : below);
+    menu.style.maxHeight = `${Math.min(natural, room)}px`;
+    menu.style.overflowY = natural > room ? 'auto' : '';
+    menu.style.top = up ? 'auto' : `calc(100% + ${gap}px)`;
+    menu.style.bottom = up ? `calc(100% + ${gap}px)` : 'auto';
+    const left = button.offsetLeft;
+    const right = wrap.offsetWidth - left - button.offsetWidth;
+    menu.style.left = align === 'end' ? 'auto' : `${left}px`;
+    menu.style.right = align === 'end' ? `${right}px` : 'auto';
+  };
   const open = () => {
     renderMenu();
     menu.hidden = false;
+    place();
     button.setAttribute('aria-expanded', 'true');
     menu.children[Math.max(0, options.findIndex((o) => o.value === current))]?.focus();
   };
