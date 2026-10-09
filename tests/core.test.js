@@ -329,6 +329,17 @@ test('shortcut icons saved before schema v9 keep their mode, image and color', (
   assert.ok(settings.shortcuts.every((s) => !('image' in s) && !('color' in s) && typeof s.icon === 'object'));
 });
 
+test('normalizeIcon stores a chosen picture background and never invents one', () => {
+  const png = 'data:image/png;base64,iVBORw0KGgo=';
+  assert.equal('bg' in normalizeIcon({ kind: 'upload', data: png }), false);
+  assert.equal('bg' in normalizeIcon({ kind: 'site', url: 'github.com', bg: '' }), false);
+  assert.equal(normalizeIcon({ kind: 'upload', data: png, bg: '#ABC' }).bg, '#aabbcc');
+  assert.equal(normalizeIcon({ kind: 'image', url: 'https://x.example/a.svg', bg: 'mint' }).bg, 'mint');
+  assert.equal('bg' in normalizeIcon({ kind: 'upload', data: png, bg: 'nonsense' }), false);
+  assert.equal('bg' in normalizeIcon({ kind: 'color', bg: 'mint' }), false);
+  assert.equal('bg' in normalizeIcon({ kind: 'emoji', text: 'x', bg: 'mint' }), false);
+});
+
 test('normalizeIcon keeps each kind\'s fields and falls back to a color icon when one is missing', () => {
   const png = 'data:image/png;base64,iVBORw0KGgo=';
   assert.deepEqual(normalizeIcon({ kind: 'site', url: 'github.com', color: '#ABC', text: 'abcd' }), { kind: 'site', color: '#aabbcc', text: 'abc', url: 'https://github.com/' });

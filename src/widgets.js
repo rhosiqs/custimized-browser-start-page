@@ -10,9 +10,16 @@ import { faviconUrl, siteIconSources } from './storage.js';
 export function badge({ name, url, icon: spec }, className = '') {
   const ic = spec || { kind: 'site', color: '' };
   if (ic.kind === 'none') return h('span.badge.no-icon', { 'aria-hidden': 'true', class: className });
-  const swatch = ic.color ? colorOf(ic.color) : null;
+  const swatch = ic.bg || ic.color ? colorOf(ic.bg || ic.color) : null;
   const el = h('span.badge', { 'aria-hidden': 'true', class: className });
   const base = `badge${className ? ` ${className}` : ''}`;
+  // A background the user chose (ic.bg) sits behind the picture; without one the picture gets a contrasting disc
+  // only when it is all white or all black (markTone), and is otherwise left on the plain tile.
+  const chosenBg = () => {
+    if (!ic.bg) return;
+    el.classList.add('has-bg');
+    el.style.background = colorOf(ic.bg).fill;
+  };
   const letter = () => {
     el.className = `${base}${ic.kind === 'emoji' ? ' plain' : ''}`;
     delete el.dataset.tone;
@@ -27,6 +34,8 @@ export function badge({ name, url, icon: spec }, className = '') {
   if (picture) {
     const img = h('img', { src: picture, alt: '', draggable: 'false', referrerpolicy: 'no-referrer' });
     img.onerror = letter;
+    if (ic.bg) chosenBg();
+    else img.onload = () => markTone(el, img);
     el.append(img);
   } else if (sources.length) {
     el.classList.add('site');
@@ -39,6 +48,7 @@ export function badge({ name, url, icon: spec }, className = '') {
       img.onload = async () => {
         if (img.naturalWidth < 2) tryNext(index + 1);
         else if (source.chromeCache && await isChromeDefaultIcon(img)) tryNext(index + 1);
+        else if (ic.bg) { delete el.dataset.tone; chosenBg(); }
         else markTone(el, img);
       };
       img.src = source.src;
@@ -66,13 +76,24 @@ export function launcherMark(group) {
   // Emoji are wider than letters: three in a row only fit the 40px circle at a smaller size.
   const tight = firstGraphemes(letters, 2) !== letters && /\p{Extended_Pictographic}/u.test(letters);
   const label = () => h(`span.launcher-label${tight ? '.tight' : ''}`, {}, letters);
-  if (ic.kind === 'upload' && ic.data) return h('img.launcher-img', { src: ic.data, alt: '', draggable: 'false' });
-  if (ic.kind === 'image' && ic.url) {
-    const img = h('img.launcher-img', { alt: '', draggable: 'false', referrerpolicy: 'no-referrer' });
-    img.onerror = () => img.replaceWith(label());
-    img.src = ic.url;
-    return img;
-  }
+  // An uploaded or linked picture sits on a disc: the user's chosen background, else a contrasting one when the
+  // picture is all white or all black (markTone), else nothing.
+  const pictureDisc = (src, referrer) => {
+    const disc = h('span.launcher-site.picture');
+    const img = h('img', { alt: '', draggable: 'false', ...(referrer ? { referrerpolicy: 'no-referrer' } : {}) });
+    img.onerror = () => disc.replaceWith(label());
+    if (ic.bg) {
+      disc.classList.add('has-bg');
+      disc.style.background = colorOf(ic.bg).fill;
+    } else {
+      img.onload = () => markTone(disc, img);
+    }
+    img.src = src;
+    disc.append(img);
+    return disc;
+  };
+  if (ic.kind === 'upload' && ic.data) return pictureDisc(ic.data, false);
+  if (ic.kind === 'image' && ic.url) return pictureDisc(ic.url, true);
   const sources = ic.kind === 'site' ? siteIconSources(ic.url || group.links[0]?.url || '') : [];
   if (!sources.length) return ic.kind === 'color' && !ic.letter ? null : label();
   const disc = h('span.launcher-site');
@@ -84,6 +105,7 @@ export function launcherMark(group) {
     img.onload = async () => {
       if (img.naturalWidth < 2) tryNext(index + 1);
       else if (source.chromeCache && await isChromeDefaultIcon(img)) tryNext(index + 1);
+      else if (ic.bg) { delete disc.dataset.tone; disc.classList.add('has-bg'); disc.style.background = colorOf(ic.bg).fill; }
       else markTone(disc, img);
     };
     img.src = source.src;

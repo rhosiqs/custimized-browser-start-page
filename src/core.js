@@ -453,13 +453,16 @@ function text(value, max = 120) {
 // ---------- Icons ----------
 
 // One icon model serves shortcuts, launchers and profiles. Fields by kind:
-//   site    { color, text, url }   the website's own logo; url '' means the item's own address
-//   image   { color, text, url }   an image from the web
-//   upload  { color, text, data }  an uploaded image (data URL)
+//   site    { color, text, url, bg? }   the website's own logo; url '' means the item's own address
+//   image   { color, text, url, bg? }   an image from the web
+//   upload  { color, text, data, bg? }  an uploaded image (data URL)
 //   emoji   { text }               an emoji or a few characters on a plain disc
 //   color   { color, letter, text } a solid color with a letter (text, else the name's first letter) or none
 //   none    { }                    nothing (profiles only)
 // color is a SWATCHES key or #rrggbb; for site, image and upload it shows behind the letter shown when the picture can't load.
+// bg (site, image, upload only) is the user's chosen background behind the picture, a SWATCHES key or #rrggbb. It is
+// stored only when chosen; without it the page picks a contrasting disc by itself when a picture is all white or all
+// black (iconTone), and otherwise shows the picture on the plain tile. Nothing is ever forced.
 export function siteIcon(color = 'green') {
   return { kind: 'site', color, text: '', url: '' };
 }
@@ -499,8 +502,10 @@ export function normalizeIcon(raw, { color = 'green', allowNone = false, require
   if (kind === 'emoji' && !letters) kind = 'color';
   if (kind === 'emoji') return { kind, text: letters };
   if (kind === 'color') return { kind, color: fill, letter: src.letter !== false, text: letters };
-  if (kind === 'upload') return { kind, color: fill, text: letters, data };
-  return { kind, color: fill, text: letters, url };
+  const bg = pickColor(src.bg, Object.keys(SWATCHES), '');
+  const withBg = bg ? { bg } : {};
+  if (kind === 'upload') return { kind, color: fill, text: letters, data, ...withBg };
+  return { kind, color: fill, text: letters, url, ...withBg };
 }
 
 // The letters an icon shows when it has no picture: its own text, else the name's first character (an emoji stays whole).

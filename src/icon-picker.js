@@ -17,7 +17,7 @@ const KINDS = [
 // for a website address when there is no item address (profiles). onApply gets the new icon; onReset (optional)
 // adds a "Default icon" button and is called instead.
 export function openIconPicker({ icon: current, name, url = '', allowNone = false, neutral = false, requireUrl = false, subject = name, onApply, onReset }) {
-  const draft = { kind: current.kind, color: neutral ? '' : 'green', letter: true, text: '', url: '', data: '', ...current };
+  const draft = { kind: current.kind, color: neutral ? '' : 'green', letter: true, text: '', url: '', data: '', bg: '', ...current };
   const options = { color: neutral ? '' : 'green', allowNone, requireUrl };
   let fileMsg = '';
 
@@ -144,13 +144,27 @@ export function openIconPicker({ icon: current, name, url = '', allowNone = fals
         }
       };
 
-      // The color shows behind a letter, and behind a picture while it loads or when it fails.
+      // Color kind: the disc's color. Picture kinds: an optional background behind the picture. It starts on Auto (a
+      // contrasting disc only for an all-white or all-black picture, nothing otherwise) and is never set unless chosen.
       const renderColor = () => {
         const show = ['site', 'image', 'upload', 'color'].includes(draft.kind);
+        const picture = ['site', 'image', 'upload'].includes(draft.kind);
         colorRow.hidden = !show;
-        colorRow.replaceChildren(h('legend', {}, 'Color'),
-          swatchPicker({ value: draft.color, label: 'Icon color', onChange: (color) => { draft.color = color; refresh(); } }),
-          h('span.note', {}, draft.kind === 'color' ? 'The color of the disc.' : 'Shown behind the letter when the picture is missing.'));
+        if (!picture) {
+          colorRow.replaceChildren(h('legend', {}, 'Color'),
+            swatchPicker({ value: draft.color, label: 'Icon color', onChange: (color) => { draft.color = color; refresh(); } }),
+            h('span.note', {}, 'The color of the disc.'));
+          return;
+        }
+        const auto = h('button.btn.round.small', {
+          type: 'button', 'aria-pressed': String(!draft.bg),
+          onclick: () => { draft.bg = ''; renderColor(); refresh(); }
+        }, 'Auto');
+        colorRow.replaceChildren(h('legend', {}, 'Background'),
+          h('div.inline', { style: { gap: '10px' } },
+            auto,
+            swatchPicker({ value: draft.bg, label: 'Icon background', onChange: (color) => { draft.bg = color; auto.setAttribute('aria-pressed', 'false'); refresh(); } })),
+          h('span.note', {}, 'Auto adds a contrasting disc only when the picture is all white or all black. Pick a color to always use it behind the picture and the letter.'));
       };
 
       const renderKinds = (focus = false) => {
