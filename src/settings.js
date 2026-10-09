@@ -365,8 +365,10 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
       // The shortcut editor opens over Settings and edits the draft, so changes wait for Save.
       const shortcutsTab = () => {
         const list = draft.shortcuts;
-        const add = h('button.btn.primary', { type: 'button', style: { alignSelf: 'flex-start' }, onclick: () => edit(null) }, 'Add shortcut');
-        const edit = (id) => openShortcutEditor(id, {
+        const add = h('button.btn.primary', { type: 'button', onclick: () => edit(null) }, 'Add shortcut');
+        const addGroup = h('button.btn.outline', { type: 'button', onclick: () => edit(null, true) }, icon('plus', 14, 2.2), 'Add group');
+        const edit = (id, newGroup = false) => openShortcutEditor(id, {
+          newGroup,
           shortcuts: draft.shortcuts,
           commit: (fn) => {
             change(() => fn(draft.shortcuts));
@@ -398,7 +400,8 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
         return [
           h('span.note', {}, 'Shortcuts show below the search boxes. Edit opens the same editor as the page; changes apply when you save.'),
           list.length ? h('ul.list', {}, ...items) : h('p.note', {}, 'No shortcuts yet.'),
-          add
+          h('div.inline', {}, add, addGroup),
+          h('span.note', {}, 'A group is a category: it appears once a shortcut is saved into it, so Add group starts with its first shortcut.')
         ];
       };
 

@@ -306,6 +306,7 @@ input:focus-visible { outline-offset: 2px; }
   font-size: 12px;
   font-weight: 700;
 }
+.chip.add-group { display: inline-flex; align-items: center; gap: 2px; border-style: dashed; }
 .chip[aria-pressed='true'] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
 .chip .count { font-weight: 400; opacity: 0.85; }
 .pager { display: flex; align-items: center; gap: 2px; margin-right: 6px; }
@@ -760,7 +761,7 @@ fieldset.plain { margin: 0; padding: 0; border: 0; display: flex; flex-direction
 fieldset.plain legend { padding: 0; margin-bottom: 6px; font-size: 14px; font-weight: 700; }
 
 /* Settings */
-.settings { width: 760px; height: min(720px, calc(100% - 120px)); }
+.settings { width: 760px; height: calc(100% - 48px); max-height: calc(100% - 48px); }
 .settings .dialog-head { padding: 28px 36px 14px; border-bottom: 0; }
 .settings .dialog-head h1 { font-size: 32px; letter-spacing: 0.12em; }
 .tabs { display: flex; gap: 2px; padding: 0 28px; border-bottom: 1px solid var(--divider); }

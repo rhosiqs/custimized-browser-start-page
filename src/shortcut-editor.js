@@ -22,7 +22,8 @@ async function fetchSiteName(url, signal) {
 
 // By default edits are saved at once. Settings passes its draft list and a commit that edits it
 // instead; the editor then opens over Settings and the change waits for its Save.
-export function openShortcutEditor(id, { category = '', shortcuts, commit } = {}) {
+// newGroup opens the editor with the new-category field ready, for "Add group" (a group exists once it holds a shortcut).
+export function openShortcutEditor(id, { category = '', shortcuts, commit, newGroup = false } = {}) {
   const inSettings = Boolean(commit);
   const list = shortcuts || store.settings.shortcuts;
   const apply = commit || ((fn) => update((settings) => fn(settings.shortcuts)));
@@ -78,14 +79,14 @@ export function openShortcutEditor(id, { category = '', shortcuts, commit } = {}
 
       // Category, with a free-text field for a new one
       const newCategory = h('input.input.compact', {
-        type: 'text', placeholder: 'New category name', 'aria-label': 'New category name', hidden: true,
+        type: 'text', placeholder: 'New category name', 'aria-label': 'New category name', hidden: !newGroup,
         oninput: () => { draft.category = newCategory.value.trim(); refresh(); }
       });
       // A category is optional; uncategorized shortcuts show under All only.
       const categoryOptions = [{ value: '', label: 'No category' }, ...[...new Set([...categories, draft.category].filter(Boolean))].map((c) => ({ value: c, label: c }))];
       const categoryPicker = dropdown({
         labelId: 'sc-cat-lbl',
-        value: draft.category,
+        value: newGroup ? NEW_CATEGORY : draft.category,
         options: [...categoryOptions, { value: NEW_CATEGORY, label: 'New category…', action: true }],
         onChange: (value) => {
           if (value === NEW_CATEGORY) {
@@ -124,7 +125,7 @@ export function openShortcutEditor(id, { category = '', shortcuts, commit } = {}
         urlMsg.className = `msg ${check.ok ? 'ok' : draft.url.trim() ? 'bad' : ''}`;
         urlMsg.replaceChildren(icon(check.ok ? 'check' : 'alert', 14, 2.2), check.ok ? `Saved as ${check.url}` : check.msg);
         url.setAttribute('aria-invalid', String(!check.ok && draft.url.trim() !== ''));
-        save.disabled = !check.ok || !draft.name.trim();
+        save.disabled = !check.ok || !draft.name.trim() || (newGroup && !draft.category.trim());
         return check;
       };
 
@@ -180,7 +181,7 @@ export function openShortcutEditor(id, { category = '', shortcuts, commit } = {}
 
       dialog.append(
         h('div.dialog-head', {},
-          h('div.titles', {}, h('span.kicker', {}, 'SHORTCUT'), h('h1', { id: 'ed-title' }, existing ? 'Edit shortcut' : 'Add shortcut')),
+          h('div.titles', {}, h('span.kicker', {}, 'SHORTCUT'), h('h1', { id: 'ed-title' }, existing ? 'Edit shortcut' : newGroup ? 'Add group' : 'Add shortcut')),
           h('button.close-btn', { type: 'button', 'aria-label': 'Close', onclick: close }, icon('close'))),
         h('div.dialog-body', {},
           preview,
@@ -203,6 +204,7 @@ export function openShortcutEditor(id, { category = '', shortcuts, commit } = {}
           save)
       );
       refresh();
+      if (newGroup) queueMicrotask(() => newCategory.focus());
     }
   });
 }
