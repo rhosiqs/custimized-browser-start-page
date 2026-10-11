@@ -2,6 +2,11 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.12.2 — 2026-10-11
+
+### Fixed
+- Hovering a shortcut tile shows the normal link pointer instead of the grab (hand) cursor. The grab cursor appears only while a tile is being dragged.
+
 ## v1.12.1 — 2026-10-09
 
 ### Fixed

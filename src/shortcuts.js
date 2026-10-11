@@ -150,6 +150,7 @@ function makeDraggable(wrap, item) {
         if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
         dragging = true;
         wrap.classList.add('dragging');
+        document.documentElement.classList.add('tile-dragging');
       }
       e.preventDefault();
       wrap.style.transform = `translate(${dx / scale}px, ${dy / scale}px)`;
@@ -172,6 +173,7 @@ function makeDraggable(wrap, item) {
       window.addEventListener('click', swallow, { capture: true, once: true });
       setTimeout(() => window.removeEventListener('click', swallow, { capture: true }), 0);
       wrap.classList.remove('dragging');
+      document.documentElement.classList.remove('tile-dragging');
       wrap.style.transform = '';
       clearTarget();
       if (commit && target) {

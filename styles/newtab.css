@@ -349,7 +349,6 @@ input:focus-visible { outline-offset: 2px; }
 
 .grid { display: grid; gap: 8px; }
 .tile-wrap { position: relative; touch-action: none; user-select: none; }
-.tile-wrap[data-id] .tile { cursor: grab; }
 .tile {
   display: flex;
   flex-direction: column;
@@ -420,6 +419,8 @@ input:focus-visible { outline-offset: 2px; }
 .tile-tools .drag { cursor: grab; }
 .tile-tools .remove { color: var(--ink); }
 .tile-tools button:hover { background: var(--surface); }
+/* The grab cursor shows only while a tile is being dragged, not on hover. */
+.tile-dragging, .tile-dragging * { cursor: grabbing !important; }
 .tile-wrap.dragging { z-index: 5; opacity: 0.75; pointer-events: none; }
 .tile-wrap.dragging .tile { background: var(--surface); }
 .tile-wrap.drop-before { box-shadow: -3px 0 0 var(--acc); }
