@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  DEFAULT_PROFILE_ID, FORMATS, backupFileName, buildBackup, readBackup, uniqueProfileName, SWATCHES, changedSharedItems, clone, emptyShared, sharedEditPrompt, colorIcon, defaultProfiles, joinShared, keepSharedFrom, letterOf, nextProfileName, normalizeIcon, normalizeProfiles, normalizeShared, profileIcon, splitShared, stripShared, siteIcon, profileOfSettingsKey, profileSettingsKey, clockLabel, colorOf, iconTone, clockParts, countItems, firstGraphemes, zoneAbbreviation, zoneFromAbbreviation, defaultSettings, detectFormat, historyMatches, isImageDataUrl, isValidEngineUrl, mergeSettings, moveItem,
+  DEFAULT_PROFILE_ID, FORMATS, bookmarkBarFolder, bookmarkItems, backupFileName, buildBackup, readBackup, uniqueProfileName, SWATCHES, changedSharedItems, clone, emptyShared, sharedEditPrompt, colorIcon, defaultProfiles, joinShared, keepSharedFrom, letterOf, nextProfileName, normalizeIcon, normalizeProfiles, normalizeShared, profileIcon, splitShared, stripShared, siteIcon, profileOfSettingsKey, profileSettingsKey, clockLabel, colorOf, iconTone, clockParts, countItems, firstGraphemes, zoneAbbreviation, zoneFromAbbreviation, defaultSettings, detectFormat, historyMatches, isImageDataUrl, isValidEngineUrl, mergeSettings, moveItem,
   nameFromUrl, normalizeDoi, normalizeHex, pageNameFromHtml, normalizeHttpUrl, normalizeSettings, parseBackup, readableOn, recordHistory, relativeZone, routeQuery, serialize
 } from '../src/core.js';
 
@@ -420,6 +420,32 @@ test('layout.showCategories defaults on and keeps an explicit off', () => {
   assert.equal(normalizeSettings({}).settings.layout.showCategories, true);
   assert.equal(normalizeSettings({ layout: { rows: 2 } }).settings.layout.showCategories, true);
   assert.equal(normalizeSettings({ layout: { showCategories: false } }).settings.layout.showCategories, false);
+});
+
+test('layout.showBookmarks is off unless turned on', () => {
+  assert.equal(normalizeSettings({}).settings.layout.showBookmarks, false);
+  assert.equal(normalizeSettings({ layout: { showBookmarks: 'yes' } }).settings.layout.showBookmarks, false);
+  assert.equal(normalizeSettings({ layout: { showBookmarks: true } }).settings.layout.showBookmarks, true);
+});
+
+test('bookmarkBarFolder finds the bar by folderType, then id 1', () => {
+  const bar = { id: '9', folderType: 'bookmarks-bar', children: [] };
+  assert.equal(bookmarkBarFolder([{ id: '0', children: [{ id: '1', children: [] }, bar] }]), bar);
+  const legacy = { id: '1', children: [] };
+  assert.equal(bookmarkBarFolder([{ id: '0', children: [{ id: '2', children: [] }, legacy] }]), legacy);
+  assert.equal(bookmarkBarFolder([]), null);
+});
+
+test('bookmarkItems keeps http(s) links and folders, in order', () => {
+  const folder = { children: [
+    { id: '3', title: 'Docs', url: 'https://docs.example.com/' },
+    { id: '4', title: 'Tool', url: 'javascript:alert(1)' },
+    { id: '5', title: '', children: [{ id: '6', title: '', url: 'http://www.site.org/x' }, { id: '7', title: 'Settings', url: 'chrome://settings' }] }
+  ] };
+  assert.deepEqual(bookmarkItems(folder), [
+    { kind: 'link', id: '3', title: 'Docs', url: 'https://docs.example.com/' },
+    { kind: 'folder', id: '5', title: 'Folder', children: [{ kind: 'link', id: '6', title: 'site.org', url: 'http://www.site.org/x' }] }
+  ]);
 });
 
 test('profiles: the first keeps the old settings key, others get their own', () => {

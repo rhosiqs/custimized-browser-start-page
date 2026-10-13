@@ -1,6 +1,7 @@
 // Entry point for the new tab page: loads settings, renders the blocks, and wires page-wide keys and sync.
 import { clockLabel, clockParts, relativeZone } from './core.js';
 import { applyAppearance } from './appearance.js';
+import { closeBookmarkPopups, renderBookmarks } from './bookmarks.js';
 import { closeDockPopups, renderDock } from './dock.js';
 import { h, isModalOpen } from './dom.js';
 import { closeSearchPopups, focusWebSearch, searchBlock } from './search.js';
@@ -75,6 +76,7 @@ function render() {
   const blocks = store.settings.layout.blocks.map((block) => builders[block]());
   // Blocks are long-lived elements; only re-order them when the layout changed, so focus and typed text survive.
   if (blocks.some((block, i) => page.children[i] !== block) || page.children.length !== blocks.length) page.replaceChildren(...blocks);
+  renderBookmarks(document.getElementById('bookmarks'), store.settings.layout.showBookmarks);
   renderDock(document.getElementById('dock'));
 }
 
@@ -98,6 +100,7 @@ function wireGlobalEvents() {
     closeSearchPopups(keep);
     closeDockPopups(keep);
     closeShortcutPopover(keep);
+    closeBookmarkPopups(keep);
   });
 
   // "/" jumps to web search unless the user is typing somewhere.

@@ -113,7 +113,7 @@ export function defaultSettings() {
         { city: '', tz: 'America/New_York' }
       ]
     },
-    layout: { blocks: ['clocks', 'search', 'shortcuts'], rows: 2, perRow: 8, showCategories: true },
+    layout: { blocks: ['clocks', 'search', 'shortcuts'], rows: 2, perRow: 8, showCategories: true, showBookmarks: false },
     shortcuts: DEFAULT_SHORTCUTS.map(([name, url, category, color], index) => ({
       id: `sc-${index + 1}`, name, url: new URL(url).href, category, icon: siteIcon(color)
     })),
@@ -235,6 +235,30 @@ export function firstGraphemes(value, max) {
 
 export function initialOf(name) {
   return (String(name ?? '').trim().charAt(0) || '?').toUpperCase();
+}
+
+// ---------- Bookmarks ----------
+
+// The browser's bookmarks bar folder in a chrome.bookmarks tree: marked by folderType (Chrome 134+),
+// else id "1", else the root's first folder.
+export function bookmarkBarFolder(tree) {
+  const top = Array.isArray(tree) ? tree[0]?.children : tree?.children;
+  if (!Array.isArray(top)) return null;
+  return top.find((node) => node.folderType === 'bookmarks-bar') || top.find((node) => node.id === '1') || top.find((node) => Array.isArray(node.children)) || null;
+}
+
+// A bookmark folder's contents as links and folders. Only http(s) bookmarks are kept (a bookmarklet or a
+// chrome:// page can't be opened from the page); a link without a title shows its host.
+export function bookmarkItems(folder) {
+  const items = [];
+  for (const node of folder?.children || []) {
+    if (Array.isArray(node.children)) {
+      items.push({ kind: 'folder', id: String(node.id), title: String(node.title || '').trim() || 'Folder', children: bookmarkItems(node) });
+    } else if (/^https?:\/\//i.test(node.url || '')) {
+      items.push({ kind: 'link', id: String(node.id), title: String(node.title || '').trim() || hostOf(node.url), url: node.url });
+    }
+  }
+  return items;
 }
 
 // ---------- Search history ----------
@@ -684,6 +708,7 @@ export function normalizeSettings(input, { fallback = defaultSettings() } = {}) 
     out.layout.rows = clampInt(src.layout.rows, 1, 4, out.layout.rows);
     out.layout.perRow = clampInt(src.layout.perRow, 4, 12, out.layout.perRow);
     out.layout.showCategories = src.layout.showCategories !== false;
+    out.layout.showBookmarks = src.layout.showBookmarks === true;
   }
 
   if (Array.isArray(src.shortcuts)) {
