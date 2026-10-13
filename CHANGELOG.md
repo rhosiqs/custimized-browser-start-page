@@ -2,16 +2,14 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
-## v1.13.2 — 2026-10-13
-
-### Fixed
-- A bookmark folder's menu now closes when the pointer leaves it, even after clicking the folder. Clicking a folder no longer keeps its menu open.
-
 ## v1.13.1 — 2026-10-13
+
+### Added
+- Edit bookmarks from the bar, like Chrome's own bar: right-click a bookmark, a folder, a folder menu or the bar for Open in new tab, Open in new window, Open all, Edit… (name and URL) or Rename…, Delete (with Undo), Add page…, Add folder… and Bookmark manager. Drag a bookmark to reorder it, or drop it on a folder to move it there; holding a dragged bookmark over a folder opens it.
 
 ### Changed
 - The bookmarks bar is smaller (shorter bar, smaller text and icons).
-- Pointing at a bookmark folder (or ») opens its menu without a click; it closes when the pointer leaves. Clicking still keeps the menu open until you click again, press Esc or click elsewhere.
+- Pointing at a bookmark folder (or ») opens its menu without a click; it closes shortly after the pointer leaves, also after clicking the folder. Enter or Space on a folder opens and closes its menu.
 
 ## v1.13.0 — 2026-10-13
 
