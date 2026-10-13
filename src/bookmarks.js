@@ -89,16 +89,16 @@ function draw() {
   const list = h('div.bm-list', {}, ...items.map((item) => itemEl(item)));
   const more = h('button.bm-item.bm-more', {
     type: 'button', 'aria-label': 'More bookmarks', 'aria-haspopup': 'true', 'aria-expanded': 'false', hidden: true,
-    onclick: () => toggleMenu(more, { title: 'More', children: overflow }),
+    onclick: (event) => clickMenu(event, more, { title: 'More', children: overflow }),
     onmouseenter: () => hoverMenu(more, { title: 'More', children: overflow })
   }, icon('chevronsRight', 14, 2));
   let overflow = [];
   nav.replaceChildren(list, more);
   nav.dataset.keep = 'bookmarks';
-  // A menu opened by hovering closes shortly after the pointer leaves the bar and its menu; a clicked one stays.
+  // An open menu closes shortly after the pointer leaves the bar and the menu.
   nav.onmouseenter = () => clearTimeout(view.closeTimer);
   nav.onmouseleave = () => {
-    if (view.menu && !view.menu.pinned) view.closeTimer = setTimeout(() => setMenu(null), 300);
+    if (view.menu) view.closeTimer = setTimeout(() => setMenu(null), 300);
   };
   nav.onkeydown = (event) => {
     if (event.key === 'Escape' && view.menu) {
@@ -127,12 +127,12 @@ function itemEl(item) {
   if (item.kind === 'link') {
     return h('a.bm-item', {
       href: item.url, title: `${item.title}\n${item.url}`,
-      onmouseenter: () => { if (view.menu && !view.menu.pinned) setMenu(null); }
+      onmouseenter: () => { if (view.menu) setMenu(null); }
     }, favicon(item.url), h('span.bm-title', {}, item.title));
   }
   const button = h('button.bm-item', {
     type: 'button', title: item.title, 'aria-haspopup': 'true', 'aria-expanded': 'false',
-    onclick: () => toggleMenu(button, item),
+    onclick: (event) => clickMenu(event, button, item),
     onmouseenter: () => hoverMenu(button, item)
   }, h('span.bm-title', {}, item.title));
   return button;
@@ -143,16 +143,17 @@ function favicon(url) {
   return src ? h('img.bm-icon', { src, alt: '', draggable: 'false' }) : icon('globe', 14, 1.8);
 }
 
-// A click pins the menu open (or closes a pinned one); hovering a folder opens its menu without a click.
-function toggleMenu(anchor, folder) {
-  if (view.menu?.anchor === anchor && view.menu.pinned) setMenu(null);
-  else if (view.menu?.anchor === anchor) view.menu.pinned = true;
-  else setMenu({ anchor, path: [folder], pinned: true });
+// Hovering a folder opens its menu, so a mouse click only makes sure it is open; Enter or Space (a click
+// with detail 0) toggles it for keyboard users.
+function clickMenu(event, anchor, folder) {
+  const open = view.menu?.anchor === anchor;
+  if (open && event.detail === 0) setMenu(null);
+  else if (!open) setMenu({ anchor, path: [folder] });
 }
 
 function hoverMenu(anchor, folder) {
   clearTimeout(view.closeTimer);
-  if (view.menu?.anchor !== anchor) setMenu({ anchor, path: [folder], pinned: Boolean(view.menu?.pinned) });
+  if (view.menu?.anchor !== anchor) setMenu({ anchor, path: [folder] });
 }
 
 // The menu shows one folder at a time; a subfolder opens in place with a Back row.

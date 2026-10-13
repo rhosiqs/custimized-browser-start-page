@@ -2,6 +2,11 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.13.2 — 2026-10-13
+
+### Fixed
+- A bookmark folder's menu now closes when the pointer leaves it, even after clicking the folder. Clicking a folder no longer keeps its menu open.
+
 ## v1.13.1 — 2026-10-13
 
 ### Changed
