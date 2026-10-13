@@ -176,6 +176,17 @@ input:focus-visible { outline-offset: 2px; }
 .bm-menu .option { color: var(--ink); text-decoration: none; min-height: 32px; font-size: 13px; }
 .bm-menu .option svg { flex: none; color: var(--muted); }
 .bm-empty { margin: 0; padding: 6px 10px 8px; font-size: 14px; color: var(--muted); }
+.bm-context { z-index: 9; width: 240px; }
+.bm-context .option { min-height: 32px; font-size: 13px; color: var(--ink); }
+.bm-context .option:disabled { color: var(--disabled); background: transparent; }
+.bm-sep { width: 100%; margin: 4px 0; border: 0; border-top: 1px solid var(--divider); }
+/* Drop marks while dragging a bookmark: a line before or after the target, or a highlight for into a folder. */
+.bm-item[data-drop='before'] { box-shadow: inset 2px 0 0 var(--acc); }
+.bm-item[data-drop='after'] { box-shadow: inset -2px 0 0 var(--acc); }
+.bm-menu .option[data-drop='before'] { box-shadow: inset 0 2px 0 var(--acc); }
+.bm-menu .option[data-drop='after'] { box-shadow: inset 0 -2px 0 var(--acc); }
+[data-drop='into'] { background: var(--green-soft); outline: 2px solid var(--acc); outline-offset: -2px; }
+.bm-editor { width: 480px; }
 
 .kicker {
   font-size: 13px;
@@ -952,6 +963,7 @@ fieldset.plain legend { padding: 0; margin-bottom: 6px; font-size: 14px; font-we
   font-weight: 700;
 }
 .toast[hidden] { display: none; }
+.toast-action { margin-left: 12px; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-decoration: underline; }
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }

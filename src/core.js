@@ -248,17 +248,47 @@ export function bookmarkBarFolder(tree) {
 }
 
 // A bookmark folder's contents as links and folders. Only http(s) bookmarks are kept (a bookmarklet or a
-// chrome:// page can't be opened from the page); a link without a title shows its host.
+// chrome:// page can't be opened from the page); a link without a title shows its host. parentId and index are
+// the node's real place in Chrome (skipped bookmarks still count), so moves and inserts land where they should.
 export function bookmarkItems(folder) {
   const items = [];
-  for (const node of folder?.children || []) {
+  (folder?.children || []).forEach((node, position) => {
+    const place = { id: String(node.id), parentId: String(node.parentId ?? folder.id ?? ''), index: Number.isInteger(node.index) ? node.index : position };
     if (Array.isArray(node.children)) {
-      items.push({ kind: 'folder', id: String(node.id), title: String(node.title || '').trim() || 'Folder', children: bookmarkItems(node) });
+      items.push({ kind: 'folder', ...place, title: String(node.title || '').trim() || 'Folder', children: bookmarkItems(node) });
     } else if (/^https?:\/\//i.test(node.url || '')) {
-      items.push({ kind: 'link', id: String(node.id), title: String(node.title || '').trim() || hostOf(node.url), url: node.url });
+      items.push({ kind: 'link', ...place, title: String(node.title || '').trim() || hostOf(node.url), url: node.url });
     }
-  }
+  });
   return items;
+}
+
+// Finds a folder by id anywhere in bookmarkItems' output.
+export function findBookmarkFolder(items, id) {
+  for (const item of items || []) {
+    if (item.kind !== 'folder') continue;
+    if (item.id === id) return item;
+    const inner = findBookmarkFolder(item.children, id);
+    if (inner) return inner;
+  }
+  return null;
+}
+
+// Where a dragged bookmark goes when dropped before, after or into a target (chrome.bookmarks.move's
+// { parentId, index }; Chrome adjusts the index itself for a move within the same folder). Null when the drop
+// would do nothing or is impossible: onto itself, or a folder into itself or one of its own folders.
+export function bookmarkDropPlace(dragged, target, zone) {
+  if (!dragged || !target || dragged.id === target.id) return null;
+  if (dragged.kind === 'folder' && (zone === 'into' ? findBookmarkFolder([dragged], target.id) : findBookmarkFolder([dragged], target.parentId))) return null;
+  if (zone === 'into') return target.kind === 'folder' ? { parentId: target.id } : null;
+  return { parentId: target.parentId, index: target.index + (zone === 'after' ? 1 : 0) };
+}
+
+// The zone of a drop target under the pointer, from its position along the target (0 to 1): folders take a
+// middle band for dropping into them.
+export function bookmarkDropZone(ratio, isFolder) {
+  if (isFolder && ratio > 0.25 && ratio < 0.75) return 'into';
+  return ratio < 0.5 ? 'before' : 'after';
 }
 
 // ---------- Search history ----------

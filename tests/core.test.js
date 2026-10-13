@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  DEFAULT_PROFILE_ID, FORMATS, bookmarkBarFolder, bookmarkItems, backupFileName, buildBackup, readBackup, uniqueProfileName, SWATCHES, changedSharedItems, clone, emptyShared, sharedEditPrompt, colorIcon, defaultProfiles, joinShared, keepSharedFrom, letterOf, nextProfileName, normalizeIcon, normalizeProfiles, normalizeShared, profileIcon, splitShared, stripShared, siteIcon, profileOfSettingsKey, profileSettingsKey, clockLabel, colorOf, iconTone, clockParts, countItems, firstGraphemes, zoneAbbreviation, zoneFromAbbreviation, defaultSettings, detectFormat, historyMatches, isImageDataUrl, isValidEngineUrl, mergeSettings, moveItem,
+  DEFAULT_PROFILE_ID, FORMATS, bookmarkBarFolder, bookmarkDropPlace, bookmarkDropZone, bookmarkItems, findBookmarkFolder, backupFileName, buildBackup, readBackup, uniqueProfileName, SWATCHES, changedSharedItems, clone, emptyShared, sharedEditPrompt, colorIcon, defaultProfiles, joinShared, keepSharedFrom, letterOf, nextProfileName, normalizeIcon, normalizeProfiles, normalizeShared, profileIcon, splitShared, stripShared, siteIcon, profileOfSettingsKey, profileSettingsKey, clockLabel, colorOf, iconTone, clockParts, countItems, firstGraphemes, zoneAbbreviation, zoneFromAbbreviation, defaultSettings, detectFormat, historyMatches, isImageDataUrl, isValidEngineUrl, mergeSettings, moveItem,
   nameFromUrl, normalizeDoi, normalizeHex, pageNameFromHtml, normalizeHttpUrl, normalizeSettings, parseBackup, readableOn, recordHistory, relativeZone, routeQuery, serialize
 } from '../src/core.js';
 
@@ -443,9 +443,45 @@ test('bookmarkItems keeps http(s) links and folders, in order', () => {
     { id: '5', title: '', children: [{ id: '6', title: '', url: 'http://www.site.org/x' }, { id: '7', title: 'Settings', url: 'chrome://settings' }] }
   ] };
   assert.deepEqual(bookmarkItems(folder), [
-    { kind: 'link', id: '3', title: 'Docs', url: 'https://docs.example.com/' },
-    { kind: 'folder', id: '5', title: 'Folder', children: [{ kind: 'link', id: '6', title: 'site.org', url: 'http://www.site.org/x' }] }
+    { kind: 'link', id: '3', parentId: '', index: 0, title: 'Docs', url: 'https://docs.example.com/' },
+    { kind: 'folder', id: '5', parentId: '', index: 2, title: 'Folder', children: [{ kind: 'link', id: '6', parentId: '5', index: 0, title: 'site.org', url: 'http://www.site.org/x' }] }
   ]);
+});
+
+test('bookmarkItems keeps Chrome\'s parentId and index', () => {
+  const items = bookmarkItems({ id: '1', children: [{ id: '8', parentId: '1', index: 4, title: 'A', url: 'https://a.com/' }] });
+  assert.equal(items[0].parentId, '1');
+  assert.equal(items[0].index, 4);
+});
+
+const bmTree = bookmarkItems({ id: '1', children: [
+  { id: '10', parentId: '1', index: 0, title: 'F', children: [{ id: '11', parentId: '10', index: 0, title: 'Inner', children: [] }] },
+  { id: '20', parentId: '1', index: 1, title: 'A', url: 'https://a.com/' },
+  { id: '30', parentId: '1', index: 2, title: 'B', url: 'https://b.com/' }
+] });
+const [bmF, bmA, bmB] = bmTree;
+
+test('findBookmarkFolder searches nested folders', () => {
+  assert.equal(findBookmarkFolder(bmTree, '11').title, 'Inner');
+  assert.equal(findBookmarkFolder(bmTree, '20'), null);
+});
+
+test('bookmarkDropPlace puts a bookmark before, after or into a target', () => {
+  assert.deepEqual(bookmarkDropPlace(bmB, bmA, 'before'), { parentId: '1', index: 1 });
+  assert.deepEqual(bookmarkDropPlace(bmA, bmB, 'after'), { parentId: '1', index: 3 });
+  assert.deepEqual(bookmarkDropPlace(bmA, bmF, 'into'), { parentId: '10' });
+  assert.equal(bookmarkDropPlace(bmA, bmB, 'into'), null, 'only folders take drops into them');
+  assert.equal(bookmarkDropPlace(bmA, bmA, 'after'), null);
+  assert.equal(bookmarkDropPlace(bmF, bmF.children[0], 'into'), null, 'a folder never goes into its own subfolder');
+  assert.equal(bookmarkDropPlace(bmF, bmF.children[0], 'before'), null);
+});
+
+test('bookmarkDropZone gives folders a middle band', () => {
+  assert.equal(bookmarkDropZone(0.1, true), 'before');
+  assert.equal(bookmarkDropZone(0.5, true), 'into');
+  assert.equal(bookmarkDropZone(0.9, true), 'after');
+  assert.equal(bookmarkDropZone(0.5, false), 'after');
+  assert.equal(bookmarkDropZone(0.49, false), 'before');
 });
 
 test('profiles: the first keeps the old settings key, others get their own', () => {
