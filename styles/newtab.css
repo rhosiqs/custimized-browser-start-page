@@ -142,26 +142,26 @@ input:focus-visible { outline-offset: 2px; }
   display: flex;
   align-items: center;
   gap: 4px;
-  height: 44px;
-  padding: 0 24px;
+  height: 34px;
+  padding: 0 16px;
   /* A thin line under the bar, like Chrome's own bookmarks bar. */
   border-bottom: 1px solid var(--divider);
 }
 .bookmarks[hidden] { display: none; }
-.stage.has-bookmarks .page { padding-top: 56px; }
+.stage.has-bookmarks .page { padding-top: 44px; }
 .bm-list { flex: 1; min-width: 0; display: flex; gap: 2px; overflow: hidden; }
 .bm-item {
   flex: none;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  max-width: 200px;
-  height: 30px;
-  padding: 0 10px;
+  gap: 6px;
+  max-width: 180px;
+  height: 26px;
+  padding: 0 8px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 6px;
   background: transparent;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--sub);
   text-decoration: none;
 }
@@ -169,11 +169,11 @@ input:focus-visible { outline-offset: 2px; }
 .bm-item:hover, .bm-item[aria-expanded='true'] { background: var(--surface); color: var(--ink); }
 .bm-item svg { flex: none; color: var(--muted); }
 .bm-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bm-icon { width: 16px; height: 16px; flex: none; object-fit: contain; }
-.bm-more { padding: 0 10px; }
-.bm-note { padding: 0 12px; font-size: 14px; color: var(--muted); }
-.bm-menu { top: calc(100% + 4px); width: 280px; max-height: 560px; overflow-y: auto; }
-.bm-menu .option { color: var(--ink); text-decoration: none; min-height: 36px; font-size: 14px; }
+.bm-icon { width: 14px; height: 14px; flex: none; object-fit: contain; }
+.bm-more { padding: 0 6px; }
+.bm-note { padding: 0 8px; font-size: 13px; color: var(--muted); }
+.bm-menu { top: calc(100% + 2px); width: 260px; max-height: 560px; overflow-y: auto; }
+.bm-menu .option { color: var(--ink); text-decoration: none; min-height: 32px; font-size: 13px; }
 .bm-menu .option svg { flex: none; color: var(--muted); }
 .bm-empty { margin: 0; padding: 6px 10px 8px; font-size: 14px; color: var(--muted); }
 
