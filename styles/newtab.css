@@ -136,17 +136,20 @@ input:focus-visible { outline-offset: 2px; }
 .bookmarks {
   position: absolute;
   z-index: 7;
-  top: 10px;
-  left: 24px;
-  right: 24px;
+  top: 0;
+  left: 0;
+  right: 0;
   display: flex;
   align-items: center;
   gap: 4px;
-  height: 34px;
+  height: 44px;
+  padding: 0 24px;
+  /* A thin line under the bar, like Chrome's own bookmarks bar. */
+  border-bottom: 1px solid var(--divider);
 }
 .bookmarks[hidden] { display: none; }
 .stage.has-bookmarks .page { padding-top: 56px; }
-.bm-list { flex: 1; min-width: 0; display: flex; gap: 6px; overflow: hidden; }
+.bm-list { flex: 1; min-width: 0; display: flex; gap: 2px; overflow: hidden; }
 .bm-item {
   flex: none;
   display: inline-flex;
@@ -155,7 +158,7 @@ input:focus-visible { outline-offset: 2px; }
   max-width: 200px;
   height: 30px;
   padding: 0 10px;
-  border: 1px solid var(--divider);
+  border: 0;
   border-radius: 8px;
   background: transparent;
   font-size: 14px;

@@ -163,7 +163,7 @@ function setMenu(menu) {
     h('div.menu-head', {}, folder.title.toUpperCase()),
     ...(rows.length ? rows : [h('p.bm-empty', {}, 'Empty folder')]));
   // Under its button, kept inside the bar's width.
-  const right = barEl.clientWidth - 280;
+  const right = barEl.clientWidth - 24 - 280;
   el.style.left = `${Math.max(0, Math.min(menu.anchor.offsetLeft, right))}px`;
   barEl.append(el);
 }
