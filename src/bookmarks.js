@@ -6,7 +6,7 @@ import { faviconUrl } from './storage.js';
 
 export const BOOKMARKS_PERMISSION = { permissions: ['bookmarks'] };
 const api = typeof chrome !== 'undefined' ? chrome : null;
-const view = { items: null, granted: null, menu: null, listening: false };
+const view = { items: null, granted: null, menu: null, listening: false, closeTimer: 0 };
 let barEl = null;
 
 // Access granted or removed (here, in another tab or at chrome://extensions): check again.
@@ -89,11 +89,17 @@ function draw() {
   const list = h('div.bm-list', {}, ...items.map((item) => itemEl(item)));
   const more = h('button.bm-item.bm-more', {
     type: 'button', 'aria-label': 'More bookmarks', 'aria-haspopup': 'true', 'aria-expanded': 'false', hidden: true,
-    onclick: () => toggleMenu(more, { title: 'More', children: overflow })
-  }, icon('chevronsRight', 16, 2));
+    onclick: () => toggleMenu(more, { title: 'More', children: overflow }),
+    onmouseenter: () => hoverMenu(more, { title: 'More', children: overflow })
+  }, icon('chevronsRight', 14, 2));
   let overflow = [];
   nav.replaceChildren(list, more);
   nav.dataset.keep = 'bookmarks';
+  // A menu opened by hovering closes shortly after the pointer leaves the bar and its menu; a clicked one stays.
+  nav.onmouseenter = () => clearTimeout(view.closeTimer);
+  nav.onmouseleave = () => {
+    if (view.menu && !view.menu.pinned) view.closeTimer = setTimeout(() => setMenu(null), 300);
+  };
   nav.onkeydown = (event) => {
     if (event.key === 'Escape' && view.menu) {
       event.preventDefault();
@@ -119,23 +125,34 @@ function draw() {
 
 function itemEl(item) {
   if (item.kind === 'link') {
-    return h('a.bm-item', { href: item.url, title: `${item.title}\n${item.url}` }, favicon(item.url), h('span.bm-title', {}, item.title));
+    return h('a.bm-item', {
+      href: item.url, title: `${item.title}\n${item.url}`,
+      onmouseenter: () => { if (view.menu && !view.menu.pinned) setMenu(null); }
+    }, favicon(item.url), h('span.bm-title', {}, item.title));
   }
   const button = h('button.bm-item', {
     type: 'button', title: item.title, 'aria-haspopup': 'true', 'aria-expanded': 'false',
-    onclick: () => toggleMenu(button, item)
+    onclick: () => toggleMenu(button, item),
+    onmouseenter: () => hoverMenu(button, item)
   }, h('span.bm-title', {}, item.title));
   return button;
 }
 
 function favicon(url) {
   const src = faviconUrl(url, 32);
-  return src ? h('img.bm-icon', { src, alt: '', draggable: 'false' }) : icon('globe', 16, 1.8);
+  return src ? h('img.bm-icon', { src, alt: '', draggable: 'false' }) : icon('globe', 14, 1.8);
 }
 
+// A click pins the menu open (or closes a pinned one); hovering a folder opens its menu without a click.
 function toggleMenu(anchor, folder) {
-  if (view.menu?.anchor === anchor) setMenu(null);
-  else setMenu({ anchor, path: [folder] });
+  if (view.menu?.anchor === anchor && view.menu.pinned) setMenu(null);
+  else if (view.menu?.anchor === anchor) view.menu.pinned = true;
+  else setMenu({ anchor, path: [folder], pinned: true });
+}
+
+function hoverMenu(anchor, folder) {
+  clearTimeout(view.closeTimer);
+  if (view.menu?.anchor !== anchor) setMenu({ anchor, path: [folder], pinned: Boolean(view.menu?.pinned) });
 }
 
 // The menu shows one folder at a time; a subfolder opens in place with a Back row.
@@ -163,7 +180,7 @@ function setMenu(menu) {
     h('div.menu-head', {}, folder.title.toUpperCase()),
     ...(rows.length ? rows : [h('p.bm-empty', {}, 'Empty folder')]));
   // Under its button, kept inside the bar's width.
-  const right = barEl.clientWidth - 24 - 280;
+  const right = barEl.clientWidth - 16 - 260;
   el.style.left = `${Math.max(0, Math.min(menu.anchor.offsetLeft, right))}px`;
   barEl.append(el);
 }

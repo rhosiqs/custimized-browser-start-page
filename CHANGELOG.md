@@ -2,6 +2,12 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.13.1 — 2026-10-13
+
+### Changed
+- The bookmarks bar is smaller (shorter bar, smaller text and icons).
+- Pointing at a bookmark folder (or ») opens its menu without a click; it closes when the pointer leaves. Clicking still keeps the menu open until you click again, press Esc or click elsewhere.
+
 ## v1.13.0 — 2026-10-13
 
 ### Added
