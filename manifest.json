@@ -2,13 +2,14 @@
   "manifest_version": 3,
   "name": "Start Page",
   "short_name": "Start Page",
-  "version": "1.12.2",
+  "version": "1.13.0",
   "description": "A calm, local-first new tab page: clocks, smart web/AI/academic search, shortcuts and a launcher dock.",
   "minimum_chrome_version": "104",
   "chrome_url_overrides": {
     "newtab": "newtab.html"
   },
   "permissions": ["storage", "favicon"],
+  "optional_permissions": ["bookmarks"],
   "optional_host_permissions": ["http://*/*", "https://*/*"],
   "icons": {
     "16": "icons/icon-16.png",

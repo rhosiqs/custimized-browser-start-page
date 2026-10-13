@@ -1,7 +1,7 @@
 # Start Page — Chrome New Tab Extension
 
 <p>
-  <img alt="Version" src="https://img.shields.io/badge/version-v1.12.2-blue">
+  <img alt="Version" src="https://img.shields.io/badge/version-v1.13.0-blue">
   <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green">
 </p>
 
@@ -24,6 +24,7 @@ A Chrome extension (Manifest V3) that replaces the new tab page with a calm, loc
 - **Appearance** — light, dark or system theme; green, brown or ink accent; solid, gradient or image background, with separate background colors for the light and dark themes (dark defaults to #333333).
 - **Colors** — every color picker (accent, background, icons) shows two base colors and a + button; the + opens the other preset colors and a field for any #HEX color.
 - **Data** — export the current profile or all profiles to JSON, YAML, TOML or text, named `<date>-<profile or all>.<ext>`; imports are reviewed (fixed, skipped; choose which profiles; merge, replace or separate as new profiles) before anything changes. A backup restores every setting, icons included; merging takes the file's version of any shortcut or launcher you already have and keeps the rest.
+- **Bookmarks bar (optional)** — Settings → Layout can show your browser's bookmarks bar across the top of the page, with website icons and a thin line under it as in Chrome. Folders show their name only and open a menu (subfolders open inside it), and bookmarks that don't fit go under ». Changes you make to bookmarks in Chrome show up at once. Only `http(s)` bookmarks are listed. Chrome doesn't let extensions hide its own bookmarks bar; turn that off with Ctrl+Shift+B (⌘+Shift+B on Mac).
 - Keyboard: `/` focuses web search; `Esc` closes menus and dialogs; Ctrl/⌘ + Enter or click opens in a new tab.
 
 ## Install (unpacked)
@@ -46,6 +47,7 @@ Settings and search history are stored in `chrome.storage.local` on this device 
 
 - `storage` — save settings and history.
 - `optional_host_permissions` (all `http(s)` sites) — not granted at install, so updating never disables the extension. The shortcut editor offers a "Read names from websites" button; if you allow it, the editor reads the title of the address you type to prefill the name (one request to that address, without cookies or referrer, nothing else is read). Without it, a name is guessed from the address.
+- `optional_permissions` (`bookmarks`) — not granted at install. Turning on the bookmarks bar in Settings → Layout asks for it; the page then reads your bookmarks bar folder to show it (read only; nothing is changed or sent anywhere).
 - `favicon` — show website icons from Chrome’s local favicon cache (no request to Google). When Chrome has no icon for a site yet, the page tries that site’s own `/favicon.ico` and `/apple-touch-icon.png`, then shows a letter.
 
 Fonts (Nunito, Noto Sans TC) are bundled in `fonts/`, so the page loads them from disk. Network requests happen only for Datamuse suggestions in the Web box, the page you enter in the shortcut editor (for its name), icon files from your shortcut and launcher sites (as above), image links you set as icons (loaded without a referrer), and the destinations you open.
@@ -74,6 +76,7 @@ For quick UI work outside the extension, serve the folder (`python3 -m http.serv
 | `src/storage.js` | `chrome.storage.local` (or `localStorage`) persistence and favicon URLs. |
 | `src/state.js` | In-memory profiles/settings/history store with save-and-notify updates and profile actions. |
 | `src/search.js`, `src/shortcuts.js`, `src/dock.js` | Main page blocks. |
+| `src/bookmarks.js` | Optional bookmarks bar at the top of the page. |
 | `src/shortcut-editor.js`, `src/settings.js`, `src/import-review.js`, `src/icon-picker.js` | Dialogs, including the shared icon picker. |
 | `src/dom.js`, `src/widgets.js`, `src/appearance.js` | DOM helpers, shared widgets, theme application. |
 | `icons/` | Extension icons. |

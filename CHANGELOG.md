@@ -2,6 +2,11 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.13.0 — 2026-10-13
+
+### Added
+- Optional bookmarks bar: Settings → Layout → Bookmarks shows your browser's bookmarks bar across the top of the page, with website icons and a thin line under it as in Chrome. Folders show their name only and open a menu (subfolders open inside it), bookmarks that don't fit go under », and bookmark changes in Chrome show up at once. It is off by default; turning it on asks for the optional `bookmarks` permission (not granted at install, so updating doesn't disable the extension). Chrome doesn't let extensions hide its own bookmarks bar; Ctrl+Shift+B (⌘+Shift+B on Mac) turns that off.
+
 ## v1.12.2 — 2026-10-11
 
 ### Fixed

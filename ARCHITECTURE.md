@@ -9,6 +9,7 @@ newtab.html ─ main.js ─┬─ state.js ── storage.js ── chrome.stora
                        ├─ search.js
                        ├─ shortcuts.js ── shortcut-editor.js ── icon-picker.js
                        ├─ dock.js ─────── settings.js ── import-review.js
+                       ├─ bookmarks.js ── chrome.bookmarks (optional permission)
                        └─ appearance.js
            (all UI modules use dom.js + widgets.js; all logic lives in core.js)
 ```
@@ -37,6 +38,12 @@ The page reproduces the design canvas’s stage rule: the 1440×810 design is sc
 - The Settings dialog edits a draft; appearance previews live via `applyAppearance(draft)` and reverts on close. Save validates engines and launcher links, then commits once.
 - A backup file is a bundle `{ startPageBundle: 1, profiles: [{ name, icon?, settings }] }` (`buildBackup`, `readBackup`); a bare settings object from before v1.12.0 reads as one profile named after the file. Imports parse the file (`parseBackup`), list its profiles (`readBackup`; the review dialog lets the user choose, all by default), normalize each into its own report, and apply as **merge** (`mergeSettings`, starting from current settings; a shortcut or launcher in both takes the file's version, keeping its id and any links only on this device) or **replace** (starting from defaults, but keeping the shortcuts and launchers shown on all profiles, `keepSharedFrom`); with several profiles chosen, they are combined into the profile in use (replace starts from the first). The third mode, **separate as new profiles**, calls `importProfiles` in `state.js`: each chosen profile becomes a new profile with its own name (`uniqueProfileName` adds " (2)" etc.) and icon, showing the shared items, and the profile in use stays as it is. An import never changes what is shared: its items are read without the shared flag (`stripShared`). Export (`backupOf` in `state.js`) writes the saved settings of the profile in use or of every profile, whole, so every format round-trips exactly; the file is named by `backupFileName` (`<date>-<profile name or all>.<ext>`).
 - Other open new tabs pick up saved changes through `chrome.storage.onChanged`.
+
+## Bookmarks bar
+
+`layout.showBookmarks` (off by default) shows `#bookmarks`, a full-width bar at the top of the stage with a thin divider line under it (as in Chrome); `.stage.has-bookmarks` adds room above the page column. `bookmarks.js` needs the optional `bookmarks` permission: Settings › Layout's switch requests it when turned on (the click is the user gesture Chrome needs) and stays off if it is refused; if the permission is later removed, the bar shows an "Allow access to bookmarks" button instead. `chrome.permissions.onAdded`/`onRemoved` make it check again.
+
+It reads `chrome.bookmarks.getTree()`, picks the bar folder (`bookmarkBarFolder` in `core.js`: `folderType: 'bookmarks-bar'`, else id `1`) and flattens it with `bookmarkItems` (http(s) links and folders only), and reloads on any `chrome.bookmarks` change event. Links are plain `<a>` so Ctrl/middle-click work natively; icons come from Chrome's favicon cache. Items that don't fit are measured after layout (`offsetLeft`, unscaled) and moved into the » menu. A folder opens a `.menu` under its button that shows one folder at a time, with Back for subfolders; it closes on an outside press (`data-keep="bookmarks"`) or Escape. Chrome gives extensions no way to hide its own bookmarks bar.
 
 ## Icons
 

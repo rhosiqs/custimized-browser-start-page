@@ -49,6 +49,8 @@ const ICONS = {
   upload: '<path d="M12 16V4M7 9l5-5 5 5M5 20h14"/>',
   alert: '<circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.5"/>',
   skip: '<circle cx="12" cy="12" r="9"/><path d="M8 8l8 8"/>',
+  folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  chevronsRight: '<path d="M6 7l5 5-5 5M13 7l5 5-5 5"/>',
   trash: '<path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13"/>'
 };
 

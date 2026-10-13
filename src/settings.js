@@ -5,6 +5,7 @@ import {
 } from './core.js';
 import { applyAppearance, isDark } from './appearance.js';
 import { h, icon, readImageFile, segmented, showModal } from './dom.js';
+import { requestBookmarkAccess } from './bookmarks.js';
 import { openIconPicker } from './icon-picker.js';
 import { pickImportFile } from './import-review.js';
 import { openShortcutEditor } from './shortcut-editor.js';
@@ -521,7 +522,21 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
             h('button.switch', {
               type: 'button', role: 'switch', 'aria-checked': String(draft.layout.showCategories), style: { justifySelf: 'start' },
               onclick: () => change(() => { draft.layout.showCategories = !draft.layout.showCategories; })
-            }, h('span.track', { 'aria-hidden': 'true' }, h('span.knob')), 'Show the category row (with Edit and Add) above shortcuts'))
+            }, h('span.track', { 'aria-hidden': 'true' }, h('span.knob')), 'Show the category row (with Edit and Add) above shortcuts'),
+            h('span.field-label', { style: { alignSelf: 'start', paddingTop: '11px' } }, 'Bookmarks'),
+            h('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px' } },
+              h('button.switch', {
+                type: 'button', role: 'switch', 'aria-checked': String(draft.layout.showBookmarks), style: { justifySelf: 'start', alignSelf: 'start' },
+                onclick: async () => {
+                  // Turning it on asks Chrome for access to bookmarks (once); without it the bar stays off.
+                  if (!draft.layout.showBookmarks && !await requestBookmarkAccess()) {
+                    toast('The bookmarks bar needs access to your bookmarks.');
+                    return;
+                  }
+                  change(() => { draft.layout.showBookmarks = !draft.layout.showBookmarks; });
+                }
+              }, h('span.track', { 'aria-hidden': 'true' }, h('span.knob')), 'Show your browser bookmarks at the top of the page'),
+              h('span.note', {}, 'Chrome doesn’t let extensions hide its own bookmarks bar; turn it off with Ctrl+Shift+B (⌘+Shift+B on Mac).')))
         ];
       };
 
