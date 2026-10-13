@@ -124,7 +124,7 @@ function itemEl(item) {
   const button = h('button.bm-item', {
     type: 'button', title: item.title, 'aria-haspopup': 'true', 'aria-expanded': 'false',
     onclick: () => toggleMenu(button, item)
-  }, icon('folder', 16, 1.8), h('span.bm-title', {}, item.title));
+  }, h('span.bm-title', {}, item.title));
   return button;
 }
 
@@ -151,7 +151,7 @@ function setMenu(menu) {
     : h('button.option', {
       type: 'button',
       onclick: () => { setMenu({ ...menu, path: [...menu.path, child] }); focusMenu(); }
-    }, icon('folder', 16, 1.8), h('span.label', {}, child.title), icon('chevronRight', 14, 2))));
+    }, h('span.label', {}, child.title), icon('chevronRight', 14, 2))));
   const back = menu.path.length > 1
     ? h('button.option', {
       type: 'button',
