@@ -425,12 +425,17 @@ export function dropdown({ labelId, value, options, onChange, align = 'start', b
 }
 
 let toastTimer = null;
-export function toast(message) {
+// action: { label, run } adds a button (such as Undo) and keeps the toast up longer.
+export function toast(message, action = null) {
   const el = document.getElementById('toast');
-  el.textContent = message;
+  const hide = () => { el.hidden = true; };
+  el.replaceChildren(message);
+  if (action) {
+    el.append(h('button.toast-action', { type: 'button', onclick: () => { hide(); action.run(); } }, action.label));
+  }
   el.hidden = false;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.hidden = true; }, 2600);
+  toastTimer = setTimeout(hide, action ? 8000 : 2600);
 }
 
 // Navigate the current tab, or a background tab when the user holds Ctrl/⌘ or middle-clicks.
