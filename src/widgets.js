@@ -1,4 +1,4 @@
-// Reusable pieces built on dom.js: shortcut badges, color pickers, listbox dropdowns, toasts.
+// Reusable pieces built on dom.js: shortcut badges, color pickers, listbox dropdowns, text edited in place, toasts.
 import { SWATCHES, colorOf, firstGraphemes, iconTone, letterOf, normalizeHex, readableOn } from './core.js';
 import { grip, h, icon } from './dom.js';
 import { faviconUrl, siteIconSources } from './storage.js';
@@ -422,6 +422,52 @@ export function dropdown({ labelId, value, options, onChange, align = 'start', b
     },
     get value() { return current; }
   };
+}
+
+// Text that is edited where it stands: a click (or Enter/Space on it) turns it into a field. A click elsewhere,
+// Tab or Enter keeps the change; Escape drops it. `check` returns { ok, value } or { ok: false, msg };
+// `display` turns the stored value into the text shown (a host for an address). onCommit(value, how) gets how
+// the edit ended ('key', 'focus' = focus moved to another control, 'blank' = a click on empty space) and may
+// return false to refuse the change. onEdit runs when editing starts.
+export function inlineText({ value, label, onCommit, onEdit = null, display = (v) => v, type = 'text', className = '', maxlength = null,
+  check = (v) => (v.trim() ? { ok: true, value: v.trim() } : { ok: false, msg: 'Enter a name.' }) }) {
+  const wrap = h('span.inline-edit', { class: className });
+  const makeButton = () => h('button.inline-text', { type: 'button', 'aria-label': label, title: 'Click to edit', onclick: edit }, display(value));
+  function edit() {
+    const button = wrap.firstChild;
+    const input = h('input.inline-input', { type, value, 'aria-label': label, maxlength, spellcheck: 'false', autocomplete: 'off' });
+    let done = false;
+    const finish = (keep, how) => {
+      if (done) return;
+      done = true;
+      const result = keep && input.value !== value ? check(input.value) : null;
+      if (result && !result.ok) toast(result.msg);
+      const changed = Boolean(result?.ok) && result.value !== value;
+      const before = value;
+      if (changed) value = result.value;
+      // Add the text and move focus before the field goes, so focus never drops to the page.
+      const next = makeButton();
+      wrap.append(next);
+      if (how === 'key') next.focus();
+      input.remove();
+      if (changed && onCommit(value, how) === false) {
+        value = before;
+        next.textContent = display(value);
+      }
+    };
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') { event.preventDefault(); finish(true, 'key'); }
+      if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); finish(false, 'key'); }
+    });
+    input.addEventListener('blur', (event) => finish(true, event.relatedTarget ? 'focus' : 'blank'));
+    onEdit?.();
+    wrap.append(input);
+    input.focus();
+    input.select();
+    button.remove();
+  }
+  wrap.append(makeButton());
+  return wrap;
 }
 
 let toastTimer = null;

@@ -10,7 +10,7 @@ import { openIconPicker } from './icon-picker.js';
 import { pickImportFile } from './import-review.js';
 import { openShortcutEditor } from './shortcut-editor.js';
 import { activeProfile, backupOf, clearHistory, createProfile, deleteProfile, renameProfile, setProfileIcon, store, switchProfile, update } from './state.js';
-import { badge, colorChoice, iconButton, launcherFaceStyle, launcherMark, sortHandle, toast } from './widgets.js';
+import { badge, colorChoice, iconButton, inlineText, launcherFaceStyle, launcherMark, sortHandle, toast } from './widgets.js';
 
 const TABS = ['Profiles', 'Appearance', 'Search', 'Clocks', 'Shortcuts', 'Launchers', 'Layout', 'Data'];
 // Background presets per theme; the first two are the picker's base colors.
@@ -98,6 +98,10 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
 
       // Re-render the panel after a structural change; text edits only call touch().
       const change = (fn) => { fn(); renderPanel(); };
+      // A name or address edited in place. Re-rendering would drop a click that ended the edit on another
+      // control, so the panel is rebuilt only when the edit ended on empty space.
+      const editText = (fn) => (value, how) => { fn(value); if (how === 'blank') renderPanel(); else touch(); };
+      const checkUrl = (value) => { const check = normalizeHttpUrl(value); return check.ok ? { ok: true, value: check.url } : { ok: false, msg: check.msg }; };
 
       // ---------- Profiles ----------
       // Profile actions apply at once. Switching or adding one loads its settings into this dialog.
@@ -389,7 +393,11 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
               onApply: (next) => { change(() => { item.icon = next; }); panel.querySelector(`[data-icon-id="${CSS.escape(item.id)}"]`)?.focus(); }
             })
           }, { dataset: { iconId: item.id } }),
-          h('span.grow', {}, h('span.title', {}, item.name), h('span.sub', {}, `${item.category || 'No category'} · ${hostOf(item.url)}${item.shared ? ' · All profiles' : ''}`)),
+          h('span.grow', {},
+            inlineText({ value: item.name, label: `Name of ${item.name}: click to rename`, className: 'title', onCommit: editText((value) => { item.name = value; }) }),
+            h('span.sub', {}, `${item.category || 'No category'} · `,
+              inlineText({ value: item.url, type: 'url', display: hostOf, check: checkUrl, label: `Address of ${item.name}: click to change`, onCommit: editText((value) => { item.url = value; }) }),
+              item.shared ? ' · All profiles' : '')),
           h('button.btn.quiet-outline', { type: 'button', 'aria-label': `Edit ${item.name} shortcut`, dataset: { editId: item.id }, onclick: () => edit(item.id) }, 'Edit'),
           h('button.icon-btn', {
             type: 'button', 'aria-label': `Remove ${item.name} shortcut`, title: 'Remove shortcut',
@@ -399,7 +407,7 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
             }
           }, icon('trash', 16))));
         return [
-          h('span.note', {}, 'Shortcuts show below the search boxes. Edit opens the same editor as the page; changes apply when you save.'),
+          h('span.note', {}, 'Shortcuts show below the search boxes. Click a name or address to change it here; Edit opens the same editor as the page. Changes apply when you save.'),
           list.length ? h('ul.list', {}, ...items) : h('p.note', {}, 'No shortcuts yet.'),
           h('div.inline', {}, add, addGroup),
           h('span.note', {}, 'A group is a category: it appears once a shortcut is saved into it, so Add group starts with its first shortcut.')
@@ -420,7 +428,12 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
                 onApply: (next) => { change(() => { group.icon = next; }); panel.querySelector(`[data-icon-id="${CSS.escape(group.id)}"]`)?.focus(); }
               })
             }, { dataset: { iconId: group.id } }),
-            h('span.grow', {}, h('span.title', {}, group.name), h('span.sub', {}, `${group.links.length} link${group.links.length === 1 ? '' : 's'}${group.shared ? ' · All profiles' : ''}`)),
+            h('span.grow', {},
+              inlineText({
+                value: group.name, label: `Name of ${group.name}: click to rename`, className: 'title',
+                onCommit: editText((value) => { group.name = value; const field = panel.querySelector(`#ln-${CSS.escape(group.id)}-name`); if (field) field.value = value; })
+              }),
+              h('span.sub', {}, `${group.links.length} link${group.links.length === 1 ? '' : 's'}${group.shared ? ' · All profiles' : ''}`)),
             h('button.btn.quiet-outline', {
               type: 'button', 'aria-expanded': String(expanded), 'aria-label': `${expanded ? 'Close' : 'Edit'} ${group.name} launcher`,
               onclick: () => change(() => { ui.expanded = expanded ? null : group.id; })
@@ -436,7 +449,7 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
           return row;
         });
         return [
-          h('span.note', {}, 'Launchers sit in the bottom dock. Hover or focus one to preview its links; click to pin it open.'),
+          h('span.note', {}, 'Launchers sit in the bottom dock. Hover or focus one to preview its links; click to pin it open. Click a name here to rename it.'),
           groups.length ? h('ul.list', {}, ...items) : h('p.note', {}, 'No launchers yet.'),
           h('button.btn.primary', {
             type: 'button', style: { alignSelf: 'flex-start' },
