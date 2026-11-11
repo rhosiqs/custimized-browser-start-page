@@ -2,6 +2,11 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.15.1 — 2026-11-11
+
+### Changed
+- Settings uses its height better: the title and the profile name share one short line at the top, the dialog is a little taller, and the spacing around the footer and between groups is tighter, so more of a section fits without scrolling.
+
 ## v1.15.0 — 2026-11-11
 
 ### Changed
