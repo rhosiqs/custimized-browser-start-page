@@ -462,6 +462,10 @@ input:focus-visible { outline-offset: 2px; }
 
 .tile-wrap.editing { border: 1px dashed var(--control); border-radius: 6px; }
 .tile-wrap.editing .tile { padding-top: 30px; }
+.tile-open { padding: 0; border: 0; border-radius: 6px; background: transparent; }
+.tile-wrap.editing .tile-name { width: 100%; }
+.tile-wrap.editing .inline-text { width: 100%; text-align: center; overflow-wrap: anywhere; }
+.tile-wrap.editing .inline-input { text-align: center; }
 .tile-tools { position: absolute; inset: 0 0 auto 0; display: flex; justify-content: space-between; z-index: 1; }
 .tile-tools button {
   width: 44px;
@@ -614,8 +618,8 @@ input:focus-visible { outline-offset: 2px; }
   background: var(--pop);
 }
 .flyout-head { display: flex; align-items: center; gap: 8px; padding: 2px 4px 8px 8px; border-bottom: 1px solid var(--divider); }
-.flyout-head strong { flex: 1; font-size: 16px; letter-spacing: 0.06em; color: var(--brown); }
-.flyout-head button {
+.flyout-head strong, .flyout-head .flyout-title { flex: 1; min-width: 0; font-size: 16px; font-weight: 700; letter-spacing: 0.06em; color: var(--brown); }
+.flyout-head > button {
   min-height: 36px;
   padding: 0 12px;
   border: 1px solid var(--divider);
@@ -718,6 +722,42 @@ input:focus-visible { outline-offset: 2px; }
 .input.compact { height: 40px; padding: 0 10px; font-size: 15px; }
 .input.tight { height: 36px; padding: 0 10px; font-size: 14px; }
 .input[aria-invalid='true'] { border-color: var(--ink); border-width: 2px; }
+/* Text edited in place (inlineText in widgets.js): looks like text until hovered, focused or clicked. */
+.inline-edit { display: inline-flex; min-width: 0; max-width: 100%; }
+.inline-text {
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: start;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: text;
+}
+.inline-text:hover { background: var(--surface); box-shadow: 0 0 0 3px var(--surface), 0 0 0 4px var(--control); }
+.inline-input {
+  flex: 1;
+  width: 100%;
+  min-width: 96px;
+  margin: -3px -6px;
+  padding: 2px 5px;
+  border: 1px solid var(--control);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+  letter-spacing: inherit;
+  user-select: text;
+}
+.list .grow > .inline-edit { align-self: flex-start; }
+.list .grow > .inline-edit:has(.inline-input) { align-self: stretch; max-width: 360px; }
+.list .sub .inline-edit:has(.inline-input) { width: 300px; }
 .msg { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
 .msg.ok { color: var(--green-ink); }
 .msg.bad { color: var(--ink); }

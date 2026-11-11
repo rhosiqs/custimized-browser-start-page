@@ -2,6 +2,11 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.14.0 — 2026-11-11
+
+### Added
+- Edit names and addresses in place: click the text, type, then click elsewhere or press Enter to keep the change (Esc cancels). No editor or popup is needed. It works on a shortcut's name and address and a launcher's name in Settings (applied when you save), on a launcher's title in its dock flyout, and on a shortcut's name in the page's Edit mode (in Edit mode the icon opens the full editor). An empty name or an address that isn't http(s) is not accepted.
+
 ## v1.13.1 — 2026-10-13
 
 ### Added

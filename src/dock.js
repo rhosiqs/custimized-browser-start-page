@@ -1,11 +1,11 @@
 // Bottom launcher dock: the profile switcher on the left; hover or focus previews a launcher group's links,
 // click pins it; plus theme and settings buttons.
-import { hostOf, profileIcon } from './core.js';
+import { hostOf, profileIcon, sharedEditPrompt } from './core.js';
 import { h, icon } from './dom.js';
 import { activeProfile, createProfile, store, switchProfile, update } from './state.js';
 import { openSettings } from './settings.js';
 import { isDark } from './appearance.js';
-import { badge, launcherFaceStyle, launcherMark } from './widgets.js';
+import { badge, inlineText, launcherFaceStyle, launcherMark } from './widgets.js';
 
 const view = { open: null, pinned: false, profiles: false };
 
@@ -125,7 +125,16 @@ function launcher(group) {
   const flyout = h('div.flyout', { id: flyoutId, hidden: !open },
     h('div.flyout-card', {},
       h('div.flyout-head', {},
-        h('strong', {}, group.name),
+        // The title is renamed where it stands; editing pins the flyout so it stays open while typing.
+        inlineText({
+          value: group.name, label: `Name of ${group.name}: click to rename`, className: 'flyout-title',
+          onEdit: () => setOpen(group.id, true),
+          onCommit: (name) => {
+            if (group.shared && !window.confirm(sharedEditPrompt([group.name]))) return false;
+            update((settings) => { const target = settings.launchers.find((g) => g.id === group.id); if (target) target.name = name; });
+            return true;
+          }
+        }),
         h('button', { type: 'button', onclick: () => { setOpen(null, false); openSettings({ tab: 'Launchers', launcherId: group.id }); } }, 'Edit')),
       ...links));
 

@@ -3,7 +3,7 @@ import { categoriesOf, changedSharedItems, moveItem, normalizeHttpUrl, sharedEdi
 import { grip, h, icon } from './dom.js';
 import { store, update } from './state.js';
 import { openShortcutEditor } from './shortcut-editor.js';
-import { badge, dropdown, swatchPicker, toast } from './widgets.js';
+import { badge, dropdown, inlineText, swatchPicker, toast } from './widgets.js';
 
 const NEW_CATEGORY = '\u0000new';
 const view = { category: 'All', page: 0, editing: false, popoverId: null, focusAfter: null };
@@ -133,7 +133,7 @@ const DRAG_THRESHOLD = 6;
 function makeDraggable(wrap, item) {
   wrap.addEventListener('pointerdown', (event) => {
     if (event.button !== 0 || !event.isPrimary) return;
-    if (event.target.closest('.tile-edit, .remove, .popover')) return;
+    if (event.target.closest('.tile-edit, .remove, .popover, .inline-edit')) return;
     const startX = event.clientX;
     const startY = event.clientY;
     // The stage is scaled to the window; convert screen pixels back to design pixels for the ghost.
@@ -308,7 +308,17 @@ function editTile(item, visible) {
 
   wrap.append(
     h('div.tile-tools', {}, handle, remove),
-    h('button.tile', { type: 'button', 'aria-label': `Edit ${item.name}`, onclick: () => openShortcutEditor(item.id) }, badge(item), h('span.tile-name', {}, item.name))
+    // The icon opens the editor; the name is renamed where it stands.
+    h('div.tile', {},
+      h('button.tile-open', { type: 'button', 'aria-label': `Edit ${item.name}`, onclick: () => openShortcutEditor(item.id) }, badge(item)),
+      inlineText({
+        value: item.name, label: `Name of ${item.name}: click to rename`, className: 'tile-name',
+        onCommit: (name) => {
+          if (item.shared && !window.confirm(sharedEditPrompt([item.name]))) return false;
+          update((settings) => { const target = settings.shortcuts.find((s) => s.id === item.id); if (target) target.name = name; });
+          return true;
+        }
+      }))
   );
 
   makeDraggable(wrap, item);

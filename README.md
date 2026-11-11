@@ -1,7 +1,7 @@
 # Start Page — Chrome New Tab Extension
 
 <p>
-  <img alt="Version" src="https://img.shields.io/badge/version-v1.13.1-blue">
+  <img alt="Version" src="https://img.shields.io/badge/version-v1.14.0-blue">
   <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green">
 </p>
 
@@ -22,6 +22,7 @@ A Chrome extension (Manifest V3) that replaces the new tab page with a calm, loc
 - **Show on all profiles** — a shortcut or launcher can be marked "Show on all profiles" in its editor (a search box's engines have the same switch in Settings → Search). It then appears on every profile, edits to it apply everywhere, and deleting it removes it everywhere. Saving a change to it or deleting it asks for confirmation first; each profile keeps its own order. Turning it off keeps the item in the profile you are in only.
 - **Icons** — every icon (shortcut, launcher, profile) is changed by clicking the icon itself, in Settings or in the shortcut editor. One picker offers a site's logo, an image from a web address, an uploaded image (scaled down to 128 px and stored in this browser), an emoji, or a solid color with a letter or without one. Pictures have an optional background (Auto adds a contrasting disc only for an all-white or all-black picture). Profiles can also have no icon.
 - **Appearance** — light, dark or system theme; green, brown or ink accent; solid, gradient or image background, with separate background colors for the light and dark themes (dark defaults to #333333).
+- **Edit in place** — click a name or address where it is shown to change it there, without opening an editor: a shortcut's name and address and a launcher's name in Settings, a launcher's title in its dock flyout, and a shortcut's name in the page's Edit mode. Click elsewhere or press Enter to keep the change; Esc cancels.
 - **Colors** — every color picker (accent, background, icons) shows two base colors and a + button; the + opens the other preset colors and a field for any #HEX color.
 - **Data** — export the current profile or all profiles to JSON, YAML, TOML or text, named `<date>-<profile or all>.<ext>`; imports are reviewed (fixed, skipped; choose which profiles; merge, replace or separate as new profiles) before anything changes. A backup restores every setting, icons included; merging takes the file's version of any shortcut or launcher you already have and keeps the rest.
 - **Bookmarks bar (optional)** — Settings → Layout can show your browser's bookmarks bar across the top of the page, with website icons and a thin line under it as in Chrome. It works like Chrome's own bar: pointing at a folder opens its menu (subfolders open inside it), bookmarks that don't fit go under », and right-clicking a bookmark, a folder or the bar opens a menu to open in a new tab or window, open all of a folder, edit or rename, delete (with Undo), add a page or folder, or open the bookmark manager. Drag a bookmark to reorder it or drop it on a folder to move it there. Changes show up in Chrome at once, and the other way round. Only `http(s)` bookmarks are listed. Chrome doesn't let extensions hide its own bookmarks bar; turn that off with Ctrl+Shift+B (⌘+Shift+B on Mac).
