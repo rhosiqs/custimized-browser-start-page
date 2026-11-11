@@ -132,7 +132,8 @@ export function showModal({ labelledBy, className = '', build, onClose, nested =
     }
   });
   const first = dialog.querySelector('[autofocus]') || dialog.querySelector('input, button, select, textarea, a[href]');
-  first?.focus();
+  // build() may already have put focus where it belongs (a new row's name being edited).
+  if (!dialog.contains(document.activeElement)) first?.focus();
   return close;
 }
 

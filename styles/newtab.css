@@ -757,6 +757,8 @@ input:focus-visible { outline-offset: 2px; }
   letter-spacing: inherit;
   user-select: text;
 }
+/* A field being edited in place needs no accent ring around its own border. */
+.inline-input:focus, .inline-input:focus-visible { outline: none; border-color: var(--ink); }
 .list .grow > .inline-edit { align-self: flex-start; }
 .list .grow > .inline-edit:has(.inline-input) { align-self: stretch; max-width: 360px; }
 .list .sub .inline-edit:has(.inline-input) { width: 300px; }
@@ -814,14 +816,22 @@ input:focus-visible { outline-offset: 2px; }
   display: flex;
   flex-direction: column;
   gap: 8px;
-  width: 220px;
+  width: 280px;
   padding: 10px;
   border: 1px solid var(--control);
   border-radius: 12px;
   background: var(--pop);
 }
 .color-pop.up { top: auto; bottom: calc(100% + 6px); }
-.color-pop-hex { display: flex; gap: 6px; }
+.color-pop-hex { display: flex; align-items: center; gap: 6px; }
+/* The palette grid: a column per hue, light to dark; the shades row is one color lighter and darker. */
+.palette { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; }
+.palette.shades { grid-template-columns: repeat(9, 1fr); }
+.palette-cell { aspect-ratio: 1; min-width: 0; padding: 0; border: 1px solid var(--divider); border-radius: 3px; }
+.palette-cell:hover { transform: scale(1.15); border-color: var(--ink); }
+.palette-cell[aria-pressed='true'] { box-shadow: inset 0 0 0 2px currentColor; }
+.color-pop-label { font-size: 12px; font-weight: 700; color: var(--sub); }
+.color-well { flex: none; width: 40px; height: 40px; padding: 2px; border: 1px solid var(--control); border-radius: 6px; background: var(--bg); cursor: pointer; }
 .color-pop-hex .input { flex: 1; min-width: 0; letter-spacing: 0.06em; }
 .color-pop .msg { font-size: 12px; }
 
@@ -982,11 +992,14 @@ fieldset.plain legend { padding: 0; margin-bottom: 6px; font-size: 14px; font-we
 .switch[aria-checked='true'] .knob { left: 19px; }
 
 /* A launcher's links, opened under its row. */
-.launcher-editor { display: flex; flex-direction: column; gap: 8px; width: 100%; margin: 0 0 14px 44px; padding: 10px 8px 12px 12px; border-radius: 6px; background: var(--surface); }
+.launcher-editor { display: flex; flex-direction: column; gap: 8px; width: 100%; margin: 0 0 14px; padding: 10px 8px 12px 12px; border-radius: 6px; background: var(--surface); }
 .launcher-editor .link-row { display: flex; align-items: center; gap: 10px; min-height: 44px; }
-.launcher-editor .link-name { flex: none; width: 170px; min-width: 0; display: flex; font-weight: 700; }
-.launcher-editor .link-url { flex: 1; min-width: 0; display: flex; font-size: 13px; color: var(--sub); }
-.launcher-editor .inline-text:hover { background: var(--bg); box-shadow: 0 0 0 3px var(--bg), 0 0 0 4px var(--control); }
+.launcher-editor .link-name { flex: 0 1 230px; min-width: 120px; font-weight: 700; }
+.launcher-editor .link-url { flex: 1 1 0; min-width: 160px; }
+.launcher-editor .link-mark { flex: none; display: flex; }
+.launcher-editor .link-mark .badge { width: 32px; height: 32px; border-radius: 6px; font-size: 14px; }
+.launcher-editor .link-mark .badge:not(.site) { background: var(--bg); color: var(--sub); }
+.launcher-editor .link-mark .badge.site img { width: 20px; height: 20px; }
 .launcher-editor .sort-handle:hover, .launcher-editor .icon-btn:hover { background: var(--bg); }
 .list > li.expanded { flex-wrap: wrap; }
 /* A row that opens when clicked anywhere on it (a launcher and its links). */

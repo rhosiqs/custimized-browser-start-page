@@ -521,6 +521,43 @@ export function normalizeHex(value) {
   return hex.toLowerCase();
 }
 
+// Mixes a #rrggbb color toward another by amount (0 keeps it, 1 gives the other).
+export function mixHex(hex, toward, amount) {
+  const part = (i) => {
+    const from = parseInt(hex.slice(i, i + 2), 16);
+    const to = parseInt(toward.slice(i, i + 2), 16);
+    return Math.round(from + (to - from) * amount).toString(16).padStart(2, '0');
+  };
+  return `#${part(1)}${part(3)}${part(5)}`;
+}
+
+// The color picker's palette, laid out like a word processor's: one column per hue, running from its lightest tint
+// down to its darkest shade, so a color of the same family is one cell away.
+export const PALETTE_HUES = Object.freeze([
+  { label: 'Gray', hex: '#7f7f7f' }, { label: 'Red', hex: '#c0392b' }, { label: 'Orange', hex: '#e67e22' },
+  { label: 'Yellow', hex: '#f1c40f' }, { label: 'Green', hex: '#27ae60' }, { label: 'Teal', hex: '#16a085' },
+  { label: 'Blue', hex: '#2980b9' }, { label: 'Indigo', hex: '#3f51b5' }, { label: 'Purple', hex: '#8e44ad' },
+  { label: 'Pink', hex: '#d6336c' }
+]);
+const PALETTE_STEPS = [
+  { toward: '#ffffff', amount: 0.8, label: 'lightest' }, { toward: '#ffffff', amount: 0.6, label: 'lighter' },
+  { toward: '#ffffff', amount: 0.35, label: 'light' }, { toward: '#ffffff', amount: 0, label: '' },
+  { toward: '#000000', amount: 0.25, label: 'dark' }, { toward: '#000000', amount: 0.5, label: 'darker' }
+];
+// Rows of { hex, label }, lightest first; each row has one cell per PALETTE_HUES entry.
+export function colorPalette() {
+  return PALETTE_STEPS.map((step) => PALETTE_HUES.map((hue) => ({
+    hex: mixHex(hue.hex, step.toward, step.amount),
+    label: step.label ? `${hue.label}, ${step.label}` : hue.label
+  })));
+}
+// Lighter and darker versions of one color, lightest first with the color itself in the middle.
+export function shadesOf(hex) {
+  const light = [0.8, 0.6, 0.4, 0.2].map((amount) => ({ hex: mixHex(hex, '#ffffff', amount), label: `${Math.round(amount * 100)}% lighter` }));
+  const dark = [0.2, 0.4, 0.6, 0.8].map((amount) => ({ hex: mixHex(hex, '#000000', amount), label: `${Math.round(amount * 100)}% darker` }));
+  return [...light, { hex, label: 'This color' }, ...dark];
+}
+
 // A preset key from allowed, or any #HEX color (stored as #rrggbb).
 function pickColor(value, allowed, fallback) {
   return allowed.includes(value) ? value : normalizeHex(value) || fallback;

@@ -1,5 +1,6 @@
 // The one icon picker. Every icon (shortcut, launcher, profile) is changed by clicking the icon itself, which opens
-// this dialog: a site's logo, an image address, an uploaded image, an emoji, or a solid color with or without a letter.
+// this dialog: a site's logo, an image address, an uploaded or pasted image, an emoji, or a solid color with or
+// without a letter.
 import { ICON_IMAGE_SIZE, ICON_TEXT_MAX, SHORTCUT_IMAGE_LIMIT, firstGraphemes, hostOf, isImageDataUrl, letterOf, normalizeHttpUrl, normalizeIcon } from './core.js';
 import { h, icon, readIconImage, segmented, showModal } from './dom.js';
 import { badge, swatchPicker } from './widgets.js';
@@ -83,6 +84,47 @@ export function openIconPicker({ icon: current, name, url = '', allowNone = fals
         return input;
       };
 
+      // An image file, chosen or pasted, becomes the uploaded icon.
+      const takeFile = async (file) => {
+        try {
+          const data = await readIconImage(file, ICON_IMAGE_SIZE);
+          if (!isImageDataUrl(data, SHORTCUT_IMAGE_LIMIT)) throw new Error('That image is still over 512 KB after resizing.');
+          draft.data = data;
+          fileMsg = '';
+        } catch (error) {
+          draft.data = '';
+          fileMsg = error.message;
+        }
+        const switched = draft.kind !== 'upload';
+        draft.kind = 'upload';
+        if (switched) renderKinds();
+        renderPanel();
+        renderColor();
+        refresh();
+      };
+      // Paste works anywhere in the dialog: a copied image becomes the upload, and a copied image address (pasted
+      // outside a text field) becomes the Image URL.
+      const onPaste = (event) => {
+        const data = event.clipboardData;
+        if (!data) return;
+        const file = [...data.files].find((f) => f.type.startsWith('image/'));
+        if (file) {
+          event.preventDefault();
+          takeFile(file);
+          return;
+        }
+        if (event.target.tagName === 'INPUT') return;
+        const check = normalizeHttpUrl(data.getData('text/plain').trim());
+        if (!check.ok) return;
+        event.preventDefault();
+        draft.kind = 'image';
+        draft.url = check.url;
+        renderKinds();
+        renderPanel();
+        renderColor();
+        refresh();
+      };
+
       const renderPanel = () => {
         if (draft.kind === 'site') {
           panel.replaceChildren(
@@ -98,23 +140,9 @@ export function openIconPicker({ icon: current, name, url = '', allowNone = fals
               h('label.btn.file-btn.round.small', {}, icon('upload', 14, 2.2), draft.data ? 'Change image' : 'Choose image',
                 h('input', {
                   type: 'file', accept: 'image/png,image/jpeg,image/webp,image/svg+xml,image/gif', 'aria-describedby': 'ip-msg',
-                  onchange: async (event) => {
-                    const file = event.target.files?.[0];
-                    if (!file) return;
-                    try {
-                      const data = await readIconImage(file, ICON_IMAGE_SIZE);
-                      if (!isImageDataUrl(data, SHORTCUT_IMAGE_LIMIT)) throw new Error('That image is still over 512 KB after resizing.');
-                      draft.data = data;
-                      fileMsg = '';
-                    } catch (error) {
-                      draft.data = '';
-                      fileMsg = error.message;
-                    }
-                    renderPanel();
-                    refresh();
-                  }
+                  onchange: (event) => { const file = event.target.files?.[0]; if (file) takeFile(file); }
                 }))),
-            h('span.note', {}, `Resized to ${ICON_IMAGE_SIZE} px and stored in this browser.`));
+            h('span.note', {}, `Or paste a copied image (Ctrl+V). Resized to ${ICON_IMAGE_SIZE} px and stored in this browser.`));
         } else if (draft.kind === 'emoji') {
           const input = field({
             value: draft.text, placeholder: 'e.g. an emoji', maxlength: 24,
@@ -183,6 +211,7 @@ export function openIconPicker({ icon: current, name, url = '', allowNone = fals
         close();
         onApply(next);
       });
+      dialog.addEventListener('paste', onPaste);
       dialog.addEventListener('keydown', (event) => {
         if (event.key === 'Enter' && event.target.tagName === 'INPUT' && event.target.type !== 'file') {
           event.preventDefault();
