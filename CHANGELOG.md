@@ -2,6 +2,11 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.15.2 — 2026-11-11
+
+### Changed
+- In Settings → Links, clicking anywhere on a launcher's row opens its links for editing (and closes them again), not only the Links button. The icon, the name, the drag handle and the remove button keep their own actions.
+
 ## v1.15.1 — 2026-11-11
 
 ### Changed

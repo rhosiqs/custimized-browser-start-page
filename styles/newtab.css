@@ -989,6 +989,10 @@ fieldset.plain legend { padding: 0; margin-bottom: 6px; font-size: 14px; font-we
 .launcher-editor .inline-text:hover { background: var(--bg); box-shadow: 0 0 0 3px var(--bg), 0 0 0 4px var(--control); }
 .launcher-editor .sort-handle:hover, .launcher-editor .icon-btn:hover { background: var(--bg); }
 .list > li.expanded { flex-wrap: wrap; }
+/* A row that opens when clicked anywhere on it (a launcher and its links). */
+.list > li.opens { cursor: pointer; border-radius: 6px; }
+.list > li.opens:not(.expanded):hover { background: var(--surface); }
+.list > li.opens .launcher-editor { cursor: auto; }
 
 .status { flex: 1; display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
 .status .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--green); }

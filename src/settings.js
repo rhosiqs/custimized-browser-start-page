@@ -419,7 +419,12 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
         const groups = draft.launchers;
         const items = groups.map((group, i) => {
           const expanded = ui.expanded === group.id;
-          return h(`li${expanded ? '.expanded' : ''}`, { dataset: { sortRow: '', launcherId: group.id } },
+          // The whole row opens the links, not just the Links button; its own controls keep their jobs.
+          const toggleLinks = () => change(() => { ui.expanded = expanded ? null : group.id; });
+          return h(`li.opens${expanded ? '.expanded' : ''}`, {
+            dataset: { sortRow: '', launcherId: group.id },
+            onclick: (event) => { if (!event.target.closest('button, input, a, .inline-edit, .launcher-editor')) toggleLinks(); }
+          },
             sortHandle({ item: group, index: i, count: groups.length, label: group.name, onMove: (from, to) => change(() => { draft.launchers = moveItem(groups, from, to); }) }),
             iconButton({
               mark: h('span.badge.launcher-face', { 'aria-hidden': 'true', style: { width: '40px', height: '40px', fontSize: '13px', ...launcherFaceStyle(group.icon) } }, launcherMark(group)),
@@ -435,7 +440,7 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
             h('button.btn.small.quiet-outline', {
               type: 'button', 'aria-expanded': String(expanded), 'aria-label': `${expanded ? 'Hide' : 'Show'} the links of ${group.name}`,
               dataset: { focusKey: `links-${group.id}` },
-              onclick: () => change(() => { ui.expanded = expanded ? null : group.id; })
+              onclick: toggleLinks
             }, 'Links', h('span.chev', { style: { display: 'grid' } }, icon('chevronDown', 14, 2.2))),
             removeButton(`Remove ${group.name} launcher`, () => {
               if (group.shared && !window.confirm(`${group.name} shows on all profiles. Remove it from every profile?`)) return;
@@ -450,7 +455,7 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
             startEdit(`[data-launcher-id="${CSS.escape(fresh.id)}"] .title .inline-text`);
           }, true)],
           body: [
-            h('span.note', {}, 'Buttons in the bottom dock; each opens a list of links. Click an icon or name to change it; Links opens its list.'),
+            h('span.note', {}, 'Buttons in the bottom dock; each opens a list of links. Click a launcher to edit its links; click its icon or name to change those.'),
             groups.length ? h('ul.list', {}, ...items) : h('p.note', {}, 'No launchers yet.')
           ]
         };
