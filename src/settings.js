@@ -419,7 +419,7 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
         const groups = draft.launchers;
         const items = groups.map((group, i) => {
           const expanded = ui.expanded === group.id;
-          // The whole row opens the links, not just the Links button; its own controls keep their jobs.
+          // The whole row opens the links, not just the arrow button; its own controls keep their jobs.
           const toggleLinks = () => change(() => { ui.expanded = expanded ? null : group.id; });
           return h(`li.opens${expanded ? '.expanded' : ''}`, {
             dataset: { sortRow: '', launcherId: group.id },
@@ -437,11 +437,11 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
             h('span.grow', {},
               inlineText({ value: group.name, label: `Name of ${group.name}: click to rename`, className: 'title', onCommit: editText((value) => { group.name = value; }) }),
               h('span.sub', {}, `${group.links.length} link${group.links.length === 1 ? '' : 's'}${group.shared ? ' · All profiles' : ''}`)),
-            h('button.btn.small.quiet-outline', {
+            h('button.icon-btn.fold', {
               type: 'button', 'aria-expanded': String(expanded), 'aria-label': `${expanded ? 'Hide' : 'Show'} the links of ${group.name}`,
-              dataset: { focusKey: `links-${group.id}` },
+              title: expanded ? 'Hide links' : 'Show links', dataset: { focusKey: `links-${group.id}` },
               onclick: toggleLinks
-            }, 'Links', h('span.chev', { style: { display: 'grid' } }, icon('chevronDown', 14, 2.2))),
+            }, icon('chevronDown', 16, 2.2)),
             removeButton(`Remove ${group.name} launcher`, () => {
               if (group.shared && !window.confirm(`${group.name} shows on all profiles. Remove it from every profile?`)) return;
               change(() => { draft.launchers = draft.launchers.filter((g) => g.id !== group.id); if (expanded) ui.expanded = null; });

@@ -912,9 +912,9 @@ fieldset.plain legend { padding: 0; margin-bottom: 6px; font-size: 14px; font-we
 .row-msg { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--ink); }
 .row-msg[hidden] { display: none; }
 .inline-text.placeholder { color: var(--muted); font-weight: 400; }
-.btn .chev { transition: transform 0.15s; }
-.btn[aria-expanded='true'] { background: var(--surface); }
-.btn[aria-expanded='true'] .chev { transform: rotate(180deg); }
+/* The arrow that folds a row's details open and shut. */
+.fold svg { transition: transform 0.15s; }
+.fold[aria-expanded='true'] svg { transform: rotate(180deg); }
 .bg-preview { display: block; width: 20px; height: 20px; border-radius: 4px; border: 1px solid var(--divider); }
 
 
