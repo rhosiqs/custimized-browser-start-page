@@ -26,6 +26,16 @@ async function fetchSiteName(url, signal) {
 
 // By default edits are saved at once. Settings passes its draft list and a commit that edits it
 // instead; the editor then opens over Settings and the change waits for its Save.
+// A name to suggest for a web address: the website's own name when the page may read it (the optional permission),
+// else a guess from the host. Used where there is no room for the permission button (launcher links in Settings).
+export async function suggestSiteName(url) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 6000);
+  const found = await hasSiteAccess() ? await fetchSiteName(url, controller.signal) : '';
+  clearTimeout(timeout);
+  return found || nameFromUrl(url);
+}
+
 // newGroup opens the editor with the new-category field ready, for "Add group" (a group exists once it holds a shortcut).
 export function openShortcutEditor(id, { category = '', shortcuts, commit, newGroup = false } = {}) {
   const inSettings = Boolean(commit);

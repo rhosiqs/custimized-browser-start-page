@@ -8,7 +8,7 @@ import { h, icon, readImageFile, segmented, showModal } from './dom.js';
 import { requestBookmarkAccess } from './bookmarks.js';
 import { openIconPicker } from './icon-picker.js';
 import { pickImportFile } from './import-review.js';
-import { openShortcutEditor } from './shortcut-editor.js';
+import { openShortcutEditor, suggestSiteName } from './shortcut-editor.js';
 import { activeProfile, backupOf, clearHistory, createProfile, deleteProfile, renameProfile, setProfileIcon, store, switchProfile, update } from './state.js';
 import { badge, colorChoice, iconButton, inlineText, launcherFaceStyle, launcherMark, sortHandle, stepper, toast } from './widgets.js';
 
@@ -467,15 +467,30 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
           const showMark = () => { const check = normalizeHttpUrl(link.url); mark.replaceChildren(badge({ name: link.name, url: check.ok ? check.url : '' })); };
           // The footer names what blocks Save; here the address field is marked once it holds something that isn't one.
           const edited = () => { url.setAttribute('aria-invalid', String(Boolean(link.url.trim()) && !normalizeHttpUrl(link.url).ok)); touch(); };
+          // While the name is empty it is filled in from the address, as in the shortcut editor; typing a name stops that.
+          let unnamed = !link.name.trim();
+          let lookup = null;
+          const suggestName = () => {
+            clearTimeout(lookup);
+            const check = normalizeHttpUrl(link.url);
+            if (!unnamed || !check.ok || !new URL(check.url).hostname.includes('.')) return;
+            lookup = setTimeout(async () => {
+              const found = await suggestSiteName(check.url);
+              if (!unnamed || !found || normalizeHttpUrl(link.url).url !== check.url || !group.links.includes(link)) return;
+              link.name = found;
+              // The row may have been redrawn while the website was read.
+              if (name.isConnected) { name.value = found; showMark(); edited(); } else renderPanel();
+            }, 500);
+          };
           const name = h('input.input.tight.link-name', {
             type: 'text', value: link.name, placeholder: 'Name', 'aria-label': `Name of link ${i + 1}`, spellcheck: 'false', autocomplete: 'off',
-            oninput: () => { link.name = name.value; edited(); },
+            oninput: () => { link.name = name.value; unnamed = !name.value.trim(); edited(); },
             onchange: showMark,
             onkeydown: (event) => { if (event.key === 'Enter') { event.preventDefault(); url.focus(); } }
           });
           const url = h('input.input.tight.link-url', {
             type: 'text', inputmode: 'url', value: link.url, placeholder: 'example.com', 'aria-label': `Address of ${link.name || `link ${i + 1}`}`, spellcheck: 'false', autocomplete: 'off',
-            oninput: () => { link.url = url.value; edited(); },
+            oninput: () => { link.url = url.value; edited(); suggestName(); },
             // A finished address is shown as it will be saved, and its website icon appears.
             onchange: () => { const check = normalizeHttpUrl(link.url); if (check.ok) { link.url = check.url; url.value = check.url; } showMark(); edited(); }
           });

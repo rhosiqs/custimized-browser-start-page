@@ -6,7 +6,7 @@ Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
 ### Added
 - Paste an icon: with the icon picker open, Ctrl+V takes a copied image as the uploaded icon, or a copied image address as the Image URL. Every icon (shortcut, launcher, profile) is set in this one picker, so it works everywhere.
-- A launcher's links in Settings → Links each show their website icon.
+- A launcher's links in Settings → Links each show their website icon, and a link's name is filled in from its address while the name is empty, as in the shortcut editor.
 - Color pickers: the + now opens a palette with a column for each hue running from light to dark, a row of the current color lighter and darker for quick changes within one family, and the browser's own picker for any color. The #HEX field stays.
 
 ### Changed
