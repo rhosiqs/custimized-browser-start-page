@@ -10,9 +10,18 @@ import { openIconPicker } from './icon-picker.js';
 import { pickImportFile } from './import-review.js';
 import { openShortcutEditor } from './shortcut-editor.js';
 import { activeProfile, backupOf, clearHistory, createProfile, deleteProfile, renameProfile, setProfileIcon, store, switchProfile, update } from './state.js';
-import { badge, colorChoice, iconButton, inlineText, launcherFaceStyle, launcherMark, sortHandle, toast } from './widgets.js';
+import { badge, colorChoice, iconButton, inlineText, launcherFaceStyle, launcherMark, sortHandle, stepper, toast } from './widgets.js';
 
-const TABS = ['Profiles', 'Appearance', 'Search', 'Clocks', 'Shortcuts', 'Launchers', 'Layout', 'Data'];
+// The sections, listed down the left of the dialog. Each groups what used to be separate tabs: Appearance has
+// the colors and the page layout, Search the engines and the history, Links the shortcuts and the launchers,
+// Profiles the profiles and backups.
+const TABS = [
+  { name: 'Appearance', icon: 'contrast' },
+  { name: 'Search', icon: 'search' },
+  { name: 'Clocks', icon: 'clock' },
+  { name: 'Links', icon: 'link' },
+  { name: 'Profiles', icon: 'user' }
+];
 // Background presets per theme; the first two are the picker's base colors.
 const PRESETS = {
   light: ['#f3f2f2', '#eae9e9', '#fff3e4', '#ffe3bf', '#e8f3ea'],
@@ -20,7 +29,7 @@ const PRESETS = {
 };
 
 export function openSettings({ tab = 'Appearance', launcherId = null, addLauncher = false } = {}) {
-  const ui = { tab, engineBox: 'web', format: 'json', scope: 'current', expanded: launcherId, saved: clone(store.settings) };
+  const ui = { tab: TABS.some((t) => t.name === tab) ? tab : 'Appearance', links: launcherId || addLauncher ? 'launchers' : 'shortcuts', engineBox: 'web', format: 'json', scope: 'current', expanded: launcherId, saved: clone(store.settings) };
   let draft = clone(store.settings);
   if (addLauncher) {
     const fresh = blankLauncher();
@@ -35,7 +44,7 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
     className: 'settings',
     onClose: () => applyAppearance(store.settings),
     build(dialog, close) {
-      const tabs = h('div.tabs', { role: 'tablist', 'aria-label': 'Settings sections' });
+      const tabs = h('div.tabs', { role: 'tablist', 'aria-label': 'Settings sections', 'aria-orientation': 'vertical' });
       const panel = h('div.dialog-body', { role: 'tabpanel', id: 'settings-panel', tabindex: '-1' });
       const status = h('span.status', { role: 'status' });
       // Names the profile these settings belong to.
@@ -47,19 +56,21 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
       const touch = () => {
         const changed = dirty();
         status.className = `status${changed ? ' dirty' : ''}`;
-        status.replaceChildren(h('span.dot', { 'aria-hidden': 'true' }), changed ? 'Unsaved changes' : 'All changes saved');
+        // What stops Save is said here, next to the button it disables.
+        const problem = changed ? problems() : '';
+        status.replaceChildren(h('span.dot', { 'aria-hidden': 'true' }), problem || (changed ? 'Unsaved changes' : 'All changes saved'));
         discard.disabled = !changed;
-        save.disabled = !changed || Boolean(problems());
+        save.disabled = !changed || Boolean(problem);
         applyAppearance(draft);
       };
 
       const problems = () => {
         for (const box of Object.keys(SEARCH_BOXES)) {
-          if (draft.engines[box].list.some((e) => !e.name.trim() || !isValidEngineUrl(e.url))) return 'Fix the search engines before saving.';
+          if (draft.engines[box].list.some((e) => !e.name.trim() || !isValidEngineUrl(e.url))) return 'Every search engine needs a name and an address with %s.';
         }
         for (const group of draft.launchers) {
           if (!group.name.trim()) return 'Every launcher needs a name.';
-          if (group.links.some((l) => !l.name.trim() || !normalizeHttpUrl(l.url).ok)) return `Fix the links in ${group.name}.`;
+          if (group.links.some((l) => !l.name.trim() || !normalizeHttpUrl(l.url).ok)) return `Every link in ${group.name} needs a name and an address.`;
         }
         return '';
       };
@@ -70,29 +81,34 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
       };
 
       const renderTabs = () => {
-        tabs.replaceChildren(...TABS.map((name) => h('button.tab', {
+        const names = TABS.map((t) => t.name);
+        tabs.replaceChildren(...TABS.map(({ name, icon: mark }) => h('button.tab', {
           type: 'button', role: 'tab', id: `tab-${name}`, 'aria-selected': String(ui.tab === name), 'aria-controls': 'settings-panel',
           tabindex: ui.tab === name ? '0' : '-1',
-          onclick: () => { ui.tab = name; renderTabs(); renderPanel(); },
+          onclick: () => { ui.tab = name; renderTabs(); renderPanel(); panel.scrollTop = 0; },
           onkeydown: (event) => {
-            const i = TABS.indexOf(name);
-            const next = event.key === 'ArrowRight' ? TABS[(i + 1) % TABS.length] : event.key === 'ArrowLeft' ? TABS[(i - 1 + TABS.length) % TABS.length] : null;
+            const i = names.indexOf(name);
+            const next = event.key === 'ArrowDown' ? names[(i + 1) % names.length] : event.key === 'ArrowUp' ? names[(i - 1 + names.length) % names.length] : null;
             if (!next) return;
             event.preventDefault();
             ui.tab = next;
             renderTabs();
             renderPanel();
+            panel.scrollTop = 0;
             tabs.querySelector(`#tab-${next}`).focus();
           }
-        }, name)));
+        }, icon(mark, 18), name)));
         panel.setAttribute('aria-labelledby', `tab-${ui.tab}`);
       };
 
       const renderPanel = () => {
-        const builders = { Profiles: profilesTab, Appearance: appearanceTab, Search: searchTab, Clocks: clocksTab, Shortcuts: shortcutsTab, Launchers: launchersTab, Layout: layoutTab, Data: dataTab };
+        const builders = { Appearance: appearanceSection, Search: searchSection, Clocks: clocksSection, Links: linksSection, Profiles: profilesSection };
         const scroll = panel.scrollTop;
-        panel.replaceChildren(...[builders[ui.tab]()].flat());
+        // A control that re-renders the panel (a switch, a stepper, Make default) keeps focus through its data-focus-key.
+        const focusKey = panel.contains(document.activeElement) ? document.activeElement.dataset.focusKey : '';
+        panel.replaceChildren(...builders[ui.tab]().flat().filter(Boolean));
         panel.scrollTop = scroll;
+        if (focusKey) panel.querySelector(`[data-focus-key="${CSS.escape(focusKey)}"]`)?.focus();
         touch();
       };
 
@@ -103,72 +119,27 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
       const editText = (fn) => (value, how) => { fn(value); if (how === 'blank') renderPanel(); else touch(); };
       const checkUrl = (value) => { const check = normalizeHttpUrl(value); return check.ok ? { ok: true, value: check.url } : { ok: false, msg: check.msg }; };
 
-      // ---------- Profiles ----------
-      // Profile actions apply at once. Switching or adding one loads its settings into this dialog.
-      const loadProfile = async (action) => {
-        if (dirty() && !window.confirm('Discard unsaved settings changes?')) return;
-        await action();
-        ui.saved = clone(store.settings);
-        draft = clone(store.settings);
-        showProfile();
-        renderPanel();
+      // The pieces every section is built from.
+      const groupHead = (title, ...actions) => h('div.group-head', {}, h('h2', {}, title), actions.length ? h('div.inline', {}, ...actions) : null);
+      const addButton = (label, onclick, primary = false) => h(`button.btn.small.${primary ? 'primary' : 'outline'}`, { type: 'button', onclick }, icon('plus', 14, 2.2), label);
+      const toggle = ({ on, label, key, describedBy = null, onclick }) => h('button.switch', {
+        type: 'button', role: 'switch', 'aria-checked': String(Boolean(on)), 'aria-describedby': describedBy, dataset: { focusKey: key }, onclick
+      }, h('span.track', { 'aria-hidden': 'true' }, h('span.knob')), label);
+      const removeButton = (label, onclick, props = {}) => h('button.icon-btn', { type: 'button', 'aria-label': label, title: 'Remove', onclick, ...props }, icon('trash', 16));
+      // A warning on the row it is about; sync() shows or hides it after an edit in place.
+      const rowWarning = (text, isBad) => {
+        const el = h('span.row-msg', { hidden: !isBad() }, icon('alert', 14, 2.2), text);
+        el.sync = () => { el.hidden = !isBad(); };
+        return el;
       };
+      // Starts editing the text at `selector` (a new row's name), as if it had been clicked.
+      const startEdit = (selector) => panel.querySelector(selector)?.click();
 
-      const profilesTab = () => {
-        const { list, active } = store.profiles;
-        const items = list.map((profile) => {
-          const on = profile.id === active;
-          const name = h('input.input.compact', {
-            type: 'text', value: profile.name, maxlength: PROFILE_NAME_MAX, 'aria-label': 'Profile name', style: { width: '240px' },
-            onchange: () => {
-              renameProfile(profile.id, name.value);
-              name.value = store.profiles.list.find((p) => p.id === profile.id).name;
-              showProfile();
-            }
-          });
-          // The icon is a button: clicking it opens the icon picker. Icon changes apply at once, like the other profile actions.
-          const mark = profileIcon(profile);
-          const pickIcon = iconButton({
-            mark: badge({ name: profile.name, url: '', icon: mark }, `profile${on ? ' on' : ''}`),
-            label: `Change icon of the ${profile.name} profile`,
-            onclick: () => openIconPicker({
-              icon: mark, name: profile.name, allowNone: true, neutral: true, requireUrl: true,
-              onApply: (next) => { setProfileIcon(profile.id, next); renderPanel(); document.querySelector(`[data-profile-icon="${profile.id}"]`)?.focus(); },
-              onReset: () => { setProfileIcon(profile.id, null); renderPanel(); document.querySelector(`[data-profile-icon="${profile.id}"]`)?.focus(); }
-            })
-          });
-          pickIcon.dataset.profileIcon = profile.id;
-          return h('li.profile-row', {},
-            pickIcon,
-            h('span.grow', {}, name),
-            on
-              ? h('span.note', {}, 'In use, editing now')
-              : h('button.btn.quiet-outline', { type: 'button', 'aria-label': `Use ${profile.name} profile`, onclick: () => loadProfile(() => switchProfile(profile.id)) }, 'Use'),
-            on ? null : h('button.icon-btn', {
-              type: 'button', 'aria-label': `Delete ${profile.name} profile`, title: 'Delete profile',
-              onclick: () => {
-                if (!window.confirm(`Delete the ${profile.name} profile and all its settings?`)) return;
-                deleteProfile(profile.id);
-                renderPanel();
-                toast(`Deleted ${profile.name}`);
-              }
-            }, icon('trash', 16)));
-        });
-        return [
-          h('span.note', {}, 'Each profile has its own appearance, search engines, clocks, shortcuts, launchers and layout. The other tabs edit the profile in use. Search history is shared, and so is any shortcut or launcher set to show on all profiles. Click a profile\'s icon to change it.'),
-          h('ul.list', {}, ...items),
-          h('div.inline', {},
-            h('button.btn.primary', { type: 'button', onclick: () => loadProfile(() => createProfile()) }, 'New profile'),
-            h('button.btn.outline', { type: 'button', onclick: () => loadProfile(() => createProfile({ copy: true })) }, 'Duplicate current')),
-          h('span.note', {}, 'A new profile starts from the default settings; a duplicate copies the profile in use as it was last saved.')
-        ];
-      };
-
-      // ---------- Appearance ----------
-      const appearanceTab = () => {
+      // ---------- Appearance: colors, then the page layout ----------
+      const appearanceSection = () => {
         const bg = draft.background;
         const shown = bg[isDark(draft) ? 'dark' : 'light'];
-        const grid = h('div.form-grid', {},
+        const colors = h('div.form-grid', {},
           h('span.field-label', { id: 'lbl-theme' }, 'Theme'),
           segmented({
             labelledBy: 'lbl-theme', value: draft.theme,
@@ -193,15 +164,15 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
           })
         );
         if (bg.type === 'solid') {
-          grid.append(...colorRow('light', ['solid']), ...colorRow('dark', ['solid']));
+          colors.append(...colorRow('light', ['solid']), ...colorRow('dark', ['solid']));
         } else if (bg.type === 'gradient') {
-          grid.append(...colorRow('light', ['from', 'to']), ...colorRow('dark', ['from', 'to']));
+          colors.append(...colorRow('light', ['from', 'to']), ...colorRow('dark', ['from', 'to']));
         } else {
           const note = h('span.note', { 'aria-live': 'polite' }, bg.image ? 'Image stored in this browser.' : 'No image yet. JPG, PNG, WebP or GIF up to 3 MB.');
-          grid.append(
-            h('span.field-label', {}, 'Image'),
+          colors.append(
+            h('span.field-label.sub', {}, 'Image'),
             h('div.inline', {},
-              h('label.btn.outline.small', { class: 'file-btn', style: { borderRadius: '6px' } }, 'Choose image',
+              h('label.btn.outline.small', { class: 'file-btn' }, 'Choose image',
                 h('input', {
                   type: 'file', accept: 'image/png,image/jpeg,image/webp,image/gif',
                   onchange: async (event) => {
@@ -219,19 +190,53 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
               note)
           );
         }
-        return grid;
+
+        const blocks = draft.layout.blocks;
+        const { rows, perRow } = draft.layout;
+        const layout = h('div.form-grid', {},
+          h('span.field-label.top', {}, 'Block order'),
+          h('ol.block-list', {}, ...blocks.map((block, i) => h('li', { dataset: { sortRow: '' } },
+            sortHandle({ item: block, index: i, count: blocks.length, label: BLOCKS[block], onMove: (from, to) => change(() => { draft.layout.blocks = moveItem(blocks, from, to); }) }),
+            h('span.num', {}, String(i + 1).padStart(2, '0')),
+            h('span.title', {}, BLOCKS[block])))),
+          h('span.field-label', {}, 'Shortcut grid'),
+          h('div.inline', { style: { gap: '10px' } },
+            stepper({ value: rows, min: 1, max: 4, label: 'rows', focusKey: 'rows', onChange: (n) => change(() => { draft.layout.rows = n; }) }),
+            h('span.note', {}, rows === 1 ? 'row of' : 'rows of'),
+            stepper({ value: perRow, min: 4, max: 12, label: 'shortcuts per row', focusKey: 'per-row', onChange: (n) => change(() => { draft.layout.perRow = n; }) }),
+            h('span.note', {}, `Up to ${rows * perRow} per page`)),
+          h('span.field-label', {}, 'Category row'),
+          toggle({
+            on: draft.layout.showCategories, key: 'categories', label: 'Show categories, Edit and Add above shortcuts',
+            onclick: () => change(() => { draft.layout.showCategories = !draft.layout.showCategories; })
+          }),
+          h('span.field-label.top', {}, 'Bookmarks bar'),
+          h('div.stack', {},
+            toggle({
+              on: draft.layout.showBookmarks, key: 'bookmarks', label: 'Show browser bookmarks at the top',
+              onclick: async () => {
+                // Turning it on asks Chrome for access to bookmarks (once); without it the bar stays off.
+                if (!draft.layout.showBookmarks && !await requestBookmarkAccess()) {
+                  toast('The bookmarks bar needs access to your bookmarks.');
+                  return;
+                }
+                change(() => { draft.layout.showBookmarks = !draft.layout.showBookmarks; });
+              }
+            }),
+            h('span.note', {}, 'Chrome’s own bar can’t be hidden from here: Ctrl+Shift+B (⌘+Shift+B on Mac).')));
+        return [groupHead('Colors'), colors, groupHead('Layout'), layout];
       };
 
       // One row per theme: the solid color, or the gradient's start and end.
       const colorRow = (theme, keys) => {
         const colors = draft.background[theme];
-        const name = theme === 'light' ? 'Light' : 'Dark';
-        const part = { solid: '', from: ' start', to: ' end' };
+        const name = theme === 'light' ? 'Light theme' : 'Dark theme';
+        const part = { solid: ' color', from: ' start', to: ' end' };
         return [
-          h('span.field-label', {}, name),
+          h('span.field-label.sub', {}, name),
           h('div.inline', {},
             ...keys.map((key) => colorChoice({
-              label: `${name} theme${part[key] || ' color'}`, value: colors[key],
+              label: `${name}${part[key]}`, value: colors[key],
               options: PRESETS[theme].map((hex) => ({ value: hex, label: hex, fill: hex })),
               onChange: (value) => change(() => { colors[key] = value; })
             })),
@@ -239,77 +244,67 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
         ];
       };
 
-      // ---------- Search engines ----------
-      const searchTab = () => {
+      // ---------- Search: engines per box, then the history ----------
+      const searchSection = () => {
         const box = ui.engineBox;
         const group = draft.engines[box];
         const list = group.list;
-        const note = h('span.note', { 'aria-live': 'polite' });
-        const refreshNote = () => {
-          const bad = list.some((e) => !e.name.trim() || !isValidEngineUrl(e.url));
-          note.textContent = bad
-            ? 'Each engine needs a name, and a URL that starts with http(s):// and contains %s.'
-            : 'Links open directly in any box, DOIs open on doi.org, and other schemes are blocked.';
-          note.style.color = bad ? 'var(--ink)' : '';
-        };
+        const checkEngineUrl = (value) => (isValidEngineUrl(value.trim())
+          ? { ok: true, value: value.trim() }
+          : { ok: false, msg: 'The address must start with http(s):// and contain %s.' });
         const rows = list.map((engine, i) => {
-          const url = h('input.input.tight', {
-            type: 'url', 'aria-label': `${engine.name} URL`, value: engine.url, spellcheck: 'false',
-            'aria-invalid': String(!isValidEngineUrl(engine.url)), title: 'Must start with http(s):// and contain %s',
-            oninput: () => { engine.url = url.value; url.setAttribute('aria-invalid', String(!isValidEngineUrl(engine.url))); refreshNote(); touch(); }
-          });
-          const name = h('input.input.tight', {
-            type: 'text', 'aria-label': 'Engine name', value: engine.name, style: { fontWeight: 700 },
-            oninput: () => { engine.name = name.value; name.setAttribute('aria-invalid', String(!engine.name.trim())); refreshNote(); touch(); }
-          });
-          return h(`div.engine-row${group.default === engine.id ? '.is-default' : ''}`, { dataset: { sortRow: '' } },
+          const isDefault = group.default === engine.id;
+          const warning = rowWarning('Needs http(s):// and %s where the search goes.', () => !engine.name.trim() || !isValidEngineUrl(engine.url));
+          const edited = (fn) => (value, how) => { fn(value); warning.sync(); if (how === 'blank') renderPanel(); else touch(); };
+          return h('li', { dataset: { sortRow: '', engineId: engine.id } },
             sortHandle({ item: engine, index: i, count: list.length, label: engine.name, onMove: (from, to) => change(() => { group.list = moveItem(list, from, to); }) }),
-            h('input', {
-              type: 'radio', name: `default-${box}`, 'aria-label': `Make ${engine.name} the default`, checked: group.default === engine.id,
-              onchange: () => change(() => { group.default = engine.id; })
-            }),
-            name, url,
-            h('button.icon-btn.small', {
-              type: 'button', 'aria-label': `Remove ${engine.name}`, disabled: list.length === 1,
-              onclick: () => change(() => {
-                group.list = list.filter((e) => e.id !== engine.id);
-                if (group.default === engine.id) group.default = group.list[0].id;
-              })
-            }, icon('close', 14, 2.2)));
+            h('span.grow', {},
+              inlineText({ value: engine.name, label: `Name of ${engine.name}: click to rename`, className: 'title', onCommit: edited((value) => { engine.name = value; }) }),
+              h('span.sub', {},
+                inlineText({ value: engine.url, type: 'url', check: checkEngineUrl, label: `Address of ${engine.name}: click to change`, onCommit: edited((value) => { engine.url = value; }) })),
+              warning),
+            h('button.pill', {
+              type: 'button', 'aria-pressed': String(isDefault), dataset: { focusKey: `default-${engine.id}` },
+              'aria-label': isDefault ? `${engine.name} is the default` : `Make ${engine.name} the default`,
+              onclick: () => change(() => { group.default = engine.id; })
+            }, isDefault ? 'Default' : 'Make default'),
+            removeButton(`Remove ${engine.name}`, () => change(() => {
+              group.list = list.filter((e) => e.id !== engine.id);
+              if (group.default === engine.id) group.default = group.list[0].id;
+            }), { disabled: list.length === 1 }));
         });
-        refreshNote();
         return [
-          h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' } },
-            segmented({
-              label: 'Search box', value: box,
-              options: Object.entries(SEARCH_BOXES).map(([key, meta]) => ({ value: key, label: meta.kicker })),
-              onChange: (value) => change(() => { ui.engineBox = value; })
+          groupHead('Engines', addButton('Add engine', () => {
+            const fresh = { id: createId('en'), name: 'New engine', url: 'https://' };
+            change(() => { group.list.push(fresh); });
+            startEdit(`[data-engine-id="${CSS.escape(fresh.id)}"] .title .inline-text`);
+          })),
+          segmented({
+            label: 'Search box', value: box,
+            options: Object.entries(SEARCH_BOXES).map(([key, meta]) => ({ value: key, label: meta.kicker })),
+            onChange: (value) => change(() => { ui.engineBox = value; })
+          }),
+          h('ul.list', {}, ...rows),
+          h('span.note', {}, 'Click a name or address to change it. %s marks where your search goes.'),
+          h('div.stack', {},
+            toggle({
+              on: group.shared, key: 'engines-shared', describedBy: 'engines-shared-note', label: `Same ${SEARCH_BOXES[box].kicker} engines on all profiles`,
+              onclick: () => change(() => { if (group.shared) delete group.shared; else group.shared = true; })
             }),
-            h('button.btn.outline.small', {
-              type: 'button',
-              onclick: () => {
-                change(() => { group.list.push({ id: createId('en'), name: 'New engine', url: 'https://' }); });
-                panel.querySelector('.engine-row:last-child input[type="text"]')?.select();
-              }
-            }, icon('plus', 14, 2.2), 'Add engine')),
-          h('button.switch', {
-            type: 'button', role: 'switch', 'aria-checked': String(Boolean(group.shared)), 'aria-describedby': 'engines-shared-note', style: { alignSelf: 'flex-start' },
-            onclick: () => change(() => { if (group.shared) delete group.shared; else group.shared = true; })
-          }, h('span.track', { 'aria-hidden': 'true' }, h('span.knob')), `Use these ${SEARCH_BOXES[box].kicker} engines and the default on all profiles`),
-          h('span.note', { id: 'engines-shared-note' }, group.shared
-            ? 'Every profile uses this list and default for this box. Changes here apply to all of them.'
-            : 'Off: this list and default belong to the profile in use only.'),
-          h('div.engine-table', {},
-            h('div.engine-row.head', { 'aria-hidden': 'true' }, h('span'), h('span', {}, 'DEFAULT'), h('span', {}, 'NAME'), h('span', {}, 'URL · %s = your search'), h('span')),
-            ...rows),
-          note
+            h('span.note', { id: 'engines-shared-note' }, group.shared
+              ? 'Changes to this list and its default apply to every profile.'
+              : 'Off: this list and its default belong to the profile in use only.')),
+          groupHead('History'),
+          h('div.between', {},
+            h('span.note', {}, 'Past searches are used for suggestions and kept on this device, for all profiles.'),
+            h('button.btn.outline.small', { type: 'button', onclick: () => { clearHistory(); toast('Search history cleared'); } }, 'Clear history'))
         ];
       };
 
       // ---------- Clocks ----------
-      const clocksTab = () => {
+      const clocksSection = () => {
         const zones = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : [];
-        const add = h('input.input.compact', { id: 'add-tz', type: 'text', placeholder: 'Add a time zone or city, e.g. PDT, CET or Paris', list: 'tz-list', style: { flex: 1, minWidth: 0, height: '44px' } });
+        const add = h('input.input.compact', { id: 'add-tz', type: 'text', placeholder: 'Add a city or time zone, e.g. Paris, PDT or CET', list: 'tz-list', style: { flex: 1, minWidth: 0, height: '44px' } });
         const addMsg = h('span.msg.bad', { 'aria-live': 'polite' });
         const addClock = () => {
           const query = add.value.trim();
@@ -327,51 +322,58 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
         add.addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); addClock(); } });
         const world = draft.clocks.world;
         return [
-          h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', paddingBottom: '14px', borderBottom: '1px solid var(--divider)' } },
-            h('span.field-label', {}, 'Main clock'),
-            h('button.switch', {
-              type: 'button', role: 'switch', 'aria-checked': String(draft.clocks.showSeconds),
-              onclick: () => change(() => { draft.clocks.showSeconds = !draft.clocks.showSeconds; })
-            }, h('span.track', { 'aria-hidden': 'true' }, h('span.knob')), 'Show seconds on the main clock')),
-          h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', paddingBottom: '14px', borderBottom: '1px solid var(--divider)' } },
+          groupHead('Main clock'),
+          h('div.form-grid', {},
             h('span.field-label', { id: 'hour-format' }, 'Time format'),
             segmented({
               labelledBy: 'hour-format', value: draft.clocks.hour12 ? '12' : '24',
               options: [{ value: '24', label: '24-hour' }, { value: '12', label: '12-hour' }],
               onChange: (value) => change(() => { draft.clocks.hour12 = value === '12'; })
-            })),
-          h('span.field-label', {}, 'World clocks'),
-          world.length ? h('ul.list', {}, ...world.map((clock, i) => {
-            const shown = clockLabel(clock, new Date());
-            const city = h('input.input.tight', {
-              type: 'text', value: clock.city, placeholder: clockLabel({ ...clock, city: '' }, new Date()),
-              'aria-label': `Label for ${clock.tz}; leave empty to show the zone name`, style: { width: '180px', fontWeight: 700 },
-              oninput: () => { clock.city = city.value; touch(); }
-            });
-            return h('li', { dataset: { sortRow: '' } },
-              sortHandle({ item: clock, index: i, count: world.length, label: shown, onMove: (from, to) => change(() => { draft.clocks.world = moveItem(world, from, to); }) }),
-              city,
-              h('span.sub', { style: { flex: 1, fontSize: '13px', color: 'var(--muted)' } }, clock.tz),
-              h('button.icon-btn', { type: 'button', 'aria-label': `Remove ${shown}`, onclick: () => change(() => { draft.clocks.world = world.filter((c) => c !== clock); }) }, icon('close')));
-          })) : h('p.note', {}, 'No world clocks. Only the local clock is shown.'),
+            }),
+            h('span.field-label', {}, 'Seconds'),
+            toggle({ on: draft.clocks.showSeconds, key: 'seconds', label: 'Show seconds', onclick: () => change(() => { draft.clocks.showSeconds = !draft.clocks.showSeconds; }) })),
+          groupHead('World clocks'),
           h('div', { style: { display: 'flex', gap: '8px' } },
             h('label.sr-only', { for: 'add-tz' }, 'Add a time zone'),
             add,
-            h('button.btn.outline', { type: 'button', onclick: addClock }, 'Add')),
+            h('button.btn.outline', { type: 'button', onclick: addClock }, icon('plus', 14, 2.2), 'Add clock')),
           addMsg,
+          world.length ? h('ul.list', {}, ...world.map((clock, i) => {
+            const zoneName = () => clockLabel({ ...clock, city: '' }, new Date());
+            const shown = clockLabel(clock, new Date());
+            return h('li', { dataset: { sortRow: '' } },
+              sortHandle({ item: clock, index: i, count: world.length, label: shown, onMove: (from, to) => change(() => { draft.clocks.world = moveItem(world, from, to); }) }),
+              h('span.grow', {},
+                // An emptied name goes back to the zone's own name.
+                inlineText({
+                  value: clock.city, display: (value) => value || zoneName(), check: (value) => ({ ok: true, value: value.trim() }), className: 'title',
+                  label: `Name of the ${clock.tz} clock: click to rename`, onCommit: editText((value) => { clock.city = value; })
+                }),
+                h('span.sub', {}, clock.tz)),
+              removeButton(`Remove ${shown}`, () => change(() => { draft.clocks.world = world.filter((c) => c !== clock); })));
+          })) : h('p.note', {}, 'No world clocks. Only the local clock is shown.'),
+          world.length ? h('span.note', {}, 'Click a name to rename it; clear it to show the zone’s own name.') : null,
           h('datalist', { id: 'tz-list' },
             ...ZONE_ABBREVIATION_LIST.map(([name, tz]) => h('option', { value: name, label: tz })),
             ...zones.map((z) => h('option', { value: z })))
         ];
       };
 
-      // ---------- Launchers ----------
-      // ---------- Shortcuts ----------
+      // ---------- Links: shortcuts and launchers, one list at a time ----------
+      const linksSection = () => {
+        const launchers = ui.links === 'launchers';
+        const kinds = segmented({
+          label: 'Kind of link', value: ui.links,
+          options: [{ value: 'shortcuts', label: `Shortcuts (${draft.shortcuts.length})` }, { value: 'launchers', label: `Launchers (${draft.launchers.length})` }],
+          onChange: (value) => { ui.links = value; renderPanel(); panel.scrollTop = 0; panel.querySelector('.seg[aria-pressed="true"]')?.focus(); }
+        });
+        const { actions, body } = launchers ? launcherList() : shortcutList();
+        return [h('div.between', {}, kinds, h('div.inline', {}, ...actions)), ...body];
+      };
+
       // The shortcut editor opens over Settings and edits the draft, so changes wait for Save.
-      const shortcutsTab = () => {
+      const shortcutList = () => {
         const list = draft.shortcuts;
-        const add = h('button.btn.primary', { type: 'button', onclick: () => edit(null) }, 'Add shortcut');
-        const addGroup = h('button.btn.outline', { type: 'button', onclick: () => edit(null, true) }, icon('plus', 14, 2.2), 'Add group');
         const edit = (id, newGroup = false) => openShortcutEditor(id, {
           newGroup,
           shortcuts: draft.shortcuts,
@@ -398,27 +400,26 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
             h('span.sub', {}, `${item.category || 'No category'} · `,
               inlineText({ value: item.url, type: 'url', display: hostOf, check: checkUrl, label: `Address of ${item.name}: click to change`, onCommit: editText((value) => { item.url = value; }) }),
               item.shared ? ' · All profiles' : '')),
-          h('button.btn.quiet-outline', { type: 'button', 'aria-label': `Edit ${item.name} shortcut`, dataset: { editId: item.id }, onclick: () => edit(item.id) }, 'Edit'),
-          h('button.icon-btn', {
-            type: 'button', 'aria-label': `Remove ${item.name} shortcut`, title: 'Remove shortcut',
-            onclick: () => {
-              if (item.shared && !window.confirm(`${item.name} shows on all profiles. Remove it from every profile?`)) return;
-              change(() => { draft.shortcuts = draft.shortcuts.filter((s) => s.id !== item.id); });
-            }
-          }, icon('trash', 16))));
-        return [
-          h('span.note', {}, 'Shortcuts show below the search boxes. Click a name or address to change it here; Edit opens the same editor as the page. Changes apply when you save.'),
-          list.length ? h('ul.list', {}, ...items) : h('p.note', {}, 'No shortcuts yet.'),
-          h('div.inline', {}, add, addGroup),
-          h('span.note', {}, 'A group is a category: it appears once a shortcut is saved into it, so Add group starts with its first shortcut.')
-        ];
+          h('button.btn.small.quiet-outline', { type: 'button', 'aria-label': `Edit ${item.name} shortcut`, dataset: { editId: item.id }, onclick: () => edit(item.id) }, 'Edit'),
+          removeButton(`Remove ${item.name} shortcut`, () => {
+            if (item.shared && !window.confirm(`${item.name} shows on all profiles. Remove it from every profile?`)) return;
+            change(() => { draft.shortcuts = draft.shortcuts.filter((s) => s.id !== item.id); });
+          })));
+        return {
+          // A group is a category: it exists once a shortcut is saved into it, so Add group starts with its first shortcut.
+          actions: [addButton('Add group', () => edit(null, true)), addButton('Add shortcut', () => edit(null), true)],
+          body: [
+            h('span.note', {}, 'Tiles under the search boxes. Click an icon, name or address to change it; Edit has the group and sharing.'),
+            list.length ? h('ul.list', {}, ...items) : h('p.note', {}, 'No shortcuts yet.')
+          ]
+        };
       };
 
-      const launchersTab = () => {
+      const launcherList = () => {
         const groups = draft.launchers;
         const items = groups.map((group, i) => {
           const expanded = ui.expanded === group.id;
-          const row = h(`li${expanded ? '.expanded' : ''}`, { dataset: { sortRow: '' } },
+          return h(`li${expanded ? '.expanded' : ''}`, { dataset: { sortRow: '', launcherId: group.id } },
             sortHandle({ item: group, index: i, count: groups.length, label: group.name, onMove: (from, to) => change(() => { draft.launchers = moveItem(groups, from, to); }) }),
             iconButton({
               mark: h('span.badge.launcher-face', { 'aria-hidden': 'true', style: { width: '40px', height: '40px', fontSize: '13px', ...launcherFaceStyle(group.icon) } }, launcherMark(group)),
@@ -429,175 +430,163 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
               })
             }, { dataset: { iconId: group.id } }),
             h('span.grow', {},
-              inlineText({
-                value: group.name, label: `Name of ${group.name}: click to rename`, className: 'title',
-                onCommit: editText((value) => { group.name = value; const field = panel.querySelector(`#ln-${CSS.escape(group.id)}-name`); if (field) field.value = value; })
-              }),
+              inlineText({ value: group.name, label: `Name of ${group.name}: click to rename`, className: 'title', onCommit: editText((value) => { group.name = value; }) }),
               h('span.sub', {}, `${group.links.length} link${group.links.length === 1 ? '' : 's'}${group.shared ? ' · All profiles' : ''}`)),
-            h('button.btn.quiet-outline', {
-              type: 'button', 'aria-expanded': String(expanded), 'aria-label': `${expanded ? 'Close' : 'Edit'} ${group.name} launcher`,
+            h('button.btn.small.quiet-outline', {
+              type: 'button', 'aria-expanded': String(expanded), 'aria-label': `${expanded ? 'Hide' : 'Show'} the links of ${group.name}`,
+              dataset: { focusKey: `links-${group.id}` },
               onclick: () => change(() => { ui.expanded = expanded ? null : group.id; })
-            }, expanded ? 'Close' : 'Edit'),
-            expanded ? h('button.icon-btn', {
-              type: 'button', 'aria-label': `Remove ${group.name} launcher`, title: 'Remove launcher',
-              onclick: () => {
-                if (group.shared && !window.confirm(`${group.name} shows on all profiles. Remove it from every profile?`)) return;
-                change(() => { draft.launchers = draft.launchers.filter((g) => g.id !== group.id); ui.expanded = null; });
-              }
-            }, icon('trash', 16)) : null,
-            expanded ? launcherEditor(group) : null);
-          return row;
+            }, 'Links', h('span.chev', { style: { display: 'grid' } }, icon('chevronDown', 14, 2.2))),
+            removeButton(`Remove ${group.name} launcher`, () => {
+              if (group.shared && !window.confirm(`${group.name} shows on all profiles. Remove it from every profile?`)) return;
+              change(() => { draft.launchers = draft.launchers.filter((g) => g.id !== group.id); if (expanded) ui.expanded = null; });
+            }),
+            expanded ? launcherLinks(group) : null);
         });
-        return [
-          h('span.note', {}, 'Launchers sit in the bottom dock. Hover or focus one to preview its links; click to pin it open. Click a name here to rename it.'),
-          groups.length ? h('ul.list', {}, ...items) : h('p.note', {}, 'No launchers yet.'),
-          h('button.btn.primary', {
-            type: 'button', style: { alignSelf: 'flex-start' },
-            onclick: () => change(() => {
-              const fresh = blankLauncher();
-              draft.launchers.push(fresh);
-              ui.expanded = fresh.id;
-            })
-          }, 'Add launcher')
-        ];
+        return {
+          actions: [addButton('Add launcher', () => {
+            const fresh = blankLauncher();
+            change(() => { draft.launchers.push(fresh); ui.expanded = fresh.id; });
+            startEdit(`[data-launcher-id="${CSS.escape(fresh.id)}"] .title .inline-text`);
+          }, true)],
+          body: [
+            h('span.note', {}, 'Buttons in the bottom dock; each opens a list of links. Click an icon or name to change it; Links opens its list.'),
+            groups.length ? h('ul.list', {}, ...items) : h('p.note', {}, 'No launchers yet.')
+          ]
+        };
       };
 
-      const launcherEditor = (group) => {
-        const idBase = `ln-${group.id}`;
-        const name = h('input.input.compact', { id: `${idBase}-name`, type: 'text', value: group.name, style: { width: '160px' }, oninput: () => { group.name = name.value; touch(); } });
+      // A launcher's links, under its row: each a name and an address edited in place, plus the sharing switch.
+      const launcherLinks = (group) => {
         const links = group.links.map((link, i) => {
-          const linkName = h('input.input.tight', { type: 'text', value: link.name, 'aria-label': 'Link name', oninput: () => { link.name = linkName.value; touch(); } });
-          const linkUrl = h('input.input.tight', {
-            type: 'url', value: link.url, 'aria-label': `${link.name || 'Link'} URL`, spellcheck: 'false', 'aria-invalid': String(!normalizeHttpUrl(link.url).ok),
-            oninput: () => { link.url = linkUrl.value; linkUrl.setAttribute('aria-invalid', String(!normalizeHttpUrl(link.url).ok)); touch(); },
-            onchange: () => { const check = normalizeHttpUrl(link.url); if (check.ok) { link.url = check.url; linkUrl.value = check.url; touch(); } }
-          });
-          return h('div.link-row', { dataset: { sortRow: '' } },
+          const warning = rowWarning('Needs a name and an address', () => !link.name.trim() || !normalizeHttpUrl(link.url).ok);
+          const edited = (fn) => (value, how) => { fn(value); warning.sync(); if (how === 'blank') renderPanel(); else touch(); };
+          return h('div.link-row', { dataset: { sortRow: '', linkIndex: i } },
             sortHandle({ item: link, index: i, count: group.links.length, label: link.name || 'link', onMove: (from, to) => change(() => { group.links = moveItem(group.links, from, to); }) }),
-            linkName, linkUrl,
-            h('button.icon-btn.small', { type: 'button', 'aria-label': `Remove ${link.name}`, onclick: () => change(() => { group.links = group.links.filter((l) => l !== link); }) }, icon('close', 14, 2.2)));
+            h('span.link-name', {}, inlineText({ value: link.name, placeholder: 'Name', label: `Name of link ${i + 1}: click to change`, onCommit: edited((value) => { link.name = value; }) })),
+            h('span.link-url', {}, inlineText({ value: link.url, placeholder: 'example.com', type: 'url', check: checkUrl, label: `Address of ${link.name || `link ${i + 1}`}: click to change`, onCommit: edited((value) => { link.url = value; }) })),
+            warning,
+            h('button.icon-btn.small', { type: 'button', 'aria-label': `Remove ${link.name || `link ${i + 1}`}`, title: 'Remove', onclick: () => change(() => { group.links = group.links.filter((l) => l !== link); }) }, icon('close', 14, 2.2)));
         });
-        // The icon is changed by clicking it in the launcher's row above.
-        const sharedNote = h('span.note', { id: `${idBase}-shared-note` }, group.shared
-          ? 'Appears on every profile. Changes and removing it apply to all of them.'
-          : 'Off: this launcher belongs to the profile in use only.');
         return h('div.launcher-editor', {},
-          h('div.inline', { style: { gap: '20px' } },
-            h('div.inline', {}, h('label.field-label', { for: `${idBase}-name` }, 'Name'), name),
-            h('button.switch', {
-              type: 'button', role: 'switch', 'aria-checked': String(Boolean(group.shared)), 'aria-describedby': `${idBase}-shared-note`,
-              onclick: () => change(() => { if (group.shared) delete group.shared; else group.shared = true; })
-            }, h('span.track', { 'aria-hidden': 'true' }, h('span.knob')), 'Show on all profiles')),
-          sharedNote,
-          h('div.inline', { style: { justifyContent: 'space-between', marginTop: '4px' } },
-            h('span.field-label', {}, 'Links'),
+          ...(links.length ? links : [h('p.note', { style: { margin: 0 } }, 'No links yet.')]),
+          h('div.between', {},
             h('button.btn.outline.small', {
               type: 'button',
               onclick: () => {
                 change(() => { group.links.push({ name: '', url: '' }); });
-                panel.querySelector('.launcher-editor .link-row:last-of-type input')?.focus();
+                startEdit(`.launcher-editor [data-link-index="${group.links.length - 1}"] .link-name .inline-text`);
               }
-            }, icon('plus', 14, 2.2), 'Add link')),
-          ...(links.length ? links : [h('p.note', {}, 'No links yet.')])
-        );
+            }, icon('plus', 14, 2.2), 'Add link'),
+            toggle({
+              on: group.shared, key: `shared-${group.id}`, label: 'Show on all profiles',
+              onclick: () => change(() => { if (group.shared) delete group.shared; else group.shared = true; })
+            })));
       };
 
-      // ---------- Layout ----------
-      const layoutTab = () => {
-        const blocks = draft.layout.blocks;
-        const rows = h('input.input.compact', {
-          id: 'g-rows', type: 'number', min: 1, max: 4, value: draft.layout.rows, style: { width: '72px' },
-          onchange: () => { const n = Number.parseInt(rows.value, 10); change(() => { if (n >= 1 && n <= 4) draft.layout.rows = n; }); }
-        });
-        const cols = h('input.input.compact', {
-          id: 'g-cols', type: 'number', min: 4, max: 12, value: draft.layout.perRow, style: { width: '72px' },
-          onchange: () => { const n = Number.parseInt(cols.value, 10); change(() => { if (n >= 4 && n <= 12) draft.layout.perRow = n; }); }
-        });
-        return [
-          h('span.note', {}, 'Order of blocks in the main column. The launcher dock stays at the bottom.'),
-          h('ol.block-list', {}, ...blocks.map((block, i) => h('li', { dataset: { sortRow: '' } },
-            sortHandle({ item: block, index: i, count: blocks.length, label: BLOCKS[block], onMove: (from, to) => change(() => { draft.layout.blocks = moveItem(blocks, from, to); }) }),
-            h('span.num', {}, String(i + 1).padStart(2, '0')),
-            h('span.title', {}, BLOCKS[block])))),
-          h('div.form-grid', { style: { gap: '12px 16px', paddingTop: '14px', borderTop: '1px solid var(--divider)' } },
-            h('span.field-label', { id: 'lbl-rows' }, 'Shortcut rows'),
-            h('div.inline', { style: { gap: '10px' } },
-              segmented({
-                labelledBy: 'lbl-rows', value: draft.layout.rows,
-                options: [{ value: 1, label: '1 row' }, { value: 2, label: '2 rows' }],
-                onChange: (value) => change(() => { draft.layout.rows = value; })
-              }),
-              h('label.note', { for: 'g-rows' }, 'or'),
-              rows),
-            h('label.field-label', { for: 'g-cols' }, 'Per row'),
-            h('div.inline', { style: { gap: '10px' } }, cols, h('span.note', {}, `Up to ${draft.layout.rows * draft.layout.perRow} shortcuts per page`)),
-            h('span.field-label', {}, 'Categories'),
-            h('button.switch', {
-              type: 'button', role: 'switch', 'aria-checked': String(draft.layout.showCategories), style: { justifySelf: 'start' },
-              onclick: () => change(() => { draft.layout.showCategories = !draft.layout.showCategories; })
-            }, h('span.track', { 'aria-hidden': 'true' }, h('span.knob')), 'Show the category row (with Edit and Add) above shortcuts'),
-            h('span.field-label', { style: { alignSelf: 'start', paddingTop: '11px' } }, 'Bookmarks'),
-            h('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px' } },
-              h('button.switch', {
-                type: 'button', role: 'switch', 'aria-checked': String(draft.layout.showBookmarks), style: { justifySelf: 'start', alignSelf: 'start' },
-                onclick: async () => {
-                  // Turning it on asks Chrome for access to bookmarks (once); without it the bar stays off.
-                  if (!draft.layout.showBookmarks && !await requestBookmarkAccess()) {
-                    toast('The bookmarks bar needs access to your bookmarks.');
-                    return;
-                  }
-                  change(() => { draft.layout.showBookmarks = !draft.layout.showBookmarks; });
+      // ---------- Profiles, then backups ----------
+      // Profile actions apply at once. Switching or adding one loads its settings into this dialog.
+      const loadProfile = async (action) => {
+        if (dirty() && !window.confirm('Discard unsaved settings changes?')) return;
+        await action();
+        ui.saved = clone(store.settings);
+        draft = clone(store.settings);
+        showProfile();
+        renderPanel();
+      };
+
+      const profilesSection = () => {
+        const { list, active } = store.profiles;
+        const items = list.map((profile) => {
+          const on = profile.id === active;
+          // The icon is a button: clicking it opens the icon picker. Icon changes apply at once, like the other profile actions.
+          const mark = profileIcon(profile);
+          const refocus = () => { renderPanel(); panel.querySelector(`[data-profile-icon="${profile.id}"]`)?.focus(); };
+          const pickIcon = iconButton({
+            mark: badge({ name: profile.name, url: '', icon: mark }, `profile${on ? ' on' : ''}`),
+            label: `Change icon of the ${profile.name} profile`,
+            onclick: () => openIconPicker({
+              icon: mark, name: profile.name, allowNone: true, neutral: true, requireUrl: true,
+              onApply: (next) => { setProfileIcon(profile.id, next); refocus(); },
+              onReset: () => { setProfileIcon(profile.id, null); refocus(); }
+            })
+          });
+          pickIcon.dataset.profileIcon = profile.id;
+          return h('li', {},
+            pickIcon,
+            h('span.grow', {},
+              inlineText({
+                value: profile.name, maxlength: PROFILE_NAME_MAX, className: 'title', label: `Name of the ${profile.name} profile: click to rename`,
+                onCommit: (value, how) => {
+                  renameProfile(profile.id, value);
+                  showProfile();
+                  // The stored name can differ from what was typed (a name already in use gets a number).
+                  const stored = store.profiles.list.find((p) => p.id === profile.id).name;
+                  if (how === 'blank' || stored !== value) renderPanel();
                 }
-              }, h('span.track', { 'aria-hidden': 'true' }, h('span.knob')), 'Show your browser bookmarks at the top of the page'),
-              h('span.note', {}, 'Chrome doesn’t let extensions hide its own bookmarks bar; turn it off with Ctrl+Shift+B (⌘+Shift+B on Mac).')))
-        ];
-      };
+              })),
+            on
+              ? h('span.tag', {}, 'In use')
+              : h('button.btn.small.quiet-outline', { type: 'button', 'aria-label': `Use ${profile.name} profile`, onclick: () => loadProfile(() => switchProfile(profile.id)) }, 'Use'),
+            on ? null : h('button.icon-btn', {
+              type: 'button', 'aria-label': `Delete ${profile.name} profile`, title: 'Delete profile',
+              onclick: () => {
+                if (!window.confirm(`Delete the ${profile.name} profile and all its settings?`)) return;
+                deleteProfile(profile.id);
+                renderPanel();
+                toast(`Deleted ${profile.name}`);
+              }
+            }, icon('trash', 16)));
+        });
 
-      // ---------- Data ----------
-      const dataTab = () => {
         const meta = FORMATS[ui.format];
-        const all = ui.scope === 'all' && store.profiles.list.length > 1;
+        const all = ui.scope === 'all' && list.length > 1;
         const fileName = backupFileName({ profileName: all ? null : activeProfile().name, extension: meta.ext });
         return [
-          h('span.note', {}, 'Everything is stored in this browser. Export a backup of the profile in use or of all profiles, or import one.'),
-          h('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px' } },
+          groupHead('Profiles',
+            h('button.btn.small.outline', { type: 'button', onclick: () => loadProfile(() => createProfile({ copy: true })) }, 'Duplicate current'),
+            addButton('New profile', () => loadProfile(() => createProfile()), true)),
+          h('span.note', {}, 'Each profile keeps its own settings; the other sections edit the one in use. Switching, renaming and deleting apply right away.'),
+          h('ul.list', {}, ...items),
+          groupHead('Backup'),
+          h('div.form-grid', {},
             h('span.field-label', { id: 'lbl-scope' }, 'Export'),
             segmented({
-              labelledBy: 'lbl-scope', value: all ? 'all' : 'current', className: 'wide',
-              options: [{ value: 'current', label: `Current profile (${activeProfile().name})` }, { value: 'all', label: `All profiles (${store.profiles.list.length})` }],
+              labelledBy: 'lbl-scope', value: all ? 'all' : 'current',
+              options: [{ value: 'current', label: `This profile (${activeProfile().name})` }, { value: 'all', label: `All profiles (${list.length})` }],
               onChange: (value) => change(() => { ui.scope = value; })
-            })),
-          h('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px' } },
-            h('span.field-label', { id: 'lbl-fmt' }, 'Export format'),
+            }),
+            h('span.field-label', { id: 'lbl-fmt' }, 'Format'),
             segmented({
-              labelledBy: 'lbl-fmt', value: ui.format, className: 'wide',
+              labelledBy: 'lbl-fmt', value: ui.format,
               options: Object.entries(FORMATS).map(([key, f]) => ({ value: key, label: f.label })),
               onChange: (value) => change(() => { ui.format = value; })
-            })),
-          h('div.inline', {},
-            h('button.btn.primary', {
-              type: 'button',
-              onclick: async () => {
-                const blob = new Blob([serialize(await backupOf(all ? 'all' : 'current'), ui.format)], { type: meta.mime });
-                const link = h('a', { href: URL.createObjectURL(blob), download: fileName });
-                document.body.append(link);
-                link.click();
-                link.remove();
-                setTimeout(() => URL.revokeObjectURL(link.href), 1000);
-                toast(`Exported ${fileName}`);
-              }
-            }, `Export ${fileName}`),
-            h('button.btn.outline', {
-              type: 'button',
-              onclick: () => {
-                if (dirty() && !window.confirm('Discard unsaved settings changes and import a file?')) return;
-                pickImportFile();
-              }
-            }, 'Import file…')),
-          h('span.note', {}, dirty() ? 'Export uses your saved settings. Save first to include unsaved changes.' : 'Imports accept JSON, YAML, TOML or text, and are checked before anything changes. A file with several profiles lets you choose which to import.'),
-          h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', paddingTop: '14px', borderTop: '1px solid var(--divider)' } },
-            h('span', { style: { display: 'flex', flexDirection: 'column' } }, h('span.field-label', {}, 'Search history'), h('span.note', {}, 'Used for suggestions, kept on this device.')),
-            h('button.btn.outline', { type: 'button', onclick: () => { clearHistory(); toast('Search history cleared'); } }, 'Clear history'))
+            }),
+            h('span'),
+            h('div.stack', {},
+              h('button.btn.primary', {
+                type: 'button',
+                onclick: async () => {
+                  const blob = new Blob([serialize(await backupOf(all ? 'all' : 'current'), ui.format)], { type: meta.mime });
+                  const link = h('a', { href: URL.createObjectURL(blob), download: fileName });
+                  document.body.append(link);
+                  link.click();
+                  link.remove();
+                  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+                  toast(`Exported ${fileName}`);
+                }
+              }, `Export ${fileName}`),
+              dirty() ? h('span.note', {}, 'Export uses your saved settings. Save first to include unsaved changes.') : null),
+            h('span.field-label.top', {}, 'Import'),
+            h('div.stack', {},
+              h('button.btn.outline', {
+                type: 'button',
+                onclick: () => {
+                  if (dirty() && !window.confirm('Discard unsaved settings changes and import a file?')) return;
+                  pickImportFile();
+                }
+              }, 'Import file…'),
+              h('span.note', {}, 'JSON, YAML, TOML or text. You review the file before anything changes, and choose which of its profiles to import.')))
         ];
       };
 
@@ -635,14 +624,15 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
         h('div.dialog-head', {},
           h('div.titles', {}, kicker, h('h1', { id: 'set-title' }, 'Settings')),
           h('button.close-btn', { type: 'button', 'aria-label': 'Close settings', onclick: requestClose }, icon('close'))),
-        tabs,
-        panel,
+        h('div.settings-main', {}, tabs, panel),
         h('div.dialog-foot', {}, status, discard, save)
       );
       showProfile();
       renderTabs();
       renderPanel();
-      if (ui.expanded) panel.querySelector('.launcher-editor input')?.focus();
+      // Opened for one launcher: a new one starts with its name being edited, an existing one with its links open.
+      if (addLauncher) startEdit('.list li.expanded .title .inline-text');
+      else if (ui.expanded) panel.querySelector('.list li.expanded [aria-expanded]')?.focus();
     }
   });
 }

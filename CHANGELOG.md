@@ -2,6 +2,17 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.15.0 — 2026-11-11
+
+### Changed
+- Settings is reorganized from eight tabs into five sections listed down the left: Appearance (colors, and the page layout that was under Layout), Search (engines, and Clear history that was under Data), Clocks, Links (shortcuts and launchers, switched at the top) and Profiles (profiles, and the backup export and import that were under Data). Every setting is still there, and the page itself is unchanged.
+- Every list in Settings works the same way: drag handle, icon, a name and address you click to edit in place, and remove. This now covers search engines, world clocks, launcher links and profile names, which were rows of text fields before. Add buttons sit at the top of their list.
+- The default search engine is chosen with a Default / Make default button on its row. Shortcut rows and shortcuts per row are each one stepper. A launcher's links open under its row with the Links button, next to its Show on all profiles switch.
+- What stops a save is named next to the Save button, and the row at fault is marked.
+
+### Fixed
+- An uploaded (or linked, or site) picture used as a profile icon no longer gets the accent color forced behind it on the dock's profile button, in the profile menu and in Settings. A color shows behind a picture only when you choose a background in the icon picker.
+
 ## v1.14.0 — 2026-11-11
 
 ### Added

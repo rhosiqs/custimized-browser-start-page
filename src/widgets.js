@@ -120,6 +120,16 @@ export function iconButton({ mark, label, onclick }, props = {}) {
   return h('button.icon-pick', { type: 'button', 'aria-label': label, title: 'Change icon', onclick, ...props }, mark);
 }
 
+// A number changed with minus and plus buttons. focusKey lets the settings panel put focus back after it re-renders.
+export function stepper({ value, min, max, label, focusKey, onChange }) {
+  const button = (by, name, word) => h('button.icon-btn.small', {
+    type: 'button', 'aria-label': `${word} ${label}`, disabled: value + by < min || value + by > max,
+    dataset: { focusKey: `${focusKey}:${by}` }, onclick: () => onChange(value + by)
+  }, icon(name, 14, 2.2));
+  return h('div.stepper', { role: 'group', 'aria-label': label },
+    button(-1, 'minus', 'Fewer'), h('span.stepper-value', { 'aria-live': 'polite' }, String(value)), button(1, 'plus', 'More'));
+}
+
 // Chrome's favicon cache answers unknown pages with a generic globe; detect it by comparing pixels.
 let defaultIconPixels = null;
 // Cross-origin icons taint the canvas; they read as no pixels.
@@ -429,13 +439,15 @@ export function dropdown({ labelId, value, options, onChange, align = 'start', b
 // `display` turns the stored value into the text shown (a host for an address). onCommit(value, how) gets how
 // the edit ended ('key', 'focus' = focus moved to another control, 'blank' = a click on empty space) and may
 // return false to refuse the change. onEdit runs when editing starts.
-export function inlineText({ value, label, onCommit, onEdit = null, display = (v) => v, type = 'text', className = '', maxlength = null,
+export function inlineText({ value, label, onCommit, onEdit = null, display = (v) => v, type = 'text', className = '', maxlength = null, placeholder = '',
   check = (v) => (v.trim() ? { ok: true, value: v.trim() } : { ok: false, msg: 'Enter a name.' }) }) {
   const wrap = h('span.inline-edit', { class: className });
-  const makeButton = () => h('button.inline-text', { type: 'button', 'aria-label': label, title: 'Click to edit', onclick: edit }, display(value));
+  // An empty value shows the placeholder, muted, so there is still something to click.
+  const shown = () => display(value) || placeholder;
+  const makeButton = () => h(`button.inline-text${display(value) ? '' : '.placeholder'}`, { type: 'button', 'aria-label': label, title: 'Click to edit', onclick: edit }, shown());
   function edit() {
     const button = wrap.firstChild;
-    const input = h('input.inline-input', { type, value, 'aria-label': label, maxlength, spellcheck: 'false', autocomplete: 'off' });
+    const input = h('input.inline-input', { type, value, 'aria-label': label, maxlength, placeholder: placeholder || null, spellcheck: 'false', autocomplete: 'off' });
     let done = false;
     const finish = (keep, how) => {
       if (done) return;
@@ -452,7 +464,8 @@ export function inlineText({ value, label, onCommit, onEdit = null, display = (v
       input.remove();
       if (changed && onCommit(value, how) === false) {
         value = before;
-        next.textContent = display(value);
+        next.textContent = shown();
+        next.classList.toggle('placeholder', !display(value));
       }
     };
     input.addEventListener('keydown', (event) => {
