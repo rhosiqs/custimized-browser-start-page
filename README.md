@@ -1,7 +1,7 @@
 # Start Page — Chrome New Tab Extension
 
 <p>
-  <img alt="Version" src="https://img.shields.io/badge/version-v1.15.2-blue">
+  <img alt="Version" src="https://img.shields.io/badge/version-v1.16.0-blue">
   <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green">
 </p>
 
@@ -20,7 +20,7 @@ A Chrome extension (Manifest V3) that replaces the new tab page with a calm, loc
 - **Launcher dock** — groups of links, shown with website icons, that preview on hover or focus and pin open on click. A launcher can show on all profiles. If a picture icon fails to load, a letter shows instead.
 - **Profiles** — separate sets of settings (appearance, search engines, clocks, shortcuts, launchers, layout), for example Work and Home. Switch or add one from the profile button at the left of the dock; Settings → Profiles renames, changes each profile's icon, deletes, adds a blank profile or duplicates the one in use. Export covers the profile in use or all profiles, and import can keep a file's profiles as new, separate profiles; search history is shared.
 - **Show on all profiles** — a shortcut or launcher can be marked "Show on all profiles" in its editor (a search box's engines have the same switch in Settings → Search). It then appears on every profile, edits to it apply everywhere, and deleting it removes it everywhere. Saving a change to it or deleting it asks for confirmation first; each profile keeps its own order. Turning it off keeps the item in the profile you are in only.
-- **Icons** — every icon (shortcut, launcher, profile) is changed by clicking the icon itself, in Settings or in the shortcut editor. One picker offers a site's logo, an image from a web address, an uploaded image (scaled down to 128 px and stored in this browser), an emoji, or a solid color with a letter or without one. Pictures have an optional background (Auto adds a contrasting disc only for an all-white or all-black picture); no color is put behind a picture otherwise. Profiles can also have no icon.
+- **Icons** — every icon (shortcut, launcher, profile) is changed by clicking the icon itself, in Settings or in the shortcut editor. One picker offers a site's logo, an image from a web address, an uploaded image, or one pasted from the clipboard with Ctrl+V (scaled down to 128 px and stored in this browser), an emoji, or a solid color with a letter or without one. Pictures have an optional background (Auto adds a contrasting disc only for an all-white or all-black picture); no color is put behind a picture otherwise. Profiles can also have no icon.
 - **Appearance** — light, dark or system theme; green, brown or ink accent; solid, gradient or image background, with separate background colors for the light and dark themes (dark defaults to #333333).
 - **Edit in place** — click a name or address where it is shown to change it there, without opening an editor: every name and address listed in Settings (shortcuts, launchers and their links, search engines, world clocks, profiles), a launcher's title in its dock flyout, and a shortcut's name in the page's Edit mode. Click elsewhere or press Enter to keep the change; Esc cancels.
 - **Colors** — every color picker (accent, background, icons) shows two base colors and a + button; the + opens the other preset colors and a field for any #HEX color.

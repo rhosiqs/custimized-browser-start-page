@@ -982,11 +982,14 @@ fieldset.plain legend { padding: 0; margin-bottom: 6px; font-size: 14px; font-we
 .switch[aria-checked='true'] .knob { left: 19px; }
 
 /* A launcher's links, opened under its row. */
-.launcher-editor { display: flex; flex-direction: column; gap: 8px; width: 100%; margin: 0 0 14px 44px; padding: 10px 8px 12px 12px; border-radius: 6px; background: var(--surface); }
+.launcher-editor { display: flex; flex-direction: column; gap: 8px; width: 100%; margin: 0 0 14px; padding: 10px 8px 12px 12px; border-radius: 6px; background: var(--surface); }
 .launcher-editor .link-row { display: flex; align-items: center; gap: 10px; min-height: 44px; }
-.launcher-editor .link-name { flex: none; width: 170px; min-width: 0; display: flex; font-weight: 700; }
-.launcher-editor .link-url { flex: 1; min-width: 0; display: flex; font-size: 13px; color: var(--sub); }
-.launcher-editor .inline-text:hover { background: var(--bg); box-shadow: 0 0 0 3px var(--bg), 0 0 0 4px var(--control); }
+.launcher-editor .link-name { flex: 0 1 230px; min-width: 120px; font-weight: 700; }
+.launcher-editor .link-url { flex: 1 1 0; min-width: 160px; }
+.launcher-editor .link-mark { flex: none; display: flex; }
+.launcher-editor .link-mark .badge { width: 32px; height: 32px; border-radius: 6px; font-size: 14px; }
+.launcher-editor .link-mark .badge:not(.site) { background: var(--bg); color: var(--sub); }
+.launcher-editor .link-mark .badge.site img { width: 20px; height: 20px; }
 .launcher-editor .sort-handle:hover, .launcher-editor .icon-btn:hover { background: var(--bg); }
 .list > li.expanded { flex-wrap: wrap; }
 /* A row that opens when clicked anywhere on it (a launcher and its links). */

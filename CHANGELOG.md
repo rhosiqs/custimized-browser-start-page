@@ -2,6 +2,19 @@
 
 Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 
+## v1.16.0 — 2026-11-12
+
+### Added
+- Paste an icon: with the icon picker open, Ctrl+V takes a copied image as the uploaded icon, or a copied image address as the Image URL. Every icon (shortcut, launcher, profile) is set in this one picker, so it works everywhere.
+- A launcher's links in Settings → Links each show their website icon.
+
+### Changed
+- A launcher's links in Settings → Links are edited in full-size name and address fields instead of small click-to-edit text, and the list uses the full width. Add link puts the cursor in the new name field, and Enter moves on to the address.
+- Settings → Links no longer has an Add group button. A group is still made from the shortcut editor's category menu (New category…) or the Add group chip in Edit mode.
+
+### Fixed
+- Adding a launcher from the dock's + button now leaves the cursor in the new launcher's name, ready to type.
+
 ## v1.15.2 — 2026-11-11
 
 ### Changed

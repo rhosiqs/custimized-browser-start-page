@@ -374,8 +374,7 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
       // The shortcut editor opens over Settings and edits the draft, so changes wait for Save.
       const shortcutList = () => {
         const list = draft.shortcuts;
-        const edit = (id, newGroup = false) => openShortcutEditor(id, {
-          newGroup,
+        const edit = (id) => openShortcutEditor(id, {
           shortcuts: draft.shortcuts,
           commit: (fn) => {
             change(() => fn(draft.shortcuts));
@@ -406,8 +405,7 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
             change(() => { draft.shortcuts = draft.shortcuts.filter((s) => s.id !== item.id); });
           })));
         return {
-          // A group is a category: it exists once a shortcut is saved into it, so Add group starts with its first shortcut.
-          actions: [addButton('Add group', () => edit(null, true)), addButton('Add shortcut', () => edit(null), true)],
+          actions: [addButton('Add shortcut', () => edit(null), true)],
           body: [
             h('span.note', {}, 'Tiles under the search boxes. Click an icon, name or address to change it; Edit has the group and sharing.'),
             list.length ? h('ul.list', {}, ...items) : h('p.note', {}, 'No shortcuts yet.')
@@ -461,16 +459,31 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
         };
       };
 
-      // A launcher's links, under its row: each a name and an address edited in place, plus the sharing switch.
+      // A launcher's links, under its row: each a website icon, a name field and an address field, plus the sharing
+      // switch. They are plain fields, not text edited in place, so a new link is typed straight in.
       const launcherLinks = (group) => {
         const links = group.links.map((link, i) => {
-          const warning = rowWarning('Needs a name and an address', () => !link.name.trim() || !normalizeHttpUrl(link.url).ok);
-          const edited = (fn) => (value, how) => { fn(value); warning.sync(); if (how === 'blank') renderPanel(); else touch(); };
+          const mark = h('span.link-mark');
+          const showMark = () => { const check = normalizeHttpUrl(link.url); mark.replaceChildren(badge({ name: link.name, url: check.ok ? check.url : '' })); };
+          // The footer names what blocks Save; here the address field is marked once it holds something that isn't one.
+          const edited = () => { url.setAttribute('aria-invalid', String(Boolean(link.url.trim()) && !normalizeHttpUrl(link.url).ok)); touch(); };
+          const name = h('input.input.tight.link-name', {
+            type: 'text', value: link.name, placeholder: 'Name', 'aria-label': `Name of link ${i + 1}`, spellcheck: 'false', autocomplete: 'off',
+            oninput: () => { link.name = name.value; edited(); },
+            onchange: showMark,
+            onkeydown: (event) => { if (event.key === 'Enter') { event.preventDefault(); url.focus(); } }
+          });
+          const url = h('input.input.tight.link-url', {
+            type: 'text', inputmode: 'url', value: link.url, placeholder: 'example.com', 'aria-label': `Address of ${link.name || `link ${i + 1}`}`, spellcheck: 'false', autocomplete: 'off',
+            oninput: () => { link.url = url.value; edited(); },
+            // A finished address is shown as it will be saved, and its website icon appears.
+            onchange: () => { const check = normalizeHttpUrl(link.url); if (check.ok) { link.url = check.url; url.value = check.url; } showMark(); edited(); }
+          });
+          showMark();
+          url.setAttribute('aria-invalid', String(Boolean(link.url.trim()) && !normalizeHttpUrl(link.url).ok));
           return h('div.link-row', { dataset: { sortRow: '', linkIndex: i } },
             sortHandle({ item: link, index: i, count: group.links.length, label: link.name || 'link', onMove: (from, to) => change(() => { group.links = moveItem(group.links, from, to); }) }),
-            h('span.link-name', {}, inlineText({ value: link.name, placeholder: 'Name', label: `Name of link ${i + 1}: click to change`, onCommit: edited((value) => { link.name = value; }) })),
-            h('span.link-url', {}, inlineText({ value: link.url, placeholder: 'example.com', type: 'url', check: checkUrl, label: `Address of ${link.name || `link ${i + 1}`}: click to change`, onCommit: edited((value) => { link.url = value; }) })),
-            warning,
+            mark, name, url,
             h('button.icon-btn.small', { type: 'button', 'aria-label': `Remove ${link.name || `link ${i + 1}`}`, title: 'Remove', onclick: () => change(() => { group.links = group.links.filter((l) => l !== link); }) }, icon('close', 14, 2.2)));
         });
         return h('div.launcher-editor', {},
@@ -480,7 +493,7 @@ export function openSettings({ tab = 'Appearance', launcherId = null, addLaunche
               type: 'button',
               onclick: () => {
                 change(() => { group.links.push({ name: '', url: '' }); });
-                startEdit(`.launcher-editor [data-link-index="${group.links.length - 1}"] .link-name .inline-text`);
+                panel.querySelector(`.launcher-editor [data-link-index="${group.links.length - 1}"] .link-name`)?.focus();
               }
             }, icon('plus', 14, 2.2), 'Add link'),
             toggle({
