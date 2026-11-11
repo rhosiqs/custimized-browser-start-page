@@ -16,7 +16,7 @@ export function renderDock(nav) {
     profileSwitcher(),
     h('span.dock-sep', { 'aria-hidden': 'true' }),
     ...launchers.map((group) => launcher(group)),
-    h('button.launcher-add', { type: 'button', 'aria-label': 'Add launcher', onclick: () => openSettings({ tab: 'Launchers', addLauncher: true }) }, icon('plus', 18)),
+    h('button.launcher-add', { type: 'button', 'aria-label': 'Add launcher', onclick: () => openSettings({ tab: 'Links', addLauncher: true }) }, icon('plus', 18)),
     h('span.dock-sep', { 'aria-hidden': 'true' }),
     h('button.icon-btn', {
       type: 'button',
@@ -135,7 +135,7 @@ function launcher(group) {
             return true;
           }
         }),
-        h('button', { type: 'button', onclick: () => { setOpen(null, false); openSettings({ tab: 'Launchers', launcherId: group.id }); } }, 'Edit')),
+        h('button', { type: 'button', onclick: () => { setOpen(null, false); openSettings({ tab: 'Links', launcherId: group.id }); } }, 'Edit')),
       ...links));
 
   return h('div.launcher', {
