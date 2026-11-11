@@ -1,5 +1,5 @@
 // Reusable pieces built on dom.js: shortcut badges, color pickers, listbox dropdowns, text edited in place, toasts.
-import { SWATCHES, colorOf, firstGraphemes, iconTone, letterOf, normalizeHex, readableOn } from './core.js';
+import { SWATCHES, colorOf, colorPalette, firstGraphemes, iconTone, letterOf, normalizeHex, readableOn, shadesOf } from './core.js';
 import { grip, h, icon } from './dom.js';
 import { faviconUrl, siteIconSources } from './storage.js';
 
@@ -284,6 +284,11 @@ export function colorChoice({ value, options, onChange, size = '', label = 'Colo
       field.setAttribute('aria-invalid', 'true');
       msg.hidden = false;
     };
+    const cell = (color) => h('button.palette-cell', {
+      type: 'button', 'aria-label': `${color.label} (${color.hex})`, title: color.hex, 'aria-pressed': String(color.hex === hex),
+      style: { background: color.hex, color: readableOn(color.hex) },
+      onclick: () => { pick(color.hex); more.focus(); }
+    });
     pop = h('div.color-pop', {
       role: 'dialog', 'aria-label': `More ${label.toLowerCase()} options`,
       onkeydown: (event) => {
@@ -293,7 +298,14 @@ export function colorChoice({ value, options, onChange, size = '', label = 'Colo
       }
     },
       options.length > 2 ? h('div.swatches', {}, ...options.slice(2).map(swatchButton)) : null,
+      // The palette: a column per hue from light to dark, as in a word processor.
+      h('div.palette', { role: 'group', 'aria-label': 'Palette' }, ...colorPalette().flat().map(cell)),
+      // The same color lighter and darker, for a quick change within its family.
+      hex ? h('span.color-pop-label', {}, 'Lighter and darker') : null,
+      hex ? h('div.palette.shades', { role: 'group', 'aria-label': 'Lighter and darker' }, ...shadesOf(hex).map(cell)) : null,
       h('div.color-pop-hex', {},
+        // The browser's own picker, for any color at all.
+        h('input.color-well', { type: 'color', value: hex || '#808080', 'aria-label': `${label}: pick any color`, title: 'Pick any color', onchange: (event) => { pick(event.target.value); more.focus(); } }),
         field,
         h('button.btn.outline.small', { type: 'button', onclick: apply }, 'Apply')),
       msg);

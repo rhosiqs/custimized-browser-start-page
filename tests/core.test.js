@@ -819,3 +819,17 @@ test('uniqueProfileName adds a number only when the name is taken', () => {
   assert.equal(name.length, 32);
   assert.ok(name.endsWith(' (2)'));
 });
+
+test('mixHex, colorPalette and shadesOf build the color picker palette', async () => {
+  const { PALETTE_HUES, colorPalette, mixHex, shadesOf } = await import('../src/core.js');
+  assert.equal(mixHex('#000000', '#ffffff', 0.5), '#808080');
+  assert.equal(mixHex('#c0392b', '#ffffff', 0), '#c0392b');
+  const rows = colorPalette();
+  assert.equal(rows.length, 6);
+  assert.ok(rows.every((row) => row.length === PALETTE_HUES.length && row.every((c) => /^#[0-9a-f]{6}$/.test(c.hex))));
+  assert.deepEqual(rows[3].map((c) => c.hex), PALETTE_HUES.map((hue) => hue.hex));
+  const shades = shadesOf('#2980b9');
+  assert.equal(shades.length, 9);
+  assert.equal(shades[4].hex, '#2980b9');
+  assert.equal(new Set(shades.map((c) => c.hex)).size, 9);
+});

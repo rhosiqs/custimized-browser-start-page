@@ -7,9 +7,11 @@ Each version matches the `version` in `manifest.json` and a `vX.Y.Z` git tag.
 ### Added
 - Paste an icon: with the icon picker open, Ctrl+V takes a copied image as the uploaded icon, or a copied image address as the Image URL. Every icon (shortcut, launcher, profile) is set in this one picker, so it works everywhere.
 - A launcher's links in Settings → Links each show their website icon.
+- Color pickers: the + now opens a palette with a column for each hue running from light to dark, a row of the current color lighter and darker for quick changes within one family, and the browser's own picker for any color. The #HEX field stays.
 
 ### Changed
 - A launcher's links in Settings → Links are edited in full-size name and address fields instead of small click-to-edit text, and the list uses the full width. Add link puts the cursor in the new name field, and Enter moves on to the address.
+- Text edited in place (names and addresses) no longer gets the accent-colored ring around its field; the field's own border is enough.
 - Settings → Links no longer has an Add group button. A group is still made from the shortcut editor's category menu (New category…) or the Add group chip in Edit mode.
 
 ### Fixed
